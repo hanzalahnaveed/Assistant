@@ -49,8 +49,8 @@ jobs:
         run: npx prisma validate
       - name: Generate Prisma client
         run: npm run db:generate
-      - name: Create CI database schema
-        run: npx prisma db push --accept-data-loss
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
       - name: Type-check
         run: npm run typecheck
       - name: Build application
