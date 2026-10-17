@@ -100,7 +100,7 @@ try {
   check(true, "protected APIs reject unauthenticated requests");
 
   user = await prisma.user.create({
-    data: { email: "e2e-" + Date.now() + "@example.test", name: "E2E Test User" }
+    data: { email: "e2e-" + Date.now() + "@example.test", name: "E2E Test User", timezone: "UTC" }
   });
   const token = makeSession(user);
 
@@ -137,6 +137,48 @@ try {
   assert.equal(updatedPreferences.dailyBriefingEnabled, false);
   assert.equal(updatedPreferences.briefingHour, 9);
   check(true, "briefing preferences persist across API requests");
+
+  const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, { method: "POST" });
+  check(cronUnauthenticated.status === 401, "scheduled briefing worker rejects unauthenticated requests");
+
+  const schedulingHour = new Date().getUTCHours();
+  await expectStatus("/api/preferences", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ dailyBriefingEnabled: true, briefingHour: schedulingHour })
+  }, token);
+  const cronSecret = process.env.CRON_SECRET;
+  assert.ok(cronSecret && cronSecret.length >= 32, "CI must configure a strong CRON_SECRET");
+  const cronResponse = await expectStatus("/api/cron/daily-briefings", 200, {
+    method: "POST", headers: { authorization: "Bearer " + cronSecret }
+  });
+  const cronBody = await cronResponse.json();
+  assert.ok(cronBody.generated >= 1, "scheduler should generate a briefing for the eligible test user");
+  check(true, "scheduled worker creates briefings for users whose local delivery hour is due");
+
+  const notificationsResponse = await expectStatus("/api/notifications", 200, {}, token);
+  const notifications = await notificationsResponse.json();
+  assert.ok(notifications.notifications.some(item => item.type === "DAILY_BRIEFING"));
+  assert.equal(notifications.unreadCount, 1);
+  assert.equal(notifications.briefings.length, 1);
+  check(true, "scheduled briefing and in-app notification persist in user history");
+
+  const duplicateCronResponse = await expectStatus("/api/cron/daily-briefings", 200, {
+    method: "POST", headers: { authorization: "Bearer " + cronSecret }
+  });
+  const duplicateCron = await duplicateCronResponse.json();
+  assert.ok(duplicateCron.skipped >= 1);
+  assert.equal(await prisma.dailyBriefing.count({ where: { userId: user.id } }), 1);
+  assert.equal(await prisma.notification.count({ where: { userId: user.id, type: "DAILY_BRIEFING" } }), 1);
+  check(true, "repeated scheduler runs are idempotent and do not duplicate daily briefings");
+
+  const notificationId = notifications.notifications.find(item => item.type === "DAILY_BRIEFING").id;
+  await expectStatus("/api/notifications", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ notificationId })
+  }, token);
+  const readNotifications = await (await expectStatus("/api/notifications", 200, {}, token)).json();
+  assert.equal(readNotifications.unreadCount, 0);
+  check(true, "users can mark scheduled briefing notifications as read");
 
   const createResponse = await expectStatus("/api/tasks", 201, {
     method: "POST",
