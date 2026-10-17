@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { createTaskActionProposal } from "@/lib/actions/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,78 +45,15 @@ export async function POST(request: Request) {
     details: parsed.error.flatten()
   }, { status: 400 });
 
-  const existing = await prisma.actionRecord.findUnique({
-    where: { userId_idempotencyKey: { userId: user.id, idempotencyKey: parsed.data.idempotencyKey } }
-  });
-  if (existing) return NextResponse.json({ action: existing, reused: true }, { headers: { "cache-control": "no-store" } });
-
-  const [preferences, rule] = await Promise.all([
-    prisma.userPreference.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
-      select: { defaultApprovalMode: true }
-    }),
-    prisma.automationRule.findFirst({
-      where: { userId: user.id, actionType: "CREATE_TASK", enabled: true },
-      orderBy: { updatedAt: "desc" },
-      select: { mode: true }
-    })
-  ]);
-  const approvalMode = rule?.mode ?? preferences.defaultApprovalMode;
-  if (approvalMode === "BLOCK") {
-    return NextResponse.json({ error: "Your approval settings currently block assistant-proposed actions." }, { status: 403 });
-  }
-
   try {
-    const action = await prisma.$transaction(async (tx) => {
-      const record = await tx.actionRecord.create({
-        data: {
-          userId: user.id,
-          actionType: "CREATE_TASK",
-          idempotencyKey: parsed.data.idempotencyKey,
-          input: parsed.data.input,
-          status: approvalMode === "AUTO" ? "RUNNING" : "PENDING",
-          requiresApproval: approvalMode !== "AUTO",
-          ...(approvalMode === "AUTO" ? { approvedAt: new Date(), startedAt: new Date() } : {})
-        }
-      });
-
-      if (approvalMode !== "AUTO") {
-        await tx.auditEvent.create({
-          data: { userId: user.id, eventType: "ACTION_PROPOSED", actor: "ASSISTANT", resourceId: record.id, metadata: { actionType: record.actionType } }
-        });
-        return record;
-      }
-
-      const task = await tx.task.create({
-        data: {
-          userId: user.id,
-          title: parsed.data.input.title,
-          description: parsed.data.input.description || null,
-          priority: parsed.data.input.priority,
-          dueAt: parsed.data.input.dueAt ? new Date(parsed.data.input.dueAt) : null,
-          source: "ASSISTANT",
-          sourceRef: record.id
-        }
-      });
-      const completed = await tx.actionRecord.update({
-        where: { id: record.id },
-        data: { status: "SUCCEEDED", completedAt: new Date(), result: { taskId: task.id, title: task.title } }
-      });
-      await tx.auditEvent.create({
-        data: { userId: user.id, eventType: "ACTION_AUTO_EXECUTED", actor: "ASSISTANT", resourceId: record.id, metadata: { actionType: record.actionType, taskId: task.id } }
-      });
-      return completed;
+    const result = await createTaskActionProposal(user.id, parsed.data.idempotencyKey, parsed.data.input);
+    return NextResponse.json(result, {
+      status: result.reused ? 200 : 201,
+      headers: { "cache-control": "no-store" }
     });
-    return NextResponse.json({ action, reused: false }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
-    // Concurrent retries may race on the unique idempotency key; return the first request's record.
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
-      const duplicate = await prisma.actionRecord.findUnique({
-        where: { userId_idempotencyKey: { userId: user.id, idempotencyKey: parsed.data.idempotencyKey } }
-      });
-      if (duplicate) return NextResponse.json({ action: duplicate, reused: true }, { headers: { "cache-control": "no-store" } });
+    if (error instanceof Error && error.name === "ActionBlockedError") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     throw error;
   }
