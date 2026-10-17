@@ -1,0 +1,38 @@
+name: Scheduled daily briefings
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-briefings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check scheduler configuration
+        id: config
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping: configure repository variable APP_BASE_URL and secret CRON_SECRET."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger timezone-aware briefing worker
+        if: steps.config.outputs.configured == 'true'
+        env:
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          APP_BASE_URL="${APP_BASE_URL%/}"
+          curl --fail-with-body --silent --show-error --retry 2 --retry-delay 2 \
+            --request POST "$APP_BASE_URL/api/cron/daily-briefings" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Accept: application/json"
