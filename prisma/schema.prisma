@@ -40,6 +40,16 @@ enum ApprovalMode {
   BLOCK
 }
 
+enum EmailDraftStatus {
+  DRAFT
+  APPROVED
+  SENDING
+  SENT
+  FAILED
+  SEND_UNCERTAIN
+  CANCELLED
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -58,6 +68,7 @@ model User {
   auditEvents  AuditEvent[]
   dailyBriefings DailyBriefing[]
   notifications Notification[]
+  emailDrafts  EmailDraft[]
 }
 
 model UserPreference {
@@ -217,4 +228,24 @@ model Notification {
 
   @@unique([userId, idempotencyKey])
   @@index([userId, readAt, createdAt])
+}
+
+model EmailDraft {
+  id                String           @id @default(cuid())
+  userId            String
+  toEmail           String
+  ccEmail           String?
+  subject           String
+  body              String           @db.Text
+  goal              String?          @db.Text
+  status            EmailDraftStatus @default(DRAFT)
+  approvedAt        DateTime?
+  sentAt            DateTime?
+  providerMessageId String?
+  lastError         String?          @db.Text
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, updatedAt])
 }
