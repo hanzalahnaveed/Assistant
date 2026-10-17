@@ -26,10 +26,26 @@ export async function POST(request: Request, context: Context) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in to manage email drafts." }, { status: 401 });
   const { id } = await context.params;
-  const parsed = z.object({ action: z.enum(["APPROVE", "SEND", "CANCEL"]) }).safeParse(await request.json().catch(() => null));
+  const parsed = z.object({ action: z.enum(["APPROVE", "SEND", "CANCEL", "CONFIRM_SENT", "CONFIRM_NOT_SENT"]) }).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Choose approve, send, or cancel." }, { status: 400 });
   const draft = await prisma.emailDraft.findFirst({ where: { id, userId: user.id } });
   if (!draft) return NextResponse.json({ error: "Email draft not found." }, { status: 404 });
+
+  if (parsed.data.action === "CONFIRM_SENT" || parsed.data.action === "CONFIRM_NOT_SENT") {
+    if (draft.status !== "SEND_UNCERTAIN") return NextResponse.json({ error: "Only an email with an uncertain send outcome can be manually resolved." }, { status: 409 });
+    const confirmedSent = parsed.data.action === "CONFIRM_SENT";
+    const changed = await prisma.emailDraft.updateMany({
+      where: { id, userId: user.id, status: "SEND_UNCERTAIN" },
+      data: confirmedSent
+        ? { status: "SENT", sentAt: new Date(), lastError: null }
+        : { status: "APPROVED", lastError: null }
+    });
+    if (!changed.count) return NextResponse.json({ error: "This email was already resolved." }, { status: 409 });
+    await prisma.auditEvent.create({
+      data: { userId: user.id, eventType: confirmedSent ? "EMAIL_SEND_MANUALLY_CONFIRMED_SENT" : "EMAIL_SEND_MANUALLY_CONFIRMED_NOT_SENT", actor: "USER", resourceId: id, metadata: { userConfirmedAfterCheckingGmail: true } }
+    });
+    return NextResponse.json({ draft: await prisma.emailDraft.findUnique({ where: { id } }) }, { headers: { "cache-control": "no-store" } });
+  }
 
   if (parsed.data.action === "CANCEL") {
     const changed = await prisma.emailDraft.updateMany({ where: { id, userId: user.id, status: { in: ["DRAFT", "APPROVED", "FAILED"] } }, data: { status: "CANCELLED" } });
