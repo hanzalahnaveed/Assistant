@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     take: 20,
     select: { role: true, content: true }
   });
-  await prisma.message.create({
+  const userMessage = await prisma.message.create({
     data: { conversationId: conversation.id, role: "user", content: parsed.data.message }
   });
 
@@ -123,12 +123,13 @@ export async function POST(request: Request) {
     const assistantMessage = await prisma.message.create({
       data: { conversationId: conversation.id, role: "assistant", content: reply }
     });
+    await prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } });
     await prisma.auditEvent.create({
       data: { userId: user.id, eventType: "AI_CHAT_COMPLETED", actor: "USER", resourceId: conversation.id }
     });
     return NextResponse.json({
       conversationId: conversation.id,
-      userMessage: { id: "user-" + assistantMessage.id, role: "user", content: parsed.data.message },
+      userMessage: { id: userMessage.id, role: "user", content: userMessage.content },
       assistantMessage: { id: assistantMessage.id, role: "assistant", content: assistantMessage.content }
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
