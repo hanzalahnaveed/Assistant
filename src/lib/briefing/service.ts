@@ -161,7 +161,7 @@ export async function generateBriefingData(user: BriefingUser, now = new Date())
 
   // Surface evidence-backed next steps separately from generic inbox scoring.
   // Email signals are heuristic because Gmail metadata/snippets may omit full context.
-  const commitmentPattern = /\\b(i will|i'll|we will|we'll|i can send|will send|will deliver|as agreed|as discussed|we agreed|next steps|action item|action items|by tomorrow|by friday|by monday|deadline|due on|due by|please send|please share|follow up on)\\b/i;
+  const commitmentPattern = /\b(i will|i'll|we will|we'll|i can send|will send|will deliver|as agreed|as discussed|we agreed|next steps|action item|action items|by tomorrow|by friday|by monday|deadline|due on|due by|please send|please share|follow up on)\b/i;
   const commitments = [
     ...followUps.flatMap((email) => {
       const evidence = `${email.subject} ${email.snippet}`;
