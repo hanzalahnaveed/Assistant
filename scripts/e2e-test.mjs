@@ -122,6 +122,37 @@ try {
   await expectStatus("/api/notifications", 401);
   check(true, "protected APIs reject unauthenticated requests");
 
+  const credentialsEmail = "credentials-" + Date.now() + "@example.test";
+  const credentialsPassword = "test-password-long-enough-42";
+  const signupResponse = await expectStatus("/api/auth/signup", 201, {
+    method: "POST",
+    body: JSON.stringify({ name: "Credentials E2E", email: credentialsEmail, password: credentialsPassword })
+  });
+  const signupBody = await signupResponse.json();
+  assert.equal(signupBody.user.email, credentialsEmail);
+  assert.ok(signupResponse.headers.get("set-cookie")?.includes("assistant_session="));
+  const credentialsUser = await prisma.user.findUnique({ where: { email: credentialsEmail }, select: { id: true, passwordHash: true } });
+  assert.ok(credentialsUser?.passwordHash?.startsWith("scrypt$"));
+  assert.notEqual(credentialsUser.passwordHash, credentialsPassword);
+  check(true, "email/password signup stores a salted password hash and starts a session");
+
+  const credentialsLogin = await expectStatus("/api/auth/login", 200, {
+    method: "POST",
+    body: JSON.stringify({ email: credentialsEmail, password: credentialsPassword })
+  });
+  assert.ok(credentialsLogin.headers.get("set-cookie")?.includes("assistant_session="));
+  assert.equal((await credentialsLogin.json()).user.email, credentialsEmail);
+  await expectStatus("/api/auth/login", 401, {
+    method: "POST",
+    body: JSON.stringify({ email: credentialsEmail, password: "incorrect-password" })
+  });
+  await expectStatus("/api/auth/signup", 409, {
+    method: "POST",
+    body: JSON.stringify({ name: "Duplicate", email: credentialsEmail, password: credentialsPassword })
+  });
+  check(true, "credentials login verifies passwords and rejects incorrect passwords and duplicate accounts");
+  await prisma.user.delete({ where: { id: credentialsUser.id } });
+
   user = await prisma.user.create({
     data: { email: "e2e-" + Date.now() + "@example.test", name: "E2E Test User", timezone: "UTC" }
   });
