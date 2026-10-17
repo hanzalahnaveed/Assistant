@@ -34,8 +34,11 @@ export async function POST(request: Request) {
   for (const user of users) {
     const timezone = user.timezone || "Asia/Karachi";
     try {
+      const preference = user.preferences ?? await prisma.userPreference.upsert({
+        where: { userId: user.id }, create: { userId: user.id }, update: {}, select: { briefingHour: true }
+      });
       const parts = dateParts(now, timezone);
-      if (Number(parts.hour) !== user.preferences?.briefingHour) {
+      if (Number(parts.hour) !== preference.briefingHour) {
         skipped++;
         continue;
       }
