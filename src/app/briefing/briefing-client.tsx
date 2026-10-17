@@ -79,7 +79,7 @@ export default function BriefingClient() {
         ? "Follow-up task created under your AUTO rule. No email was sent or changed."
         : status === "PENDING"
           ? "Follow-up task proposal sent to the Action Center for your approval."
-          : "Follow-up proposal recorded in the Action Center.");
+          : "An action for this email already exists. Check the Action Center for its current status.");
       await load(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not propose follow-up task.");
