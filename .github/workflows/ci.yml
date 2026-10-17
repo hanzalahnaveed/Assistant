@@ -9,6 +9,28 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: assistant
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d assistant"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/assistant?schema=public
+      AUTH_SECRET: ci-test-auth-secret-that-is-at-least-32-characters-long
+      OPENAI_API_KEY: ci-test-key
+      OPENAI_MODEL: ci-test-model
+      OPENAI_BASE_URL: http://127.0.0.1:4010/v1
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -20,11 +42,20 @@ jobs:
         run: npm install
       - name: Validate Prisma schema
         run: npx prisma validate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/assistant?schema=public
+      - name: Generate Prisma client
+        run: npm run db:generate
+      - name: Create CI database schema
+        run: npx prisma db push --accept-data-loss
       - name: Type-check
         run: npm run typecheck
       - name: Build application
         run: npm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/assistant?schema=public
+      - name: Run production end-to-end tests
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/assistant-next.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+          npm run test:e2e
+      - name: Show server logs on failure
+        if: failure()
+        run: cat /tmp/assistant-next.log || true
