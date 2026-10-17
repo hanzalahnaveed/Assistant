@@ -9,7 +9,7 @@ const items = [
   { href: "/tasks", label: "My tasks", icon: CheckSquare },
   { href: "/assistant", label: "AI assistant", icon: MessageSquareText },
   { href: "/integrations", label: "Connections", icon: Settings2 },
-];
+] as const;
 
 export default function WorkspaceHeader() {
   const pathname = usePathname();
