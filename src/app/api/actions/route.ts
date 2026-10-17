@@ -76,12 +76,12 @@ export async function POST(request: Request) {
           idempotencyKey: parsed.data.idempotencyKey,
           input: parsed.data.input,
           status: approvalMode === "AUTO" ? "RUNNING" : "PENDING",
-          requiresApproval: preferences.defaultApprovalMode !== "AUTO",
+          requiresApproval: approvalMode !== "AUTO",
           ...(approvalMode === "AUTO" ? { approvedAt: new Date(), startedAt: new Date() } : {})
         }
       });
 
-      if (preferences.defaultApprovalMode !== "AUTO") {
+      if (approvalMode !== "AUTO") {
         await tx.auditEvent.create({
           data: { userId: user.id, eventType: "ACTION_PROPOSED", actor: "ASSISTANT", resourceId: record.id, metadata: { actionType: record.actionType } }
         });
