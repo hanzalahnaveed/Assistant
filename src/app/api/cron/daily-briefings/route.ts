@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const users = await prisma.user.findMany({
-    where: { preferences: { is: { dailyBriefingEnabled: true } } },
+    where: { OR: [{ preferences: { is: null } }, { preferences: { is: { dailyBriefingEnabled: true } } }] },
     select: { id: true, timezone: true, preferences: { select: { briefingHour: true } } },
     orderBy: { id: "asc" }
   });
