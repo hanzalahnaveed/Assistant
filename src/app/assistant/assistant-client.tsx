@@ -59,7 +59,9 @@ export default function AssistantClient() {
       setMessages(current => [...current.filter(item => !item.id.startsWith("local-")), body.userMessage, body.assistantMessage]);
       await loadConversations();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The assistant could not respond.");
+      setMessages(current => current.filter(item => !item.id.startsWith("local-")));
+      setInput(message);
+      setError(e instanceof Error ? e.message : "The assistant could not respond. Your draft has been restored so you can retry.");
     } finally { setSending(false); }
   }
 
