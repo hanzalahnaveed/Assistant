@@ -15,6 +15,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Action Center with proposed task actions, approve/reject flow, idempotent execution, and audit history
 - [x] Per-action automation rule for task creation (AUTO, CONFIRM, or BLOCK)
 - [x] AI chat grounded in current task priorities, today’s calendar, and read-only inbox follow-up candidates
+- [x] Chat tool calling for explicit task-creation requests, routed through the same approval rules and idempotent action service
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
 - [ ] Real Google account verification and production deployment
