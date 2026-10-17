@@ -158,6 +158,39 @@ export async function generateBriefingData(user: BriefingUser, now = new Date())
     }
   }
 
+  // Surface evidence-backed next steps separately from generic inbox scoring.
+  // Email signals are heuristic because Gmail metadata/snippets may omit full context.
+  const commitmentPattern = /\\b(i will|i'll|we will|we'll|i can send|will send|will deliver|as agreed|as discussed|we agreed|next steps|action item|action items|by tomorrow|by friday|by monday|deadline|due on|due by|please send|please share|follow up on)\\b/i;
+  const commitments = [
+    ...followUps.flatMap((email) => {
+      const evidence = `${email.subject} ${email.snippet}`;
+      if (!commitmentPattern.test(evidence)) return [];
+      return [{
+        id: `email:${email.id}`, sourceType: "EMAIL" as const, sourceId: email.id,
+        title: `Follow up: ${email.subject}`,
+        description: [`Email from ${email.from || "unknown sender"}`, email.snippet, `Source Gmail message ID: ${email.id}`].filter(Boolean).join("\\n\\n"),
+        rationale: "The visible email text contains commitment, next-step, or deadline language.",
+        evidence: email.snippet || email.subject,
+        priority: email.score >= 7 ? "HIGH" as const : "MEDIUM" as const,
+        dueAt: null as string | null
+      }];
+    }),
+    ...events.flatMap((event) => {
+      if (!event.start) return [];
+      const startAt = new Date(event.start);
+      if (Number.isNaN(startAt.getTime()) || startAt.getTime() <= now.getTime()) return [];
+      return [{
+        id: `meeting:${event.id}`, sourceType: "MEETING" as const, sourceId: event.id,
+        title: `Prepare for: ${event.title}`,
+        description: [`Preparation task suggested from calendar event: ${event.title}`, event.start ? `Meeting starts: ${event.start}` : "", event.location ? `Location: ${event.location}` : "", event.link ? `Calendar event: ${event.link}` : ""].filter(Boolean).join("\\n"),
+        rationale: "An upcoming calendar event may need preparation; review the agenda and decide what is actually required.",
+        evidence: `${event.title} · starts ${event.start}`,
+        priority: "MEDIUM" as const,
+        dueAt: event.start
+      }];
+    })
+  ].slice(0, 10);
+
   const priorities = [
     ...overdue.map((task) => ({ type: "task" as const, id: task.id, title: task.title, detail: "Overdue task", priority: "URGENT" as const })),
     ...dueToday.filter((task) => !overdue.some((item) => item.id === task.id)).map((task) => ({ type: "task" as const, id: task.id, title: task.title, detail: "Due today", priority: task.priority })),
@@ -175,7 +208,7 @@ export async function generateBriefingData(user: BriefingUser, now = new Date())
     integration: integration ? { status: connected ? "CONNECTED" : integration.status, email: integration.email, lastSyncedAt: integration.lastSyncedAt } : null,
     workspaceError, preferences,
     metrics: { openTasks: tasks.length, overdueTasks: overdue.length, dueTodayTasks: dueToday.length, highPriorityTasks: highPriority.length, events: events.length, followUps: followUps.length },
-    priorities, tasks: rankedTasks, events, followUps
+    priorities, tasks: rankedTasks, events, followUps, commitments
   };
 }
 
