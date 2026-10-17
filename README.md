@@ -9,7 +9,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Email/password signup and login with salted scrypt password hashes
 - [x] Optional Google OAuth identity sign-in and account creation
 - [x] Encrypted Google access/refresh tokens for the optional Workspace integration
-- [x] Read-only Gmail inbox and primary-calendar integration
+- [x] Gmail inbox and primary-calendar integration; sending is limited to explicitly approved drafts
 - [x] Authenticated task CRUD, audit events, and soft-archive
 - [x] Persistent conversations and messages with OpenAI-compatible AI chat
 - [x] Daily briefing, inbox follow-up recommendations, and in-app notifications
@@ -21,6 +21,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Daily briefing commitment candidates from explicit email next-step language and upcoming calendar events, with evidence, rationale, and policy-controlled task proposals
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
+- [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
 - [ ] Real Google account verification and production deployment
 
 ## Production configuration
@@ -41,7 +42,7 @@ The worker endpoint is `POST /api/cron/daily-briefings` and requires `Authorizat
 
 Open `/actions` to propose a task, review pending proposals, approve or reject them, and inspect the action history. Task creation uses the existing `ActionRecord` and `AutomationRule` data models, is scoped to the signed-in user, records audit events, and uses an idempotency key so retries do not create duplicate tasks. Task-specific automation can override the user's default approval mode: `CONFIRM` requires an explicit approval, `AUTO` creates the task immediately, and `BLOCK` prevents new proposals. Removing the rule falls back to the default approval setting.
 
-The first executable action is deliberately limited to creating a task inside this application. The Action Center does not send email, change calendar events, or perform other external side effects. AI chat now receives bounded context from open tasks, today's calendar, and heuristic inbox follow-up candidates when Google Workspace is connected; email/calendar content remains read-only and is treated as untrusted data.
+Task actions remain limited to creating tasks inside this application. Email sending is available only through the dedicated `/email` workflow: a saved draft must be approved and then separately confirmed for sending. Sending requires the Gmail `gmail.send` OAuth scope; existing Google connections must reconnect to grant it. The send outcome is audited, and uncertain outcomes are locked for manual Sent-folder verification to reduce duplicate sends. AI chat context and Gmail/Calendar reads remain read-only; email/calendar content is untrusted data.
 
 ## Local development
 
@@ -63,6 +64,8 @@ Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live W
 
 - Keep OAuth credentials and application secrets in environment variables or a managed secret store; never commit them.
 - Google tokens are encrypted at rest with AES-256-GCM.
+- Outreach drafts are never sent automatically; approval and sending require separate user actions.
+- The Gmail send scope may require additional Google OAuth verification before public production use.
 - Gmail and Calendar permissions are read-only; this app does not send messages or change events.
 - Email and calendar contents are untrusted data, never instructions to override system policy.
 - Enforce tenant ownership server-side for all data access.
