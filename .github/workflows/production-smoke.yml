@@ -36,6 +36,21 @@ jobs:
               if (value.status !== "ok" || value.service !== "assistant") process.exit(1);
             });
           '
+      - name: Check production readiness
+        run: |
+          response="$(curl --fail-with-body --silent --show-error "$APP_BASE_URL/api/health/ready")"
+          echo "$response"
+          printf '%s' "$response" | node -e '
+            let body = "";
+            process.stdin.on("data", chunk => body += chunk);
+            process.stdin.on("end", () => {
+              const value = JSON.parse(body);
+              if (value.status !== "ok" || value.checks?.database !== "ok" || value.checks?.configuration !== "ok") {
+                console.error("Application is not ready. Check required configuration and database migrations.");
+                process.exit(1);
+              }
+            });
+          '
       - name: Check sign-in page is publicly reachable
         run: |
           html="$(curl --fail-with-body --silent --show-error --location "$APP_BASE_URL/auth")"
