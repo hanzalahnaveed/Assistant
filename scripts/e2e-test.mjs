@@ -80,6 +80,18 @@ try {
     check(html.length > 0, path + " page renders");
   }
 
+  const oauthStart = await expectStatus("/api/auth/google/start", 307);
+  const authorizationUrl = new URL(oauthStart.headers.get("location"));
+  assert.equal(authorizationUrl.origin, "https://accounts.google.com");
+  assert.ok(authorizationUrl.searchParams.get("scope").includes("https://www.googleapis.com/auth/gmail.readonly"));
+  assert.ok(authorizationUrl.searchParams.get("scope").includes("https://www.googleapis.com/auth/calendar.readonly"));
+  assert.ok(oauthStart.headers.get("set-cookie")?.includes("google_oauth_state="));
+  check(true, "Google OAuth start redirects with state and read-only Gmail/Calendar scopes");
+
+  const invalidCallback = await expectStatus("/api/auth/google/callback?state=attacker&code=invalid", 307);
+  assert.ok(new URL(invalidCallback.headers.get("location")).searchParams.get("error") === "invalid_oauth_state");
+  check(true, "Google OAuth callback rejects missing or mismatched state");
+
   await expectStatus("/api/tasks", 401);
   await expectStatus("/api/chat", 401);
   await expectStatus("/api/workspace/overview", 401);
