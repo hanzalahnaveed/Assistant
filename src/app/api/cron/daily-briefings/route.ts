@@ -59,15 +59,6 @@ export async function POST(request: Request) {
     }
   }
 
-  await prisma.auditEvent.create({
-    data: {
-      userId: "system",
-      eventType: "DAILY_BRIEFING_SCHEDULER_COMPLETED",
-      actor: "SYSTEM",
-      metadata: { generated, skipped, failed: failures.length, runAt: now.toISOString() }
-    }
-  }).catch(() => undefined);
-
   return NextResponse.json({
     ok: failures.length === 0,
     runAt: now.toISOString(),
