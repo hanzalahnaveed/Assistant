@@ -6,38 +6,45 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 
 - [x] Next.js + TypeScript application foundation
 - [x] PostgreSQL/Prisma data model and tenant-scoped APIs
-- [x] Google OAuth authorization-code flow with state validation and signed HTTP-only session
-- [x] AES-256-GCM encryption for stored Google access and refresh tokens
-- [x] Authenticated, read-only Gmail inbox and primary-calendar integration
-- [x] Authenticated task CRUD, task audit events, and soft-archive
+- [x] Google OAuth identity sign-in and account creation
+- [x] Encrypted Google access/refresh tokens for the optional Workspace integration
+- [x] Read-only Gmail inbox and primary-calendar integration
+- [x] Authenticated task CRUD, audit events, and soft-archive
 - [x] Persistent conversations and messages with OpenAI-compatible AI chat
-- [x] Live daily briefing with task metrics, today's calendar, and inbox follow-up recommendations
-- [x] Explainable rule-based email triage and one-click creation of a follow-up task
-- [x] Persistent user preferences for daily briefing and approval mode
+- [x] Daily briefing, inbox follow-up recommendations, and in-app notifications
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
-- [x] Persistent briefing history and in-app notifications with read/unread state
-- [x] Context-aware task ranking based on priority, due-time urgency, age, and business-critical wording
 - [x] CI validation, production build, and end-to-end test workflow
 - [ ] Real Google account verification and production deployment
+
+## Production configuration
+
+See **[Production setup and launch checklist](docs/PRODUCTION_SETUP.md)** for Google Cloud OAuth, Gmail/Calendar API enablement, Vercel deployment, PostgreSQL, production environment variables, GitHub Actions scheduling, migrations, and end-to-end smoke tests.
+
+The repository can be configured in code, but live service access requires credentials and account-side setup in Google Cloud, the hosting provider, the database provider, and the AI provider. Never commit those values.
 
 ## Proactive daily briefing
 
 Open `/briefing` to see open/overdue/due-today tasks, high-priority work, today's calendar, and suggested inbox follow-ups. Follow-up scores use transparent heuristics over email subject, snippet, and unread labels; they are recommendations, not proof that a response is required. Use **Create follow-up task** to save a persistent task. This action does not send or modify email.
 
-Daily briefing preferences are stored per user through `/api/preferences`. The scheduled worker checks users every 15 minutes, evaluates each user’s configured timezone and delivery hour, then persists one briefing per local calendar day. Repeated scheduler calls are idempotent. Saved briefings appear in the authenticated notification inbox at `/api/notifications`; users can mark notifications read. Task ranking combines explicit priority, deadline urgency, in-progress status, task age, and business-critical keywords, with reasons exposed to the UI.\n\nThe worker endpoint is `POST /api/cron/daily-briefings` and requires `Authorization: Bearer $CRON_SECRET`. Configure a strong `CRON_SECRET` in the deployment environment, then configure GitHub repository variable `APP_BASE_URL` (the deployed app origin) and repository secret `CRON_SECRET`. The GitHub Actions workflow `.github/workflows/daily-briefings.yml` runs every 15 minutes and safely skips if either setting is missing. This milestone delivers persistent in-app briefings, not external email or push notifications. Approval mode remains a preference and does not authorize external actions by itself.
+Daily briefing preferences are stored per user through `/api/preferences`. The scheduled worker checks users every 15 minutes, evaluates each user's configured timezone and delivery hour, then persists one briefing per local calendar day. Repeated scheduler calls are idempotent. Saved briefings appear in the authenticated notification inbox, and users can mark notifications read.
 
-## Local setup
+The worker endpoint is `POST /api/cron/daily-briefings` and requires `Authorization: Bearer $CRON_SECRET`. Configure the hosting environment variable `CRON_SECRET`, GitHub Actions repository variable `APP_BASE_URL` (the deployed app origin), and GitHub Actions repository secret `CRON_SECRET` with the same secret value. The workflow `.github/workflows/daily-briefings.yml` runs every 15 minutes and safely skips if either GitHub setting is missing. This delivers persistent in-app briefings, not external email or push notifications. Approval mode is a preference and does not authorize external actions by itself.
+
+## Local development
 
 Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live Workspace data), and an OpenAI-compatible API key (for live AI chat).
 
 1. Copy `.env.example` to `.env`.
-2. Set `DATABASE_URL`, a unique `AUTH_SECRET`, and a unique `CRON_SECRET` using `openssl rand -base64 48`.
-3. Configure Gmail API and Google Calendar API, OAuth consent, and an authorized redirect URI matching `GOOGLE_REDIRECT_URI`.
-4. Install dependencies with `npm install`, then run `npm run db:generate` and `npm run db:migrate`.
-5. Set `OPENAI_API_KEY`; optionally configure `OPENAI_MODEL` and `OPENAI_BASE_URL`.
-6. Run `npm run dev`, then open `/briefing`.
-
-Google's OAuth consent-screen verification and any restricted-scope security assessment are external prerequisites for public production launch.
+2. Set `DATABASE_URL`, `AUTH_SECRET`, and `CRON_SECRET`. Generate unique secrets with `openssl rand -base64 48`.
+3. Configure Google OAuth and the Gmail/Calendar APIs if testing real Google accounts. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
+4. Install dependencies and initialize the database:
+   ```bash
+   npm install
+   npm run db:generate
+   npm run db:migrate
+   ```
+5. Set `OPENAI_API_KEY`; configure `OPENAI_MODEL` and `OPENAI_BASE_URL` if needed.
+6. Run `npm run dev` and open `http://localhost:3000/auth`.
 
 ## Security principles
 
@@ -46,4 +53,5 @@ Google's OAuth consent-screen verification and any restricted-scope security ass
 - Gmail and Calendar permissions are read-only; this app does not send messages or change events.
 - Email and calendar contents are untrusted data, never instructions to override system policy.
 - Enforce tenant ownership server-side for all data access.
-- A follow-up recommendation is heuristic and must be reviewed by the user before acting.
+- Follow-up recommendations are heuristic and must be reviewed by the user before acting.
+- Google's OAuth verification and any required restricted-scope security assessment are external prerequisites for a public production launch.
