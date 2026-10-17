@@ -55,7 +55,7 @@ export default function TasksClient() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not create task.");
       setTasks(current => [body.task, ...current]); setTitle(""); setDescription(""); setPriority("MEDIUM"); setDueAt(""); setShowComposer(false);
-      setNotice("Task saved.");
+      setView("open"); setQuery(""); setPriorityFilter("ALL"); setNotice("Task saved.");
     } catch (e) { setError(e instanceof Error ? e.message : "Could not create task."); }
     finally { setBusy(false); }
   }
