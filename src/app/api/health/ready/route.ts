@@ -23,7 +23,7 @@ export async function GET() {
   let database: "ok" | "error" | "not_configured" = "not_configured";
   if (process.env.DATABASE_URL) {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await prisma.$queryRaw`SELECT 1 FROM "User" LIMIT 0`;
       database = "ok";
     } catch {
       database = "error";
