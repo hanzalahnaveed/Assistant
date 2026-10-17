@@ -7,9 +7,6 @@ const requiredConfiguration = [
   "DATABASE_URL",
   "APP_URL",
   "AUTH_SECRET",
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "GOOGLE_REDIRECT_URI",
   "OPENAI_API_KEY",
   "CRON_SECRET"
 ] as const;
