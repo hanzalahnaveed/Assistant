@@ -198,3 +198,18 @@ main .animate-spin { animation-duration: .9s; }
   .workspace-signout { padding: 8px; }
   .workspace-signout span { display: none; }
 }
+
+
+/* Credentials authentication */
+.auth-credentials-form { display: flex; flex-direction: column; gap: 14px; margin-top: 3px; }
+.auth-field { display: flex; flex-direction: column; gap: 7px; color: #46564b; font-size: 11px; font-weight: 700; }
+.auth-field input { width: 100%; min-height: 43px; padding: 11px 13px; border: 1px solid #dfe6df; border-radius: 10px; outline: none; color: #26382d; background: #fff; font: inherit; font-weight: 450; transition: border-color .15s, box-shadow .15s; }
+.auth-field input::placeholder { color: #a1aaa3; }
+.auth-field input:focus { border-color: #6b9c7e; box-shadow: 0 0 0 3px rgb(63 124 83 / 10%); }
+.auth-primary-button { margin-top: 3px; }
+.auth-primary-mark { display: grid; width: 20px; height: 20px; place-items: center; color: #fff; }
+.auth-secondary-button { margin-top: 0; border-color: #e1e7e1; background: #fff; }
+.auth-secondary-button:hover:not(:disabled) { background: #f8faf8; }
+.auth-password-hint { margin: -5px 0 0; color: #89958c; font-size: 10px; line-height: 1.5; }
+.auth-credentials-form .auth-google-button { width: 100%; }
+.auth-divider { margin-top: 21px; margin-bottom: 15px; }
