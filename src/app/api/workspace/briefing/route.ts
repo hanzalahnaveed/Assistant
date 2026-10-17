@@ -16,6 +16,25 @@ type CalendarList = { items?: Array<{
   start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string };
 }> };
 
+function dateParts(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  }).formatToParts(value);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function localMidnightUtc(year: number, month: number, day: number, timeZone: string) {
+  const target = Date.UTC(year, month - 1, day, 0, 0, 0);
+  let guess = target;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const parts = dateParts(new Date(guess), timeZone);
+    const observed = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+    guess += target - observed;
+  }
+  return new Date(guess);
+}
+
 function header(message: GmailMessage, name: string) {
   return message.payload?.headers?.find((item) => item.name.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
@@ -36,8 +55,13 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Sign in to generate your daily briefing." }, { status: 401 });
 
   const now = new Date();
-  const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(now); dayEnd.setHours(23, 59, 59, 999);
+  const timeZone = user.timezone || "Asia/Karachi";
+  const localNow = dateParts(now, timeZone);
+  const year = Number(localNow.year), month = Number(localNow.month), day = Number(localNow.day);
+  const dayStart = localMidnightUtc(year, month, day, timeZone);
+  const nextDay = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextMidnight = localMidnightUtc(nextDay.getUTCFullYear(), nextDay.getUTCMonth() + 1, nextDay.getUTCDate(), timeZone);
+  const dayEnd = new Date(nextMidnight.getTime() - 1);
   const [tasks, preferences, integration] = await Promise.all([
     prisma.task.findMany({
       where: { userId: user.id, status: { in: ["TODO", "IN_PROGRESS"] } },
@@ -117,13 +141,14 @@ export async function GET() {
     ...dueToday.filter((task) => !overdue.some((item) => item.id === task.id)).map((task) => ({ type: "task" as const, id: task.id, title: task.title, detail: "Due today", priority: task.priority })),
     ...followUps.slice(0, 3).map((email) => ({ type: "email" as const, id: email.id, title: email.subject, detail: email.reasons[0] || "Inbox follow-up candidate", priority: email.score >= 6 ? "HIGH" as const : "MEDIUM" as const }))
   ].slice(0, 6);
-  const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
+  const localHour = Number(localNow.hour);
+  const greeting = localHour < 12 ? "Good morning" : localHour < 17 ? "Good afternoon" : "Good evening";
   const summary = tasks.length === 0 && events.length === 0 && followUps.length === 0
     ? "Your workspace is clear of tracked tasks. Add a task or connect Google Workspace to build a richer briefing."
     : `You have ${overdue.length} overdue task(s), ${dueToday.length} task(s) due today, ${events.length} calendar event(s), and ${followUps.length} email follow-up candidate(s).`;
 
   return NextResponse.json({
-    generatedAt: now.toISOString(), timezone: user.timezone || "Asia/Karachi", greeting, summary, connected,
+    generatedAt: now.toISOString(), timezone: timeZone, greeting, summary, connected,
     integration: integration ? { status: connected ? "CONNECTED" : integration.status, email: integration.email, lastSyncedAt: integration.lastSyncedAt } : null,
     workspaceError, preferences,
     metrics: { openTasks: tasks.length, overdueTasks: overdue.length, dueTodayTasks: dueToday.length, highPriorityTasks: highPriority.length, events: events.length, followUps: followUps.length },
