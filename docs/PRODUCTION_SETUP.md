@@ -62,7 +62,7 @@ Use `openssl rand -base64 48` separately for `AUTH_SECRET` and `CRON_SECRET`. Ne
    npx prisma migrate deploy
    ```
    Ensure that terminal is pointed at the intended production database before running the migration. Do not use `prisma db push` as the production migration process.
-6. Redeploy after setting/changing environment variables. Visit `/api/health` to confirm the web process responds, then run GitHub Actions → **Production smoke test** (manual workflow) after setting the repository variable `APP_BASE_URL`. It checks that the deployment health endpoint and public sign-in page respond.
+6. Redeploy after setting/changing environment variables. Visit `/api/health` to confirm the web process responds, then visit `/api/health/ready` to verify the production database schema is reachable and required configuration is present. A readiness response of HTTP 503 includes only missing variable names and a database status; it never returns secret values. Then run GitHub Actions → **Production smoke test** (manual workflow) after setting the repository variable `APP_BASE_URL`. It checks liveness, database/configuration readiness, and the public sign-in page.
 
 ## 5. Scheduled daily briefings (GitHub Actions)
 
