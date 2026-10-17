@@ -183,7 +183,7 @@ export async function saveDailyBriefing(userId: string, briefing: Awaited<Return
   const content = {
     generatedAt: briefing.generatedAt, timezone: briefing.timezone, greeting: briefing.greeting,
     metrics: briefing.metrics, priorities: briefing.priorities,
-    tasks: briefing.tasks.slice(0, 20), events: briefing.events, followUps: briefing.followUps
+    tasks: briefing.tasks.slice(0, 20).map((task) => ({ ...task, dueAt: task.dueAt?.toISOString() ?? null, createdAt: task.createdAt.toISOString() })), events: briefing.events, followUps: briefing.followUps
   };
   const saved = await prisma.dailyBriefing.upsert({
     where: { userId_localDate: { userId, localDate: briefing.localDate } },
