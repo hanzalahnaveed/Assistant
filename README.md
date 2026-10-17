@@ -13,10 +13,12 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Authenticated, read-only Gmail inbox and primary-calendar overview API
 - [x] Token refresh, connection status, disconnect/revoke flow, and audit events
 - [x] Google Workspace integration page for live connection and read-only data preview
-- [ ] Persistent task API and live AI chat
+- [x] Authenticated task CRUD with task audit events and soft-archive
+- [x] Persistent conversations and messages with OpenAI-compatible live AI chat
+- [x] Dedicated task manager and assistant chat workspaces
 - [ ] Production deployment, end-to-end tests, and Google OAuth verification
 
-The main dashboard still includes sample content. Live Google data is available on the Integrations page after Google OAuth credentials and the database are configured. This milestone does not send emails or modify calendar events.
+The main dashboard still contains some illustrative sample content; use `/tasks` for persistent tasks and `/assistant` for live AI chat. Google Workspace data is available on `/integrations` after OAuth and database configuration. Chat requires `OPENAI_API_KEY` and can use `OPENAI_MODEL` / `OPENAI_BASE_URL` to select an OpenAI-compatible model endpoint. Chat can reason over open tasks and connection status, but does not send emails or modify calendar events.
 
 ## Requirements
 
@@ -33,7 +35,8 @@ The main dashboard still includes sample content. Live Google data is available 
 5. Install dependencies: `npm install`.
 6. Generate the Prisma client: `npm run db:generate`.
 7. Apply the schema locally: `npm run db:migrate`.
-8. Start the app: `npm run dev`, then open `http://localhost:3000/integrations`.
+8. Set `OPENAI_API_KEY` in `.env` to enable AI chat; optionally set `OPENAI_MODEL` and `OPENAI_BASE_URL` for your provider.
+9. Start the app: `npm run dev`, then open `http://localhost:3000/integrations`.
 
 Google's OAuth consent-screen configuration and any required verification are separate from this repository. Gmail read access uses a restricted scope; Google may require verification and a security assessment before a public production launch.
 
