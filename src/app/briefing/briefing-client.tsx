@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import WorkspaceHeader from "@/components/workspace-header";
 import { Activity, AlertCircle, ArrowRight, Bell, CalendarDays, CheckCheck, CheckCircle2, Clock3, ExternalLink, Inbox, LoaderCircle, RefreshCw, ShieldCheck, Sparkles, Target, ListTodo } from "lucide-react";
 
 type Task = { id: string; title: string; description: string | null; status: string; priority: string; dueAt: string | null; score?: number; reasons?: string[] };
@@ -125,10 +126,7 @@ export default function BriefingClient() {
   }
 
   return <main className="min-h-screen bg-[#f8faf7] text-[#18211f]">
-    <header className="border-b border-[#e7ebe7] bg-white"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-      <a href="/" className="text-sm font-semibold tracking-tight">assistant<span className="text-[#176b52]">.</span></a>
-      <nav className="flex items-center gap-4 text-xs font-medium text-[#69736e]"><a href="/tasks" className="hover:text-[#176b52]">Tasks</a><a href="/assistant" className="hover:text-[#176b52]">Assistant chat</a><a href="/integrations" className="hover:text-[#176b52]">Integrations</a></nav>
-    </div></header>
+    <WorkspaceHeader />
     <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em] text-[#176b52]"><Sparkles size={14}/> Live daily briefing</div><h1 className="text-3xl font-semibold tracking-tight">{data?.greeting ?? "Your day, under control"}.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#76817c]">{data?.summary ?? "Priorities from your tasks, calendar, and inbox follow-ups."}</p></div>
       <button onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"><RefreshCw size={15} className={refreshing ? "animate-spin" : ""}/> Refresh briefing</button></div>
