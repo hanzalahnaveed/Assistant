@@ -6,7 +6,8 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 
 - [x] Next.js + TypeScript application foundation
 - [x] PostgreSQL/Prisma data model and tenant-scoped APIs
-- [x] Google OAuth identity sign-in and account creation
+- [x] Email/password signup and login with salted scrypt password hashes
+- [x] Optional Google OAuth identity sign-in and account creation
 - [x] Encrypted Google access/refresh tokens for the optional Workspace integration
 - [x] Read-only Gmail inbox and primary-calendar integration
 - [x] Authenticated task CRUD, audit events, and soft-archive
@@ -48,15 +49,15 @@ Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live W
 
 1. Copy `.env.example` to `.env`.
 2. Set `DATABASE_URL`, `AUTH_SECRET`, and `CRON_SECRET`. Generate unique secrets with `openssl rand -base64 48`.
-3. Configure Google OAuth and the Gmail/Calendar APIs if testing real Google accounts. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
-4. Install dependencies and initialize the database:
+3. Install dependencies and initialize the database:
    ```bash
    npm install
    npm run db:generate
    npm run db:migrate
    ```
 5. Set `OPENAI_API_KEY`; configure `OPENAI_MODEL` and `OPENAI_BASE_URL` if needed.
-6. Run `npm run dev` and open `http://localhost:3000/auth`.
+6. Optionally configure Google OAuth and enable Gmail/Calendar APIs if you want Google sign-in or Workspace data. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
+7. Run `npm run dev` and open `http://localhost:3000/auth` to create an account with email and password.
 
 ## Security principles
 
