@@ -175,3 +175,26 @@ main .animate-spin { animation-duration: .9s; }
   .auth-card { padding-right: 16px; padding-left: 16px; }
   .auth-panel-footer { font-size: 8px; }
 }
+
+.workspace-account { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.workspace-account-divider { width: 1px; height: 28px; background: var(--line); }
+.workspace-account-identity { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.workspace-account-identity > img, .workspace-account-avatar { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border-radius: 50%; object-fit: cover; color: #28694e; background: #e8f3ec; }
+.workspace-account-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.workspace-account-copy strong { max-width: 125px; overflow: hidden; color: #304137; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-account-copy small { max-width: 125px; overflow: hidden; color: #87938a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-signout { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 10px; border: 1px solid #e2e8e2; border-radius: 10px; color: #657269; background: #fff; font-size: 10px; font-weight: 650; white-space: nowrap; }
+.workspace-signout:hover:not(:disabled) { border-color: #d5e4d9; color: #8b3c32; background: #fff9f7; }
+.workspace-signout:disabled { opacity: .65; }
+@media (max-width: 1020px) {
+  .workspace-header { gap: 14px; }
+  .workspace-header-status { display: none; }
+  .workspace-account-divider { display: none; }
+  .workspace-account { gap: 9px; }
+}
+@media (max-width: 760px) {
+  .workspace-account { margin-left: auto; }
+  .workspace-account-identity { display: none; }
+  .workspace-signout { padding: 8px; }
+  .workspace-signout span { display: none; }
+}
