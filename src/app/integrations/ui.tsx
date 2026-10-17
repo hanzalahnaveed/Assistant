@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, CheckCircle2, ExternalLink, Inbox, LoaderCircle, LogOut, RefreshCw, ShieldCheck, Sparkles, Unplug } from "lucide-react";
+import { CalendarDays, CheckCircle2, ExternalLink, Inbox, LoaderCircle, LogOut, RefreshCw, ShieldCheck, Sparkles, Unplug } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 
 type Email = { id: string; from: string; subject: string; snippet: string; date: string };
 type Event = { id: string; title: string; start: string | null; end: string | null; location: string | null; link: string | null; attendeeCount: number };
@@ -70,9 +71,10 @@ export default function IntegrationsClient() {
     window.location.assign("/");
   }
 
-  return <main className="min-h-screen bg-[#f7f8f5] px-5 py-8 text-[#18211f] sm:px-8">
-    <div className="mx-auto max-w-5xl">
-      <a href="/" className="mb-8 inline-flex items-center gap-2 text-sm text-[#68756d] hover:text-[#176b52]"><ArrowLeft size={16} /> Back to dashboard</a>
+  return <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
+    <WorkspaceHeader />
+    <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#176b52]"><ShieldCheck size={14} /> Workspace settings</div>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-[#176b52]"><Sparkles size={14} /> Workspace connections</div><h1 className="text-3xl font-semibold tracking-tight">Connect your workday.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[#76817c]">Give your assistant read-only access to Gmail and Google Calendar so it can surface the work that matters.</p></div>
         <button onClick={() => void load()} disabled={loading || busy} className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"><RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh</button>
