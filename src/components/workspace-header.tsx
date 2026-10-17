@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { CheckSquare, ClipboardCheck, LayoutDashboard, LoaderCircle, LogOut, MailPlus, MessageSquareText, Settings2, Sparkles, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const items = [
+const items: { href: Route; label: string; icon: typeof LayoutDashboard }[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/tasks", label: "My tasks", icon: CheckSquare },
   { href: "/assistant", label: "AI assistant", icon: MessageSquareText },
   { href: "/email", label: "Email outreach", icon: MailPlus },
   { href: "/actions", label: "Action center", icon: ClipboardCheck },
   { href: "/integrations", label: "Connections", icon: Settings2 },
-] as const;
+];
 
 type SessionUser = { id: string; email: string; name: string | null; imageUrl: string | null };
 
