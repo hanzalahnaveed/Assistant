@@ -109,7 +109,7 @@ export async function getSessionUser() {
 
     return await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, imageUrl: true }
+      select: { id: true, email: true, name: true, imageUrl: true, timezone: true }
     });
   } catch {
     return null;
