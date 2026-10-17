@@ -74,6 +74,15 @@ try {
   assert.equal(healthBody.status, "ok");
   check(true, "health endpoint responds");
 
+  const readiness = await request("/api/health/ready");
+  assert.equal(readiness.status, 200, "readiness endpoint should return HTTP 200 when CI services are configured");
+  const readinessBody = await readiness.json();
+  assert.equal(readinessBody.status, "ok");
+  assert.equal(readinessBody.checks.database, "ok");
+  assert.equal(readinessBody.checks.configuration, "ok");
+  assert.deepEqual(readinessBody.checks.missingConfiguration, []);
+  check(true, "readiness endpoint verifies database connectivity and required configuration without exposing secret values");
+
   for (const path of ["/auth", "/", "/integrations", "/tasks", "/assistant", "/briefing"]) {
     const response = await expectStatus(path, 200);
     const html = await response.text();
