@@ -74,7 +74,7 @@ export default function Home() {
         </nav>
         <div className="mb-2 mt-9 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa39e]">Manage</div>
         <nav className="space-y-1">
-          <button onClick={() => setNotice("Integrations setup is the next milestone.")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[#69736e] hover:bg-[#f6f8f5]"><Zap size={17} />Integrations<span className="ml-auto h-2 w-2 rounded-full bg-[#d9a34f]" /></button>
+          <button onClick={() => { window.location.assign("/integrations"); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[#69736e] hover:bg-[#f6f8f5]"><Zap size={17} />Integrations<span className="ml-auto h-2 w-2 rounded-full bg-[#d9a34f]" /></button>
           <button onClick={() => setNotice("Settings will include your autonomy rules and approval preferences.")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-[#69736e] hover:bg-[#f6f8f5]"><Settings2 size={17} />Settings</button>
         </nav>
         <div className="mt-auto rounded-2xl border border-[#e7ebe7] bg-[#fafbf9] p-3.5">
