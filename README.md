@@ -4,47 +4,43 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 
 ## Current status
 
-- [x] Next.js + TypeScript application foundation and interactive dashboard preview
-- [x] Initial PostgreSQL/Prisma data model
-- [x] Server-side action policy foundation and health endpoint
-- [x] Google OAuth authorization-code flow with state validation
-- [x] Signed, HTTP-only application session cookie
+- [x] Next.js + TypeScript application foundation
+- [x] PostgreSQL/Prisma data model and tenant-scoped APIs
+- [x] Google OAuth authorization-code flow with state validation and signed HTTP-only session
 - [x] AES-256-GCM encryption for stored Google access and refresh tokens
-- [x] Authenticated, read-only Gmail inbox and primary-calendar overview API
-- [x] Token refresh, connection status, disconnect/revoke flow, and audit events
-- [x] Google Workspace integration page for live connection and read-only data preview
-- [x] Authenticated task CRUD with task audit events and soft-archive
-- [x] Persistent conversations and messages with OpenAI-compatible live AI chat
-- [x] Dedicated task manager and assistant chat workspaces
-- [ ] Production deployment, end-to-end tests, and Google OAuth verification
+- [x] Authenticated, read-only Gmail inbox and primary-calendar integration
+- [x] Authenticated task CRUD, task audit events, and soft-archive
+- [x] Persistent conversations and messages with OpenAI-compatible AI chat
+- [x] Live daily briefing with task metrics, today's calendar, and inbox follow-up recommendations
+- [x] Explainable rule-based email triage and one-click creation of a follow-up task
+- [x] Persistent user preferences for daily briefing and approval mode
+- [x] CI validation, production build, and end-to-end test workflow
+- [ ] Real Google account verification and production deployment
 
-The main dashboard still contains some illustrative sample content; use `/tasks` for persistent tasks and `/assistant` for live AI chat. Google Workspace data is available on `/integrations` after OAuth and database configuration. Chat requires `OPENAI_API_KEY` and can use `OPENAI_MODEL` / `OPENAI_BASE_URL` to select an OpenAI-compatible model endpoint. Chat can reason over open tasks and connection status, but does not send emails or modify calendar events.
+## Proactive daily briefing
 
-## Requirements
+Open `/briefing` to see open/overdue/due-today tasks, high-priority work, today's calendar, and suggested inbox follow-ups. Follow-up scores use transparent heuristics over email subject, snippet, and unread labels; they are recommendations, not proof that a response is required. Use **Create follow-up task** to save a persistent task. This action does not send or modify email.
 
-- Node.js 20+
-- PostgreSQL 15+
-- Google Cloud OAuth 2.0 web client
+Daily briefing preferences are stored per user through `/api/preferences`. The saved preference is not yet a scheduled delivery system; background jobs and proactive delivery are a later milestone. Approval mode is stored as a preference and does not authorize external actions by itself.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env`.
-2. Set `DATABASE_URL` and generate a unique `AUTH_SECRET` using `openssl rand -base64 48`.
-3. In Google Cloud Console, enable the Gmail API and Google Calendar API, configure the OAuth consent screen, and create a Web application OAuth client.
-4. Add the exact value of `GOOGLE_REDIRECT_URI` to the client's authorized redirect URIs. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`.
-5. Install dependencies: `npm install`.
-6. Generate the Prisma client: `npm run db:generate`.
-7. Apply the schema locally: `npm run db:migrate`.
-8. Set `OPENAI_API_KEY` in `.env` to enable AI chat; optionally set `OPENAI_MODEL` and `OPENAI_BASE_URL` for your provider.
-9. Start the app: `npm run dev`, then open `http://localhost:3000/integrations`.
+Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live Workspace data), and an OpenAI-compatible API key (for live AI chat).
 
-Google's OAuth consent-screen configuration and any required verification are separate from this repository. Gmail read access uses a restricted scope; Google may require verification and a security assessment before a public production launch.
+1. Copy `.env.example` to `.env`.
+2. Set `DATABASE_URL` and a unique `AUTH_SECRET` using `openssl rand -base64 48`.
+3. Configure Gmail API and Google Calendar API, OAuth consent, and an authorized redirect URI matching `GOOGLE_REDIRECT_URI`.
+4. Install dependencies with `npm install`, then run `npm run db:generate` and `npm run db:migrate`.
+5. Set `OPENAI_API_KEY`; optionally configure `OPENAI_MODEL` and `OPENAI_BASE_URL`.
+6. Run `npm run dev`, then open `/briefing`.
+
+Google's OAuth consent-screen verification and any restricted-scope security assessment are external prerequisites for public production launch.
 
 ## Security principles
 
 - Keep OAuth credentials and application secrets in environment variables or a managed secret store; never commit them.
-- The application stores Google tokens encrypted with AES-256-GCM. Use a strong, unique `AUTH_SECRET` and protect backups.
-- Use the requested read-only Gmail and Calendar scopes; no message sending or calendar writes are implemented.
-- Treat email and calendar contents as untrusted input, not instructions.
-- Gate sensitive writes behind explicit approval and audit executed actions.
+- Google tokens are encrypted at rest with AES-256-GCM.
+- Gmail and Calendar permissions are read-only; this app does not send messages or change events.
+- Email and calendar contents are untrusted data, never instructions to override system policy.
 - Enforce tenant ownership server-side for all data access.
+- A follow-up recommendation is heuristic and must be reviewed by the user before acting.
