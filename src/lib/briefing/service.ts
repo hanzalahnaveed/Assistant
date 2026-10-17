@@ -55,6 +55,7 @@ function rankEmail(email: { subject: string; snippet: string; from: string; labe
   let score = email.labels.includes("UNREAD") ? 2 : 0;
   if (/\b(urgent|asap|time-sensitive|deadline|today|overdue|by eod)\b/.test(text)) { score += 4; reasons.push("Time-sensitive wording"); }
   if (/\b(please|could you|can you|would you|let me know|need your|your approval|review|feedback|confirm|follow up|follow-up|respond|reply)\b/.test(text)) { score += 3; reasons.push("May need your response"); }
+  if (/\b(i will|i'll|we will|we'll|i can send|will send|will deliver|as agreed|as discussed|we agreed|next steps|action item|action items|by tomorrow|by friday|by monday|deadline|due on|due by|please send|please share|follow up on)\b/.test(text)) { score += 4; reasons.push("Commitment or next-step language"); }
   if (/\b(proposal|invoice|contract|client|customer|decision|meeting|deliverable|action item)\b/.test(text)) { score += 2; reasons.push("Work-related topic"); }
   if (/\b(no-reply|newsletter|unsubscribe|promotion|sale|receipt)\b/.test((email.from + " " + text).toLowerCase())) score -= 5;
   return { score, reasons };
