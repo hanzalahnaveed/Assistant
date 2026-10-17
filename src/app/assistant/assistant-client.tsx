@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { ArrowLeft, LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
+import { LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string; createdAt?: string };
 type Conversation = { id: string; title: string | null; createdAt: string; updatedAt: string };
@@ -62,10 +63,11 @@ export default function AssistantClient() {
     } finally { setSending(false); }
   }
 
-  return <main className="min-h-screen bg-[#f7f8f5] px-4 py-6 text-[#18211f] sm:px-7">
-    <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+  return <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
+    <WorkspaceHeader />
+    <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-7 lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="rounded-2xl border border-[#e2e8e0] bg-white p-4">
-        <a href="/" className="mb-6 inline-flex items-center gap-2 text-sm text-[#68756d] hover:text-[#176b52]"><ArrowLeft size={15}/> Dashboard</a>
+        <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#176b52]"><Sparkles size={14}/> Your conversations</div>
         <button onClick={newConversation} className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#176b52] px-3 py-2.5 text-sm font-semibold text-white"><Plus size={15}/> New conversation</button>
         <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#87918b]">Recent conversations</h2>
         {loading ? <p className="py-4 text-xs text-[#87918b]">Loading…</p> : conversations.length ? <div className="space-y-1">{conversations.map(item => <button key={item.id} onClick={() => void openConversation(item.id)} className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#176b52]" : "text-[#59665e] hover:bg-[#f7f8f5]"}`}><MessageCircle size={14} className="mt-0.5 shrink-0"/><span className="line-clamp-2">{item.title || "New conversation"}</span></button>)}</div> : <p className="py-3 text-xs leading-5 text-[#87918b]">Your saved chats will appear here.</p>}
