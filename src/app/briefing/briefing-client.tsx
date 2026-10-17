@@ -7,12 +7,13 @@ import { Activity, AlertCircle, ArrowRight, Bell, CalendarDays, CheckCheck, Chec
 type Task = { id: string; title: string; description: string | null; status: string; priority: string; dueAt: string | null; score?: number; reasons?: string[] };
 type Email = { id: string; threadId: string; from: string; subject: string; snippet: string; date: string; score: number; reasons: string[] };
 type Event = { id: string; title: string; start: string | null; end: string | null; location: string | null; link: string | null };
+type Commitment = { id: string; sourceType: "EMAIL" | "MEETING"; sourceId: string; title: string; description: string; rationale: string; evidence: string; priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; dueAt: string | null };
 type Notice = { id: string; type: string; title: string; body: string; readAt: string | null; createdAt: string; payload: Record<string, unknown> };
 type Briefing = {
   generatedAt: string; timezone: string; greeting: string; summary: string; connected: boolean;
   workspaceError: string | null; preferences: { dailyBriefingEnabled: boolean; briefingHour: number; defaultApprovalMode: string };
   metrics: { openTasks: number; overdueTasks: number; dueTodayTasks: number; highPriorityTasks: number; events: number; followUps: number };
-  tasks: Task[]; events: Event[]; followUps: Email[];
+  tasks: Task[]; events: Event[]; followUps: Email[]; commitments: Commitment[];
 };
 
 function formatDate(value: string | null) {
@@ -83,6 +84,35 @@ export default function BriefingClient() {
       await load(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not propose follow-up task.");
+    } finally { setCreating(null); }
+  }
+
+  async function createCommitmentTask(commitment: Commitment) {
+    setCreating(commitment.id); setNotice(""); setError("");
+    try {
+      const response = await fetch("/api/actions", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          actionType: "CREATE_TASK",
+          idempotencyKey: `commitment-${commitment.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`,
+          input: {
+            title: commitment.title.slice(0, 200),
+            description: [commitment.description, `Why suggested: ${commitment.rationale}`, `Evidence: ${commitment.evidence}`].filter(Boolean).join("\\n\\n"),
+            priority: commitment.priority,
+            dueAt: commitment.dueAt ? new Date(commitment.dueAt).toISOString() : null
+          }
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not propose commitment task.");
+      setNotice(body.action?.status === "SUCCEEDED"
+        ? "Commitment task created under your AUTO rule."
+        : body.action?.status === "PENDING"
+          ? "Commitment task proposal sent to the Action Center for approval."
+          : "An action for this commitment already exists. Check the Action Center for its current status.");
+      await load(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not propose commitment task.");
     } finally { setCreating(null); }
   }
 
@@ -165,6 +195,22 @@ export default function BriefingClient() {
         <section className="mb-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-1 flex items-center gap-2"><Inbox size={18} className="text-[#176b52]"/><h2 className="font-semibold">Inbox follow-up recommendations</h2></div><p className="mb-4 text-xs leading-5 text-[#76817c]">Rule-based suggestions from read-only email metadata and snippets. Review them yourself; the assistant never sends a reply automatically.</p>
           {!data.connected && <p className="mb-4 rounded-xl bg-[#f8faf7] p-3 text-xs text-[#76817c]">Connect Google Workspace to generate follow-up suggestions. <a href="/integrations" className="font-semibold text-[#176b52]">Connect Google</a></p>}
           {data.followUps.length ? <div className="divide-y divide-[#edf0ec]">{data.followUps.map(email => <article key={email.id} className="py-4 first:pt-0 last:pb-0"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="text-sm font-semibold">{email.subject}</div><div className="mt-1 text-xs text-[#76817c]">{email.from}{email.date ? " · " + email.date : ""}</div><p className="mt-2 text-sm leading-6 text-[#5d6961]">{email.snippet || "No preview available."}</p><div className="mt-2 flex flex-wrap gap-1.5">{email.reasons.map(reason => <span key={reason} className="rounded-full bg-[#f1f4f0] px-2 py-1 text-[10px] text-[#68756d]">{reason}</span>)}</div></div><button onClick={() => void createTask(email)} disabled={creating === email.id} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#176b52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#10543f] disabled:opacity-50">{creating === email.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>} Propose follow-up task</button></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">{data.connected ? "No messages currently meet the follow-up scoring threshold." : "No live email recommendations until Google Workspace is connected."}</p>}
+        </section>
+        <section className="mb-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+          <div className="mb-1 flex items-center gap-2"><Sparkles size={18} className="text-[#176b52]"/><h2 className="font-semibold">Commitments & next steps</h2></div>
+          <p className="mb-4 text-xs leading-5 text-[#76817c]">Evidence-backed suggestions from visible email text and upcoming calendar events. These are heuristics for your review, not confirmed promises. Task creation follows your Action Center policy.</p>
+          {data.commitments?.length ? <div className="divide-y divide-[#edf0ec]">{data.commitments.map(commitment => <article key={commitment.id} className="py-4 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#f1f4f0] px-2 py-1 text-[10px] font-semibold text-[#68756d]">{commitment.sourceType === "EMAIL" ? "EMAIL SIGNAL" : "MEETING PREP"}</span><span className="text-[10px] font-semibold text-[#68756d]">{commitment.priority} priority</span></div>
+                <div className="mt-2 text-sm font-semibold">{commitment.title}</div>
+                <p className="mt-1 text-xs leading-5 text-[#76817c]">{commitment.rationale}</p>
+                <p className="mt-2 rounded-lg bg-[#f8faf7] p-3 text-xs leading-5 text-[#5d6961]">{commitment.evidence}</p>
+                {commitment.dueAt && <div className="mt-2 text-[11px] text-[#76817c]">Suggested due time: {formatDate(commitment.dueAt)}</div>}
+              </div>
+              <button onClick={() => void createCommitmentTask(commitment)} disabled={creating === commitment.id} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#176b52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#10543f] disabled:opacity-50">{creating === commitment.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>} Add as task</button>
+            </div>
+          </article>)}</div> : <p className="py-5 text-sm text-[#76817c]">No clear commitment signals or upcoming meetings to prepare for in the currently available context.</p>}
         </section>
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#dce9de] bg-[#eef7f0] p-5"><div className="flex gap-3"><ShieldCheck size={20} className="mt-0.5 text-[#176b52]"/><div><div className="text-sm font-semibold">Your briefing, your rules</div><p className="mt-1 text-xs leading-5 text-[#5d7566]">No messages are sent and no calendar events are changed. Email content is treated as untrusted data.</p></div></div><div className="flex flex-wrap items-center gap-4"><label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#24543f]"><input type="checkbox" checked={data.preferences.dailyBriefingEnabled} onChange={e => void saveBriefing(e.target.checked)} className="h-4 w-4 accent-[#176b52]"/> Daily briefing enabled</label><label className="flex items-center gap-2 text-xs font-semibold text-[#24543f]">Delivery time <select value={data.preferences.briefingHour} onChange={e => void saveBriefingHour(Number(e.target.value))} className="rounded-lg border border-[#d5e3d8] bg-white px-2 py-1.5 text-xs">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}</select></label></div></section>
         <section className="mt-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Bell size={18} className="text-[#176b52]"/><h2 className="font-semibold">Scheduled briefings & notifications</h2>{unreadCount > 0 && <span className="rounded-full bg-[#176b52] px-2 py-0.5 text-[10px] font-semibold text-white">{unreadCount} new</span>}</div><p className="mt-1 text-xs text-[#76817c]">Saved daily briefings and in-app notifications.</p></div>{unreadCount > 0 && <button onClick={() => void markNotificationRead()} className="inline-flex items-center gap-1 text-xs font-semibold text-[#176b52]"><CheckCheck size={14}/> Mark all read</button>}</div>
