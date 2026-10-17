@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Check, Circle, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Check, Circle, LoaderCircle, Plus, Search, Trash2, X } from "lucide-react";
 import WorkspaceHeader from "@/components/workspace-header";
 
 type Task = {
@@ -26,6 +26,10 @@ export default function TasksClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [showComposer, setShowComposer] = useState(false);
+  const [view, setView] = useState<"open" | "completed" | "all">("open");
+  const [query, setQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<"ALL" | Task["priority"]>("ALL");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -50,7 +54,7 @@ export default function TasksClient() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not create task.");
-      setTasks(current => [body.task, ...current]); setTitle(""); setDescription(""); setPriority("MEDIUM"); setDueAt("");
+      setTasks(current => [body.task, ...current]); setTitle(""); setDescription(""); setPriority("MEDIUM"); setDueAt(""); setShowComposer(false);
       setNotice("Task saved.");
     } catch (e) { setError(e instanceof Error ? e.message : "Could not create task."); }
     finally { setBusy(false); }
@@ -78,8 +82,14 @@ export default function TasksClient() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not remove task."); }
   }
 
-  const open = tasks.filter(task => task.status !== "DONE");
+  const open = tasks.filter(task => task.status !== "DONE" && task.status !== "CANCELLED");
   const done = tasks.filter(task => task.status === "DONE");
+  const visibleTasks = tasks.filter(task => {
+    const matchesView = view === "all" || (view === "completed" ? task.status === "DONE" : task.status !== "DONE" && task.status !== "CANCELLED");
+    const needle = query.trim().toLowerCase();
+    const matchesQuery = !needle || task.title.toLowerCase().includes(needle) || (task.description ?? "").toLowerCase().includes(needle);
+    return matchesView && matchesQuery && (priorityFilter === "ALL" || task.priority === priorityFilter);
+  });
   return <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
     <WorkspaceHeader />
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
@@ -87,8 +97,9 @@ export default function TasksClient() {
       <div className="mb-7"><p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[#176b52]">Your execution space</p><h1 className="text-3xl font-semibold tracking-tight">My tasks</h1><p className="mt-2 text-sm text-[#76817c]">Tasks are saved to your account and stay in sync across sessions.</p></div>
       {error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}{error.toLowerCase().includes("connect google") && <a href="/api/auth/google/start" className="ml-2 font-semibold underline">Connect Google</a>}</div>}
       {notice && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
-      <form onSubmit={addTask} className="mb-7 space-y-3 rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
-        <h2 className="font-semibold">Add a task</h2>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e2e8e0] bg-white p-4 sm:p-5"><div><h2 className="font-semibold">Capture a commitment</h2><p className="mt-1 text-xs leading-5 text-[#76817c]">Turn a next step into a tracked task with an owner, priority, and deadline.</p></div><button type="button" onClick={() => setShowComposer(value => !value)} className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#10543f]">{showComposer ? <X size={16}/> : <Plus size={16}/>} {showComposer ? "Close form" : "New task"}</button></div>
+      {showComposer && <form onSubmit={addTask} className="mb-7 space-y-3 rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+        <h2 className="font-semibold">New task details</h2>
         <input required maxLength={200} value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to get done?" className="w-full rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"/>
         <textarea maxLength={5000} value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes (optional)" rows={2} className="w-full resize-y rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"/>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -96,12 +107,15 @@ export default function TasksClient() {
           <label className="text-xs font-medium text-[#68756d]">Due date and time<input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)} className="mt-1.5 block w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2.5 text-sm text-[#18211f]"/></label>
         </div>
         <button disabled={busy || !title.trim()} className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Plus size={16}/>{busy ? "Saving…" : "Save task"}</button>
-      </form>
+      </form>}
+      <section className="mb-6 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-[#e2e8e0] bg-white p-4"><p className="text-xs text-[#76817c]">Active commitments</p><div className="mt-2 text-2xl font-semibold">{open.length}</div></div><div className="rounded-2xl border border-[#e2e8e0] bg-white p-4"><p className="text-xs text-[#76817c]">High / urgent</p><div className="mt-2 text-2xl font-semibold">{open.filter(task => task.priority === "HIGH" || task.priority === "URGENT").length}</div></div><div className="rounded-2xl border border-[#e2e8e0] bg-white p-4"><p className="text-xs text-[#76817c]">Completed</p><div className="mt-2 text-2xl font-semibold">{done.length}</div></div></section>
       <section className="mb-6 rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
-        <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Open tasks <span className="ml-1 text-sm font-normal text-[#87918b]">{open.length}</span></h2><button onClick={() => void load()} className="text-xs font-semibold text-[#176b52]">Refresh</button></div>
-        {loading ? <div className="flex items-center gap-2 py-8 text-sm text-[#76817c]"><LoaderCircle size={16} className="animate-spin"/>Loading tasks…</div> : open.length ? <div className="divide-y divide-[#edf0ec]">{open.map(task => <TaskRow key={task.id} task={task} updateTask={updateTask} removeTask={removeTask}/>)}</div> : <p className="py-8 text-sm text-[#76817c]">Nothing on your list yet. Add your first task above.</p>}
+        <div className="mb-4 flex flex-col gap-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Your task list</h2><p className="mt-1 text-xs text-[#76817c]">Search, filter, and update progress without losing your place.</p></div><button onClick={() => void load()} disabled={loading} className="text-xs font-semibold text-[#176b52] disabled:opacity-50">Refresh</button></div>
+          <div className="flex flex-col gap-3 md:flex-row"><label className="relative min-w-0 flex-1"><span className="sr-only">Search tasks</span><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#87918b]"/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by task or notes…" className="w-full py-2.5 pl-9 pr-3 text-sm"/></label><select aria-label="Filter by priority" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value as typeof priorityFilter)} className="md:w-44"><option value="ALL">All priorities</option>{priorities.map(item => <option key={item} value={item}>{item[0] + item.slice(1).toLowerCase()}</option>)}</select></div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Task status filter">{([{id:"open",label:"Active",count:open.length},{id:"completed",label:"Completed",count:done.length},{id:"all",label:"All tasks",count:tasks.length}] as const).map(tab => <button key={tab.id} type="button" onClick={() => setView(tab.id)} className={`rounded-xl px-3.5 py-2 text-xs font-semibold ${view === tab.id ? "bg-[#e7f3ed] text-[#176b52]" : "border border-[#e2e8e0] text-[#68756d] hover:bg-[#f8faf7]"}`}>{tab.label}<span className="ml-2 opacity-70">{tab.count}</span></button>)}</div>
+        </div>
+        {loading ? <div className="flex items-center gap-2 py-8 text-sm text-[#76817c]"><LoaderCircle size={16} className="animate-spin"/>Loading tasks…</div> : visibleTasks.length ? <div className="divide-y divide-[#edf0ec]">{visibleTasks.map(task => <TaskRow key={task.id} task={task} updateTask={updateTask} removeTask={removeTask}/>)}</div> : <div className="py-10 text-center"><div className="text-sm font-semibold">{query || priorityFilter !== "ALL" ? "No matching tasks" : view === "completed" ? "Nothing completed yet" : "You’re all caught up"}</div><p className="mt-2 text-xs leading-5 text-[#76817c]">{query || priorityFilter !== "ALL" ? "Try changing your search or filters." : "Create a task when a new commitment comes in."}</p>{(query || priorityFilter !== "ALL") && <button onClick={() => { setQuery(""); setPriorityFilter("ALL"); }} className="mt-3 text-xs font-semibold text-[#176b52]">Clear filters</button>}</div>}
       </section>
-      {done.length > 0 && <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6"><h2 className="mb-3 font-semibold">Completed <span className="ml-1 text-sm font-normal text-[#87918b]">{done.length}</span></h2><div className="divide-y divide-[#edf0ec]">{done.map(task => <TaskRow key={task.id} task={task} updateTask={updateTask} removeTask={removeTask}/>)}</div></section>}
     </div>
   </main>;
 }
