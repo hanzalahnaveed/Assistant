@@ -50,16 +50,30 @@ export default function AuthPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim(), password })
       });
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { message?: string; error?: string } = {};
+      try {
+        data = JSON.parse(responseText) as { message?: string; error?: string };
+      } catch {
+        if (!response.ok) {
+          setError("The server returned an unexpected response (HTTP " + response.status + "). Check the terminal running Next.js for the underlying error.");
+          return;
+        }
+        throw new Error("The server returned an invalid response.");
+      }
       if (!response.ok) {
         setError(data.message ?? (data.error === "account_exists"
           ? "An account with this email already exists. Please sign in."
-          : "We couldn't authenticate you. Please check your details and try again."));
+          : "The request failed (HTTP " + response.status + "). Check the server logs if this continues."));
         return;
       }
       window.location.assign("/");
-    } catch {
-      setError("We couldn't reach the server. Check your connection and try again.");
+    } catch (error) {
+      if (error instanceof TypeError) {
+        setError("We couldn't reach the server. Check that the app is running at this address and try again.");
+      } else {
+        setError(error instanceof Error ? error.message : "The server returned an invalid response. Check the Next.js terminal logs.");
+      }
     } finally {
       setBusy(false);
     }
