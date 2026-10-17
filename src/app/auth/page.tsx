@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Inbox, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 
 type Mode = "signin" | "signup";
@@ -16,14 +15,19 @@ const errors: Record<string, string> = {
 };
 
 export default function AuthPage() {
-  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("signin");
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
-  const error = searchParams.get("error");
-  const loggedOut = searchParams.get("loggedOut") === "1";
+  const [error, setError] = useState<string | null>(null);
+  const [loggedOut, setLoggedOut] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryError = params.get("error");
+    setError(queryError);
+    setLoggedOut(params.get("loggedOut") === "1");
+    if (queryError === "account_not_found") setMode("signup");
+    if (queryError === "account_exists") setMode("signin");
     let cancelled = false;
     fetch("/api/auth/session", { cache: "no-store" })
       .then(response => response.json())
