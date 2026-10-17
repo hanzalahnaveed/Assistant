@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --ink: #18211f;
+  --muted: #76817c;
+  --line: #e7ebe7;
+  --surface: #ffffff;
+  --canvas: #f7f8f5;
+  --green: #176b52;
+  --green-soft: #e7f3ed;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button { cursor: pointer; }
+::selection { background: #d4e9dc; }
