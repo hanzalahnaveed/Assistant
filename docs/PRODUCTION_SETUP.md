@@ -24,9 +24,9 @@ Use the Google Cloud project that will own this application:
    - Local: `http://localhost:3000/api/auth/google/callback`
    - Production: `https://YOUR-REAL-APP-DOMAIN/api/auth/google/callback`
 6. Store the generated client ID and client secret only in the deployment environment. Set `GOOGLE_REDIRECT_URI` to the exact same callback URL; protocol, domain, path, and trailing slash must match.
-7. Google sign-in is optional. If enabled, test it separately from email/password signup/login. Then use the Google integration connection to grant Gmail read-only and Calendar read-only access. Authentication alone does not connect Workspace data.
+7. Google sign-in is optional. If enabled, test it separately from email/password signup/login. Then use the Google integration connection to grant Gmail inbox-read, Gmail send, and Calendar read-only access. Authentication alone does not connect Workspace data. Email sending is exposed only in the dedicated outreach workflow and requires both draft approval and a separate send confirmation.
 
-The app requests identity scopes for sign-in/sign-up and the additional `gmail.readonly` and `calendar.readonly` scopes only for the optional Workspace integration. Do not request broader scopes unless a feature actually needs them.
+The app requests identity scopes for sign-in/sign-up and the additional `gmail.readonly`, `gmail.send`, and `calendar.readonly` scopes only for the optional Workspace integration. Existing connections must reconnect to grant `gmail.send`. Gmail sending is a sensitive permission and may require additional Google verification before public launch.
 
 **Before opening the app to the public:** Google may require OAuth verification for sensitive/restricted scopes, a verified domain, a public privacy policy and homepage, and possibly a security assessment depending on the scopes and use. Review Google's [OAuth production-readiness guidance](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification). Until verification is complete, keep the app in Testing and limit access to approved test users.
 
@@ -85,7 +85,8 @@ Use credentials-based sign-up/sign-in for the core authentication checks. If Goo
 - [ ] Create, update, complete, and archive a task; refresh and verify persistence.
 - [ ] Open Assistant and send a message; confirm the configured AI provider returns a response and the conversation persists.
 - [ ] Connect Google Workspace separately; confirm Gmail messages and primary-calendar events load.
-- [ ] Confirm Gmail and Calendar access stays read-only.
+- [ ] Confirm Gmail inbox and Calendar reads work as expected.
+- [ ] Confirm outreach requires approval and a separate send confirmation; test sending only with a designated test recipient.
 - [ ] Open the briefing page; check task metrics and connected Workspace context.
 - [ ] Set the briefing preference to a suitable hour, manually run the scheduler, and confirm the briefing/notification is persisted. Re-running it for the same local date should not create duplicates.
 - [ ] Verify sign-out protects all workspace routes and clears the session.
