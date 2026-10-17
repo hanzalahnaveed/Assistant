@@ -49,13 +49,21 @@ export async function POST(request: Request) {
   });
   if (existing) return NextResponse.json({ action: existing, reused: true }, { headers: { "cache-control": "no-store" } });
 
-  const preferences = await prisma.userPreference.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id },
-    update: {},
-    select: { defaultApprovalMode: true }
-  });
-  if (preferences.defaultApprovalMode === "BLOCK") {
+  const [preferences, rule] = await Promise.all([
+    prisma.userPreference.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+      select: { defaultApprovalMode: true }
+    }),
+    prisma.automationRule.findFirst({
+      where: { userId: user.id, actionType: "CREATE_TASK", enabled: true },
+      orderBy: { updatedAt: "desc" },
+      select: { mode: true }
+    })
+  ]);
+  const approvalMode = rule?.mode ?? preferences.defaultApprovalMode;
+  if (approvalMode === "BLOCK") {
     return NextResponse.json({ error: "Your approval settings currently block assistant-proposed actions." }, { status: 403 });
   }
 
@@ -67,9 +75,9 @@ export async function POST(request: Request) {
           actionType: "CREATE_TASK",
           idempotencyKey: parsed.data.idempotencyKey,
           input: parsed.data.input,
-          status: preferences.defaultApprovalMode === "AUTO" ? "RUNNING" : "PENDING",
+          status: approvalMode === "AUTO" ? "RUNNING" : "PENDING",
           requiresApproval: preferences.defaultApprovalMode !== "AUTO",
-          ...(preferences.defaultApprovalMode === "AUTO" ? { approvedAt: new Date(), startedAt: new Date() } : {})
+          ...(approvalMode === "AUTO" ? { approvedAt: new Date(), startedAt: new Date() } : {})
         }
       });
 
