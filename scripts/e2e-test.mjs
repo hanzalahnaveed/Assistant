@@ -165,7 +165,7 @@ try {
     data: { email: "e2e-other-" + Date.now() + "@example.test", name: "Other Test User" }
   });
   const otherToken = makeSession(otherUser);
-  await expectStatus("/api/tasks/" + created.id, 404, {}, otherToken);
+  await expectStatus("/api/tasks/" + created.id, 404, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: "Unauthorized edit" }) }, otherToken);
   await expectStatus("/api/chat/" + chat.conversationId, 404, {}, otherToken);
   check(true, "task and conversation ownership prevents cross-account access");
   await prisma.user.delete({ where: { id: otherUser.id } });
