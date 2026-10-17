@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, CalendarClock, Check, Circle, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Check, Circle, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 
 type Task = {
   id: string; title: string; description: string | null;
@@ -79,9 +80,10 @@ export default function TasksClient() {
 
   const open = tasks.filter(task => task.status !== "DONE");
   const done = tasks.filter(task => task.status === "DONE");
-  return <main className="min-h-screen bg-[#f7f8f5] px-5 py-8 text-[#18211f] sm:px-8">
-    <div className="mx-auto max-w-4xl">
-      <a href="/" className="mb-7 inline-flex items-center gap-2 text-sm text-[#68756d] hover:text-[#176b52]"><ArrowLeft size={16}/> Dashboard</a>
+  return <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
+    <WorkspaceHeader />
+    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#176b52]"><Check size={14}/> Execution center</div>
       <div className="mb-7"><p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[#176b52]">Your execution space</p><h1 className="text-3xl font-semibold tracking-tight">My tasks</h1><p className="mt-2 text-sm text-[#76817c]">Tasks are saved to your account and stay in sync across sessions.</p></div>
       {error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}{error.toLowerCase().includes("connect google") && <a href="/api/auth/google/start" className="ml-2 font-semibold underline">Connect Google</a>}</div>}
       {notice && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
