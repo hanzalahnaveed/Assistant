@@ -117,13 +117,17 @@ try {
   assert.deepEqual(workspaceBody.events, []);
   check(true, "workspace API handles an authenticated account without a Google connection");
 
+  await prisma.task.create({ data: { userId: user.id, title: "Review production incident", priority: "LOW", dueAt: new Date(Date.now() - 60 * 60 * 1000), source: "USER" } });
+
   const briefingResponse = await expectStatus("/api/workspace/briefing", 200, {}, token);
   const briefing = await briefingResponse.json();
   assert.equal(briefing.connected, false);
-  assert.equal(briefing.metrics.openTasks, 0);
+  assert.equal(briefing.metrics.openTasks, 1);
   assert.ok(Array.isArray(briefing.priorities));
   assert.ok(briefing.preferences);
-  check(true, "daily briefing API builds personalized task metrics without a Google connection");
+  assert.ok(briefing.tasks[0].reasons.includes("Overdue"));
+  assert.ok(briefing.tasks[0].reasons.includes("Business-critical context"));
+  check(true, "daily briefing ranks overdue business-critical tasks with explainable reasons");
 
   const preferencesResponse = await expectStatus("/api/preferences", 200, {}, token);
   const preferences = (await preferencesResponse.json()).preferences;
