@@ -132,7 +132,8 @@ try {
   assert.equal(signupBody.user.email, credentialsEmail);
   assert.ok(signupResponse.headers.get("set-cookie")?.includes("assistant_session="));
   const credentialsUser = await prisma.user.findUnique({ where: { email: credentialsEmail }, select: { id: true, passwordHash: true } });
-  assert.ok(credentialsUser?.passwordHash?.startsWith("scrypt$"));
+  assert.ok(credentialsUser);
+  assert.ok(credentialsUser.passwordHash?.startsWith("scrypt$"));
   assert.notEqual(credentialsUser.passwordHash, credentialsPassword);
   check(true, "email/password signup stores a salted password hash and starts a session");
 
