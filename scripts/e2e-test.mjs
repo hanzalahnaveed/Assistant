@@ -97,6 +97,7 @@ try {
   await expectStatus("/api/workspace/overview", 401);
   await expectStatus("/api/workspace/briefing", 401);
   await expectStatus("/api/preferences", 401);
+  await expectStatus("/api/notifications", 401);
   check(true, "protected APIs reject unauthenticated requests");
 
   user = await prisma.user.create({
@@ -245,7 +246,8 @@ try {
   const otherToken = makeSession(otherUser);
   await expectStatus("/api/tasks/" + created.id, 404, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: "Unauthorized edit" }) }, otherToken);
   await expectStatus("/api/chat/" + chat.conversationId, 404, {}, otherToken);
-  check(true, "task and conversation ownership prevents cross-account access");
+  await expectStatus("/api/notifications", 404, { method: "PATCH", body: JSON.stringify({ notificationId }) }, otherToken);
+  check(true, "task, conversation, and notification ownership prevents cross-account access");
   await prisma.user.delete({ where: { id: otherUser.id } });
 
   const disconnectResponse = await expectStatus("/api/integrations/google/disconnect", 200, { method: "POST" }, token);
