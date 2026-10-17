@@ -23,13 +23,13 @@ export function createOAuthState() {
   return randomBytes(32).toString("base64url");
 }
 
-export function googleAuthorizationUrl(state: string) {
+export function googleAuthorizationUrl(state: string, scopes: string[] = GOOGLE_SCOPES) {
   const { clientId, redirectUri } = googleOAuthConfig();
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GOOGLE_SCOPES.join(" "));
+  url.searchParams.set("scope", scopes.join(" "));
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
   url.searchParams.set("include_granted_scopes", "true");
