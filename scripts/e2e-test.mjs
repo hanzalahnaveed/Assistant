@@ -28,7 +28,7 @@ async function request(path, options = {}, token) {
   const headers = new Headers(options.headers || {});
   if (options.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (token) headers.set("cookie", "assistant_session=" + token);
-  return fetch(new URL(path, baseUrl), { ...options, headers, cache: "no-store" });
+  return fetch(new URL(path, baseUrl), { ...options, headers, cache: "no-store", redirect: options.redirect ?? "manual" });
 }
 async function expectStatus(path, status, options, token) {
   const response = await request(path, options, token);
