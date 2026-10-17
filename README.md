@@ -17,6 +17,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] AI chat grounded in current task priorities, today’s calendar, and read-only inbox follow-up candidates
 - [x] Chat tool calling for explicit task-creation requests, routed through the same approval rules and idempotent action service
 - [x] Inbox follow-up recommendations routed through policy-controlled, idempotent task proposals instead of bypassing the Action Center
+- [x] Daily briefing commitment candidates from explicit email next-step language and upcoming calendar events, with evidence, rationale, and policy-controlled task proposals
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
 - [ ] Real Google account verification and production deployment
@@ -29,7 +30,7 @@ The repository can be configured in code, but live service access requires crede
 
 ## Proactive daily briefing
 
-Open `/briefing` to see open/overdue/due-today tasks, high-priority work, today's calendar, and suggested inbox follow-ups. Follow-up scores use transparent heuristics over email subject, snippet, and unread labels; they are recommendations, not proof that a response is required. Use **Propose follow-up task** to route a persistent task proposal through the same `AUTO`, `CONFIRM`, or `BLOCK` policy used by the Action Center. With `CONFIRM`, review it in `/actions`; with `AUTO`, a local task is created immediately; with `BLOCK`, the proposal is refused. The source message ID is retained in the task context for traceability. This action does not send or modify email.
+Open `/briefing` to see open/overdue/due-today tasks, high-priority work, today's calendar, suggested inbox follow-ups, and a **Commitments & next steps** section. Follow-up and commitment scores use transparent heuristics over email subject, snippet, unread labels, explicit next-step/deadline language, and upcoming calendar times. These are recommendations, not proof that a response is required or a promise was made. Commitment suggestions show the supporting email snippet or meeting time and can be turned into tasks through the same `AUTO`, `CONFIRM`, or `BLOCK` policy. Use **Propose follow-up task** to route a persistent task proposal through the same `AUTO`, `CONFIRM`, or `BLOCK` policy used by the Action Center. With `CONFIRM`, review it in `/actions`; with `AUTO`, a local task is created immediately; with `BLOCK`, the proposal is refused. The source message ID is retained in the task context for traceability. This action does not send or modify email.
 
 Daily briefing preferences are stored per user through `/api/preferences`. The scheduled worker checks users every 15 minutes, evaluates each user's configured timezone and delivery hour, then persists one briefing per local calendar day. Repeated scheduler calls are idempotent. Saved briefings appear in the authenticated notification inbox, and users can mark notifications read.
 
