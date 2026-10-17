@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, ExternalLink, Inbox, LoaderCircle, RefreshCw, ShieldCheck, Sparkles, Target, ListTodo } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, Bell, CalendarDays, CheckCheck, CheckCircle2, Clock3, ExternalLink, Inbox, LoaderCircle, RefreshCw, ShieldCheck, Sparkles, Target, ListTodo } from "lucide-react";
 
-type Task = { id: string; title: string; description: string | null; status: string; priority: string; dueAt: string | null };
+type Task = { id: string; title: string; description: string | null; status: string; priority: string; dueAt: string | null; score?: number; reasons?: string[] };
 type Email = { id: string; threadId: string; from: string; subject: string; snippet: string; date: string; score: number; reasons: string[] };
 type Event = { id: string; title: string; start: string | null; end: string | null; location: string | null; link: string | null };
+type Notice = { id: string; type: string; title: string; body: string; readAt: string | null; createdAt: string; payload: Record<string, unknown> };
 type Briefing = {
   generatedAt: string; timezone: string; greeting: string; summary: string; connected: boolean;
   workspaceError: string | null; preferences: { dailyBriefingEnabled: boolean; briefingHour: number; defaultApprovalMode: string };
@@ -30,6 +31,8 @@ export default function BriefingClient() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notice[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true); else setLoading(true);
@@ -39,6 +42,12 @@ export default function BriefingClient() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not load your briefing.");
       setData(body);
+      const notificationResponse = await fetch("/api/notifications", { cache: "no-store" });
+      if (notificationResponse.ok) {
+        const notificationBody = await notificationResponse.json();
+        setNotifications(notificationBody.notifications ?? []);
+        setUnreadCount(notificationBody.unreadCount ?? 0);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load your briefing.");
     } finally {
@@ -82,6 +91,39 @@ export default function BriefingClient() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save preference."); }
   }
 
+  async function saveBriefingHour(hour: number) {
+    if (!data) return;
+    setNotice(""); setError("");
+    try {
+      const response = await fetch("/api/preferences", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ briefingHour: hour })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not save delivery time.");
+      setData({ ...data, preferences: body.preferences });
+      setNotice(`Daily briefing scheduled for ${String(hour).padStart(2, "0")}:00 (${data.timezone}).`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save delivery time."); }
+  }
+
+  async function markNotificationRead(notificationId?: string) {
+    setError("");
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify(notificationId ? { notificationId } : { markAllRead: true })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not update notifications.");
+      const notificationResponse = await fetch("/api/notifications", { cache: "no-store" });
+      if (notificationResponse.ok) {
+        const notificationBody = await notificationResponse.json();
+        setNotifications(notificationBody.notifications ?? []);
+        setUnreadCount(notificationBody.unreadCount ?? 0);
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not update notifications."); }
+  }
+
   return <main className="min-h-screen bg-[#f8faf7] text-[#18211f]">
     <header className="border-b border-[#e7ebe7] bg-white"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
       <a href="/" className="text-sm font-semibold tracking-tight">assistant<span className="text-[#176b52]">.</span></a>
@@ -106,7 +148,7 @@ export default function BriefingClient() {
         </section>
         <section className="mb-6 grid items-start gap-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-4 flex items-center gap-2"><Target size={18} className="text-[#176b52]"/><h2 className="font-semibold">Recommended focus</h2></div>
-            {data.tasks.length ? <div className="divide-y divide-[#edf0ec]">{data.tasks.slice(0, 8).map(task => <article key={task.id} className="py-3 first:pt-0 last:pb-0"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="text-sm font-medium">{task.title}</div><div className="mt-1 text-xs text-[#76817c]">{task.status.replace("_", " ")} · {task.priority}{task.dueAt ? " · due " + formatDate(task.dueAt) : ""}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${task.priority === "URGENT" ? "bg-[#fff0eb] text-[#a94f36]" : task.priority === "HIGH" ? "bg-[#fff6e5] text-[#8c682e]" : "bg-[#f1f4f0] text-[#68756d]"}`}>{task.priority}</span></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">No open tasks yet. <a href="/tasks" className="font-semibold text-[#176b52]">Add your first task <ArrowRight size={13} className="inline"/></a></p>}
+            {data.tasks.length ? <div className="divide-y divide-[#edf0ec]">{data.tasks.slice(0, 8).map(task => <article key={task.id} className="py-3 first:pt-0 last:pb-0"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="text-sm font-medium">{task.title}</div><div className="mt-1 text-xs text-[#76817c]">{task.status.replace("_", " ")} · {task.priority}{task.dueAt ? " · due " + formatDate(task.dueAt) : ""}</div>{task.reasons?.length ? <div className="mt-2 flex flex-wrap gap-1">{task.reasons.slice(0, 2).map(reason => <span key={reason} className="rounded-full bg-[#eef7f0] px-2 py-1 text-[10px] text-[#37664d]">{reason}</span>)}</div> : null}</div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${task.priority === "URGENT" ? "bg-[#fff0eb] text-[#a94f36]" : task.priority === "HIGH" ? "bg-[#fff6e5] text-[#8c682e]" : "bg-[#f1f4f0] text-[#68756d]"}`}>{task.priority}</span></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">No open tasks yet. <a href="/tasks" className="font-semibold text-[#176b52]">Add your first task <ArrowRight size={13} className="inline"/></a></p>}
           </div>
           <div className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-4 flex items-center gap-2"><CalendarDays size={18} className="text-[#176b52]"/><h2 className="font-semibold">Today's calendar</h2></div>
             {!data.connected && <p className="mb-3 rounded-xl bg-[#f8faf7] p-3 text-xs leading-5 text-[#76817c]">Connect Google Workspace to include your live calendar and inbox. <a href="/integrations" className="font-semibold text-[#176b52]">Connect Google</a></p>}
@@ -117,7 +159,10 @@ export default function BriefingClient() {
           {!data.connected && <p className="mb-4 rounded-xl bg-[#f8faf7] p-3 text-xs text-[#76817c]">Connect Google Workspace to generate follow-up suggestions. <a href="/integrations" className="font-semibold text-[#176b52]">Connect Google</a></p>}
           {data.followUps.length ? <div className="divide-y divide-[#edf0ec]">{data.followUps.map(email => <article key={email.id} className="py-4 first:pt-0 last:pb-0"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="text-sm font-semibold">{email.subject}</div><div className="mt-1 text-xs text-[#76817c]">{email.from}{email.date ? " · " + email.date : ""}</div><p className="mt-2 text-sm leading-6 text-[#5d6961]">{email.snippet || "No preview available."}</p><div className="mt-2 flex flex-wrap gap-1.5">{email.reasons.map(reason => <span key={reason} className="rounded-full bg-[#f1f4f0] px-2 py-1 text-[10px] text-[#68756d]">{reason}</span>)}</div></div><button onClick={() => void createTask(email)} disabled={creating === email.id} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#176b52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#10543f] disabled:opacity-50">{creating === email.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>} Create follow-up task</button></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">{data.connected ? "No messages currently meet the follow-up scoring threshold." : "No live email recommendations until Google Workspace is connected."}</p>}
         </section>
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#dce9de] bg-[#eef7f0] p-5"><div className="flex gap-3"><ShieldCheck size={20} className="mt-0.5 text-[#176b52]"/><div><div className="text-sm font-semibold">Your briefing, your rules</div><p className="mt-1 text-xs leading-5 text-[#5d7566]">No messages are sent and no calendar events are changed. Email content is treated as untrusted data.</p></div></div><label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#24543f]"><input type="checkbox" checked={data.preferences.dailyBriefingEnabled} onChange={e => void saveBriefing(e.target.checked)} className="h-4 w-4 accent-[#176b52]"/> Daily briefing enabled</label></section>
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#dce9de] bg-[#eef7f0] p-5"><div className="flex gap-3"><ShieldCheck size={20} className="mt-0.5 text-[#176b52]"/><div><div className="text-sm font-semibold">Your briefing, your rules</div><p className="mt-1 text-xs leading-5 text-[#5d7566]">No messages are sent and no calendar events are changed. Email content is treated as untrusted data.</p></div></div><div className="flex flex-wrap items-center gap-4"><label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#24543f]"><input type="checkbox" checked={data.preferences.dailyBriefingEnabled} onChange={e => void saveBriefing(e.target.checked)} className="h-4 w-4 accent-[#176b52]"/> Daily briefing enabled</label><label className="flex items-center gap-2 text-xs font-semibold text-[#24543f]">Delivery time <select value={data.preferences.briefingHour} onChange={e => void saveBriefingHour(Number(e.target.value))} className="rounded-lg border border-[#d5e3d8] bg-white px-2 py-1.5 text-xs">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}</select></label></div></section>
+        <section className="mt-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Bell size={18} className="text-[#176b52]"/><h2 className="font-semibold">Scheduled briefings & notifications</h2>{unreadCount > 0 && <span className="rounded-full bg-[#176b52] px-2 py-0.5 text-[10px] font-semibold text-white">{unreadCount} new</span>}</div><p className="mt-1 text-xs text-[#76817c]">Saved daily briefings and in-app notifications.</p></div>{unreadCount > 0 && <button onClick={() => void markNotificationRead()} className="inline-flex items-center gap-1 text-xs font-semibold text-[#176b52]"><CheckCheck size={14}/> Mark all read</button>}</div>
+          {notifications.length ? <div className="divide-y divide-[#edf0ec]">{notifications.slice(0, 8).map(item => <article key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="flex min-w-0 gap-3"><span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${item.readAt ? "bg-[#d8dfd9]" : "bg-[#176b52]"}`}/><div><div className="text-sm font-medium">{item.title}</div><p className="mt-1 text-xs leading-5 text-[#76817c]">{item.body}</p><div className="mt-1 text-[10px] text-[#9aa39d]">{new Date(item.createdAt).toLocaleString()}</div></div></div>{!item.readAt && <button onClick={() => void markNotificationRead(item.id)} className="shrink-0 text-xs font-semibold text-[#176b52]">Mark read</button>}</article>)}</div> : <p className="py-4 text-sm text-[#76817c]">No scheduled briefing notifications yet. The worker will create one during your selected local delivery hour.</p>}
+        </section>
         <div className="mt-4 flex items-center justify-between text-[11px] text-[#87918b]"><span>Generated {new Date(data.generatedAt).toLocaleString()} · {data.timezone}</span><span className="inline-flex items-center gap-1"><Activity size={12}/> Live data, when connected</span></div>
       </>}
     </div>
