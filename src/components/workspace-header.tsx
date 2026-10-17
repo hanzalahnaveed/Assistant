@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckSquare, LayoutDashboard, LoaderCircle, LogOut, MessageSquareText, Settings2, Sparkles, UserRound } from "lucide-react";
+import { CheckSquare, ClipboardCheck, LayoutDashboard, LoaderCircle, LogOut, MessageSquareText, Settings2, Sparkles, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,6 +10,7 @@ const items = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/tasks", label: "My tasks", icon: CheckSquare },
   { href: "/assistant", label: "AI assistant", icon: MessageSquareText },
+  { href: "/actions", label: "Action center", icon: ClipboardCheck },
   { href: "/integrations", label: "Connections", icon: Settings2 },
 ] as const;
 
