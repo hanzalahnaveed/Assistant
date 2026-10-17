@@ -55,6 +55,8 @@ model User {
   automationRules AutomationRule[]
   actions      ActionRecord[]
   auditEvents  AuditEvent[]
+  dailyBriefings DailyBriefing[]
+  notifications Notification[]
 }
 
 model UserPreference {
@@ -182,4 +184,36 @@ model AuditEvent {
 
   @@index([userId, createdAt])
   @@index([eventType, createdAt])
+}
+
+
+model DailyBriefing {
+  id          String   @id @default(cuid())
+  userId      String
+  localDate   String
+  timezone    String
+  summary     String   @db.Text
+  content     Json     @default("{}")
+  generatedAt DateTime @default(now())
+  readAt      DateTime?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, localDate])
+  @@index([userId, generatedAt])
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  userId         String
+  idempotencyKey String
+  type           String
+  title          String
+  body           String   @db.Text
+  payload        Json     @default("{}")
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, readAt, createdAt])
 }
