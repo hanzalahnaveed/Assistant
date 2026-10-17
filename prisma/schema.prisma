@@ -43,6 +43,7 @@ enum ApprovalMode {
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
+  passwordHash String?
   name         String?
   imageUrl     String?
   timezone     String        @default("Asia/Karachi")
