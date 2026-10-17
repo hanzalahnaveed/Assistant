@@ -74,11 +74,24 @@ try {
   assert.equal(healthBody.status, "ok");
   check(true, "health endpoint responds");
 
-  for (const path of ["/", "/integrations", "/tasks", "/assistant", "/briefing"]) {
+  for (const path of ["/auth", "/", "/integrations", "/tasks", "/assistant", "/briefing"]) {
     const response = await expectStatus(path, 200);
     const html = await response.text();
     check(html.length > 0, path + " page renders");
   }
+
+  const signInStart = await expectStatus("/api/auth/google/start?intent=signin", 307);
+  const signInUrl = new URL(signInStart.headers.get("location"));
+  assert.equal(signInUrl.origin, "https://accounts.google.com");
+  assert.deepEqual(signInUrl.searchParams.get("scope").split(" ").sort(), ["email", "openid", "profile"]);
+  assert.ok(signInStart.headers.get("set-cookie")?.includes("google_auth_intent=signin"));
+  check(true, "sign-in flow requests identity-only Google scopes and stores the selected intent");
+
+  const signUpStart = await expectStatus("/api/auth/google/start?intent=signup", 307);
+  const signUpUrl = new URL(signUpStart.headers.get("location"));
+  assert.deepEqual(signUpUrl.searchParams.get("scope").split(" ").sort(), ["email", "openid", "profile"]);
+  assert.ok(signUpStart.headers.get("set-cookie")?.includes("google_auth_intent=signup"));
+  check(true, "account creation flow requests only identity scopes");
 
   const oauthStart = await expectStatus("/api/auth/google/start", 307);
   const authorizationUrl = new URL(oauthStart.headers.get("location"));
