@@ -11,7 +11,7 @@ const items: { href: Route; label: string; icon: typeof LayoutDashboard }[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/tasks", label: "My tasks", icon: CheckSquare },
   { href: "/assistant", label: "AI assistant", icon: MessageSquareText },
-  { href: "/calendar", label: "Calendar & meetings", icon: CalendarDays },
+  { href: "/calendar" as Route, label: "Calendar & meetings", icon: CalendarDays },
   { href: "/email", label: "Email outreach", icon: MailPlus },
   { href: "/actions", label: "Action center", icon: ClipboardCheck },
   { href: "/integrations", label: "Connections", icon: Settings2 },
