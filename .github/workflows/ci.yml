@@ -30,6 +30,10 @@ jobs:
       OPENAI_API_KEY: ci-test-key
       OPENAI_MODEL: ci-test-model
       OPENAI_BASE_URL: http://127.0.0.1:4010/v1
+      GOOGLE_CLIENT_ID: ci-google-client-id.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_REDIRECT_URI: http://127.0.0.1:3000/api/auth/google/callback
+      APP_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Check out repository
