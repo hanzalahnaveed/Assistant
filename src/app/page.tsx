@@ -66,10 +66,10 @@ export default function Home() {
         </div>
         <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa39e]">Workspace</div>
         <nav className="space-y-1">
-          {[["Overview", LayoutDashboard], ["Inbox", Inbox], ["Calendar", CalendarDays], ["My tasks", ListTodo], ["Assistant chat", MessageCircle]].map(([label, Icon]) => {
+          {[["Overview", LayoutDashboard], ["Daily briefing", Sparkles], ["Inbox", Inbox], ["Calendar", CalendarDays], ["My tasks", ListTodo], ["Assistant chat", MessageCircle]].map(([label, Icon]) => {
             const name = label as string;
             const Glyph = Icon as typeof LayoutDashboard;
-            return <button key={name} onClick={() => { if (name === "My tasks") { window.location.assign("/tasks"); return; } if (name === "Assistant chat") { window.location.assign("/assistant"); return; } setActiveNav(name); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] transition ${activeNav === name ? "bg-[#e7f3ed] font-semibold text-[#176b52]" : "text-[#69736e] hover:bg-[#f6f8f5]"}`}><Glyph size={17} strokeWidth={1.8} />{name}{name === "Inbox" && <span className="ml-auto rounded-md bg-[#f2e8d5] px-1.5 py-0.5 text-[10px] font-semibold text-[#8c682e]">3</span>}</button>;
+            return <button key={name} onClick={() => { if (name === "Daily briefing") { window.location.assign("/briefing"); return; } if (name === "My tasks") { window.location.assign("/tasks"); return; } if (name === "Assistant chat") { window.location.assign("/assistant"); return; } setActiveNav(name); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] transition ${activeNav === name ? "bg-[#e7f3ed] font-semibold text-[#176b52]" : "text-[#69736e] hover:bg-[#f6f8f5]"}`}><Glyph size={17} strokeWidth={1.8} />{name}{name === "Inbox" && <span className="ml-auto rounded-md bg-[#f2e8d5] px-1.5 py-0.5 text-[10px] font-semibold text-[#8c682e]">3</span>}</button>;
           })}
         </nav>
         <div className="mb-2 mt-9 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa39e]">Manage</div>
