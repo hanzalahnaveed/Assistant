@@ -123,6 +123,11 @@ try {
   assert.equal(sessionBody.user.id, user.id);
   check(true, "signed session authenticates the correct account");
 
+  const logoutResponse = await expectStatus("/api/auth/logout", 200, { method: "POST" }, token);
+  assert.equal((await logoutResponse.json()).ok, true);
+  assert.ok(logoutResponse.headers.get("set-cookie")?.includes("assistant_session="));
+  check(true, "sign-out endpoint clears the session cookie");
+
   const workspaceResponse = await expectStatus("/api/workspace/overview", 200, {}, token);
   const workspaceBody = await workspaceResponse.json();
   assert.equal(workspaceBody.connected, false);
