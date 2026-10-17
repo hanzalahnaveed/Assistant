@@ -60,20 +60,29 @@ export default function BriefingClient() {
   async function createTask(email: Email) {
     setCreating(email.id); setNotice(""); setError("");
     try {
-      const response = await fetch("/api/tasks", {
+      const response = await fetch("/api/actions", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          title: "Follow up: " + email.subject.slice(0, 175),
-          description: [`Suggested from email by ${email.from}`, email.snippet].filter(Boolean).join("\n\n"),
-          priority: email.score >= 6 ? "HIGH" : "MEDIUM"
+          actionType: "CREATE_TASK",
+          idempotencyKey: `briefing-email-${email.id}`,
+          input: {
+            title: "Follow up: " + email.subject.slice(0, 175),
+            description: [`Suggested from email by ${email.from}`, email.snippet, `Source Gmail message ID: ${email.id}`].filter(Boolean).join("\n\n"),
+            priority: email.score >= 6 ? "HIGH" : "MEDIUM"
+          }
         })
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not create follow-up task.");
-      setNotice("Follow-up task created. No email was sent or changed.");
+      if (!response.ok) throw new Error(body.error || "Could not propose follow-up task.");
+      const status = body.action?.status;
+      setNotice(status === "SUCCEEDED"
+        ? "Follow-up task created under your AUTO rule. No email was sent or changed."
+        : status === "PENDING"
+          ? "Follow-up task proposal sent to the Action Center for your approval."
+          : "Follow-up proposal recorded in the Action Center.");
       await load(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create follow-up task.");
+      setError(e instanceof Error ? e.message : "Could not propose follow-up task.");
     } finally { setCreating(null); }
   }
 
@@ -155,7 +164,7 @@ export default function BriefingClient() {
         </section>
         <section className="mb-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-1 flex items-center gap-2"><Inbox size={18} className="text-[#176b52]"/><h2 className="font-semibold">Inbox follow-up recommendations</h2></div><p className="mb-4 text-xs leading-5 text-[#76817c]">Rule-based suggestions from read-only email metadata and snippets. Review them yourself; the assistant never sends a reply automatically.</p>
           {!data.connected && <p className="mb-4 rounded-xl bg-[#f8faf7] p-3 text-xs text-[#76817c]">Connect Google Workspace to generate follow-up suggestions. <a href="/integrations" className="font-semibold text-[#176b52]">Connect Google</a></p>}
-          {data.followUps.length ? <div className="divide-y divide-[#edf0ec]">{data.followUps.map(email => <article key={email.id} className="py-4 first:pt-0 last:pb-0"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="text-sm font-semibold">{email.subject}</div><div className="mt-1 text-xs text-[#76817c]">{email.from}{email.date ? " · " + email.date : ""}</div><p className="mt-2 text-sm leading-6 text-[#5d6961]">{email.snippet || "No preview available."}</p><div className="mt-2 flex flex-wrap gap-1.5">{email.reasons.map(reason => <span key={reason} className="rounded-full bg-[#f1f4f0] px-2 py-1 text-[10px] text-[#68756d]">{reason}</span>)}</div></div><button onClick={() => void createTask(email)} disabled={creating === email.id} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#176b52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#10543f] disabled:opacity-50">{creating === email.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>} Create follow-up task</button></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">{data.connected ? "No messages currently meet the follow-up scoring threshold." : "No live email recommendations until Google Workspace is connected."}</p>}
+          {data.followUps.length ? <div className="divide-y divide-[#edf0ec]">{data.followUps.map(email => <article key={email.id} className="py-4 first:pt-0 last:pb-0"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="text-sm font-semibold">{email.subject}</div><div className="mt-1 text-xs text-[#76817c]">{email.from}{email.date ? " · " + email.date : ""}</div><p className="mt-2 text-sm leading-6 text-[#5d6961]">{email.snippet || "No preview available."}</p><div className="mt-2 flex flex-wrap gap-1.5">{email.reasons.map(reason => <span key={reason} className="rounded-full bg-[#f1f4f0] px-2 py-1 text-[10px] text-[#68756d]">{reason}</span>)}</div></div><button onClick={() => void createTask(email)} disabled={creating === email.id} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#176b52] px-3 py-2 text-xs font-semibold text-white hover:bg-[#10543f] disabled:opacity-50">{creating === email.id ? <LoaderCircle size={13} className="animate-spin"/> : <CheckCircle2 size={13}/>} Propose follow-up task</button></div></article>)}</div> : <p className="py-6 text-sm text-[#76817c]">{data.connected ? "No messages currently meet the follow-up scoring threshold." : "No live email recommendations until Google Workspace is connected."}</p>}
         </section>
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#dce9de] bg-[#eef7f0] p-5"><div className="flex gap-3"><ShieldCheck size={20} className="mt-0.5 text-[#176b52]"/><div><div className="text-sm font-semibold">Your briefing, your rules</div><p className="mt-1 text-xs leading-5 text-[#5d7566]">No messages are sent and no calendar events are changed. Email content is treated as untrusted data.</p></div></div><div className="flex flex-wrap items-center gap-4"><label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#24543f]"><input type="checkbox" checked={data.preferences.dailyBriefingEnabled} onChange={e => void saveBriefing(e.target.checked)} className="h-4 w-4 accent-[#176b52]"/> Daily briefing enabled</label><label className="flex items-center gap-2 text-xs font-semibold text-[#24543f]">Delivery time <select value={data.preferences.briefingHour} onChange={e => void saveBriefingHour(Number(e.target.value))} className="rounded-lg border border-[#d5e3d8] bg-white px-2 py-1.5 text-xs">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}</select></label></div></section>
         <section className="mt-6 rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Bell size={18} className="text-[#176b52]"/><h2 className="font-semibold">Scheduled briefings & notifications</h2>{unreadCount > 0 && <span className="rounded-full bg-[#176b52] px-2 py-0.5 text-[10px] font-semibold text-white">{unreadCount} new</span>}</div><p className="mt-1 text-xs text-[#76817c]">Saved daily briefings and in-app notifications.</p></div>{unreadCount > 0 && <button onClick={() => void markNotificationRead()} className="inline-flex items-center gap-1 text-xs font-semibold text-[#176b52]"><CheckCheck size={14}/> Mark all read</button>}</div>
