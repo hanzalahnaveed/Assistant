@@ -1,27 +1,39 @@
 # Assistant
 
-Personal AI Executive Assistant for individual managers. The MVP combines a proactive dashboard and chat with Google Workspace integrations, task tracking, daily briefings, and policy-controlled automation.
+Personal AI Executive Assistant for individual managers, combining a proactive dashboard and chat with Google Workspace, tasks, daily briefings, and policy-controlled automation.
 
-## Product direction
+## Current status
 
-- Gmail and Google Calendar first
-- Dashboard plus conversational assistant
-- Tasks, follow-up tracking, and daily briefings
-- User-defined autonomy rules, approvals for sensitive actions, and auditable execution
-- Secure multi-user foundation with least-privilege OAuth
+- [x] Next.js + TypeScript application foundation
+- [x] Interactive dashboard preview for priorities, inbox, calendar, and assistant chat
+- [x] Initial PostgreSQL/Prisma data model
+- [x] Server-side action policy foundation
+- [x] Health endpoint
+- [ ] Authentication and account isolation
+- [ ] Google OAuth and Gmail/Calendar read-only sync
+- [ ] Live AI chat, task extraction, and daily briefing
+- [ ] Background jobs, action execution, and audit UI
 
-## Development status
+The dashboard currently uses clearly labeled sample data. It does not access a mailbox, call an AI provider, or execute external actions yet.
 
-Project foundation is being established. Integration credentials and deployment configuration will be supplied through environment variables and must never be committed.
+## Requirements
 
-## Planned stack
+- Node.js 20+
+- PostgreSQL 15+
+- npm
 
-- Next.js + TypeScript
-- PostgreSQL + Prisma
-- Google OAuth, Gmail API, and Calendar API
-- LLM provider abstraction
-- Background jobs for sync and proactive briefings
+## Setup
 
-## Local development
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
+2. Install dependencies with `npm install`.
+3. Generate the Prisma client with `npm run db:generate`.
+4. Create/apply a migration with `npm run db:migrate`.
+5. Start the app with `npm run dev`.
 
-Setup instructions will be added alongside the application scaffold.
+## Security principles
+
+- Keep credentials in environment variables or a managed secret store; never commit them.
+- Use least-privilege Google OAuth scopes.
+- Treat email and calendar contents as untrusted input, not instructions.
+- Gate sensitive writes behind explicit user approval and audit every executed action.
+- Enforce tenant ownership server-side on every data access.
