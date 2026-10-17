@@ -74,7 +74,7 @@ try {
   assert.equal(healthBody.status, "ok");
   check(true, "health endpoint responds");
 
-  for (const path of ["/", "/integrations", "/tasks", "/assistant"]) {
+  for (const path of ["/", "/integrations", "/tasks", "/assistant", "/briefing"]) {
     const response = await expectStatus(path, 200);
     const html = await response.text();
     check(html.length > 0, path + " page renders");
@@ -95,6 +95,8 @@ try {
   await expectStatus("/api/tasks", 401);
   await expectStatus("/api/chat", 401);
   await expectStatus("/api/workspace/overview", 401);
+  await expectStatus("/api/workspace/briefing", 401);
+  await expectStatus("/api/preferences", 401);
   check(true, "protected APIs reject unauthenticated requests");
 
   user = await prisma.user.create({
@@ -113,6 +115,28 @@ try {
   assert.deepEqual(workspaceBody.emails, []);
   assert.deepEqual(workspaceBody.events, []);
   check(true, "workspace API handles an authenticated account without a Google connection");
+
+  const briefingResponse = await expectStatus("/api/workspace/briefing", 200, {}, token);
+  const briefing = await briefingResponse.json();
+  assert.equal(briefing.connected, false);
+  assert.equal(briefing.metrics.openTasks, 0);
+  assert.ok(Array.isArray(briefing.priorities));
+  assert.ok(briefing.preferences);
+  check(true, "daily briefing API builds personalized task metrics without a Google connection");
+
+  const preferencesResponse = await expectStatus("/api/preferences", 200, {}, token);
+  const preferences = (await preferencesResponse.json()).preferences;
+  assert.equal(preferences.dailyBriefingEnabled, true);
+  check(true, "user briefing preferences are initialized and returned");
+
+  const updatePreferencesResponse = await expectStatus("/api/preferences", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ dailyBriefingEnabled: false, briefingHour: 9, defaultApprovalMode: "CONFIRM" })
+  }, token);
+  const updatedPreferences = (await updatePreferencesResponse.json()).preferences;
+  assert.equal(updatedPreferences.dailyBriefingEnabled, false);
+  assert.equal(updatedPreferences.briefingHour, 9);
+  check(true, "briefing preferences persist across API requests");
 
   const createResponse = await expectStatus("/api/tasks", 201, {
     method: "POST",
