@@ -8,8 +8,10 @@ import { exchangeGoogleCode, fetchGoogleProfile } from "@/lib/google/oauth";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const url = new URL("/integrations", request.url);
   const jar = await cookies();
+  const intent = jar.get("google_auth_intent")?.value;
+  const isAuthentication = intent === "signin" || intent === "signup";
+  const url = new URL(isAuthentication ? "/auth" : "/integrations", request.url);
   const expectedState = jar.get("google_oauth_state")?.value;
   const state = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
@@ -17,6 +19,7 @@ export async function GET(request: NextRequest) {
 
   const clearState = (response: NextResponse) => {
     response.cookies.set("google_oauth_state", "", { path: "/", maxAge: 0 });
+    response.cookies.set("google_auth_intent", "", { path: "/", maxAge: 0 });
     return response;
   };
 
@@ -32,11 +35,28 @@ export async function GET(request: NextRequest) {
   try {
     const tokens = await exchangeGoogleCode(code);
     const profile = await fetchGoogleProfile(tokens.accessToken);
-    const user = await prisma.user.upsert({
-      where: { email: profile.email.toLowerCase() },
-      create: { email: profile.email.toLowerCase(), name: profile.name, imageUrl: profile.imageUrl },
-      update: { name: profile.name, imageUrl: profile.imageUrl }
-    });
+    const email = profile.email.toLowerCase();
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (isAuthentication && intent === "signin" && !existingUser) {
+      url.searchParams.set("error", "account_not_found");
+      return clearState(NextResponse.redirect(url));
+    }
+    if (isAuthentication && intent === "signup" && existingUser) {
+      url.searchParams.set("error", "account_exists");
+      return clearState(NextResponse.redirect(url));
+    }
+    const user = existingUser
+      ? await prisma.user.update({ where: { id: existingUser.id }, data: { name: profile.name, imageUrl: profile.imageUrl } })
+      : await prisma.user.create({ data: { email, name: profile.name, imageUrl: profile.imageUrl } });
+
+    if (isAuthentication) {
+      await prisma.auditEvent.create({
+        data: { userId: user.id, eventType: intent === "signup" ? "USER_SIGNUP" : "USER_LOGIN", actor: "USER", metadata: { provider: "GOOGLE" } }
+      });
+      await createSession(user);
+      const response = NextResponse.redirect(new URL("/", request.url));
+      return clearState(response);
+    }
 
     const existing = await prisma.integration.findFirst({
       where: { userId: user.id, provider: "GOOGLE", providerAccountId: profile.id }
