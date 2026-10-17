@@ -13,6 +13,14 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Check session configuration before writing a new account.
+  if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
+    return NextResponse.json({
+      error: "server_misconfigured",
+      message: "Account sign-up is temporarily unavailable because server authentication is not configured. Set AUTH_SECRET to a random value at least 32 characters long, then restart the server."
+    }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
     return NextResponse.json({ error: "invalid_request" }, { status: 415 });
   }
@@ -57,6 +65,7 @@ export async function POST(request: NextRequest) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       return NextResponse.json({ error: "account_exists", message: "An account with this email already exists." }, { status: 409 });
     }
-    return NextResponse.json({ error: "signup_failed", message: "We couldn't create your account. Please try again." }, { status: 500 });
+    console.error("[auth/signup] Account creation failed:", error instanceof Error ? error.message : "Unknown error");
+    return NextResponse.json({ error: "signup_failed", message: "We couldn't create your account. Check the server logs for the underlying error and try again." }, { status: 500 });
   }
 }
