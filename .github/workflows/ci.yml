@@ -27,6 +27,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/assistant?schema=public
       AUTH_SECRET: ci-test-auth-secret-that-is-at-least-32-characters-long
+      CRON_SECRET: ci-test-cron-secret-that-is-at-least-32-characters-long
       OPENAI_API_KEY: ci-test-key
       OPENAI_MODEL: ci-test-model
       OPENAI_BASE_URL: http://127.0.0.1:4010/v1
