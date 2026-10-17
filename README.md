@@ -22,6 +22,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
 - [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
+- [x] Calendar & meeting workspace, persistent meeting proposals, explicit approval + separate event creation, attendee invitations, audit history, and uncertain-outcome recovery
 - [ ] Real Google account verification and production deployment
 
 ## Production configuration
@@ -42,7 +43,7 @@ The worker endpoint is `POST /api/cron/daily-briefings` and requires `Authorizat
 
 Open `/actions` to propose a task, review pending proposals, approve or reject them, and inspect the action history. Task creation uses the existing `ActionRecord` and `AutomationRule` data models, is scoped to the signed-in user, records audit events, and uses an idempotency key so retries do not create duplicate tasks. Task-specific automation can override the user's default approval mode: `CONFIRM` requires an explicit approval, `AUTO` creates the task immediately, and `BLOCK` prevents new proposals. Removing the rule falls back to the default approval setting.
 
-Task actions remain limited to creating tasks inside this application. Email sending is available only through the dedicated `/email` workflow: a saved draft must be approved and then separately confirmed for sending. Sending requires the Gmail `gmail.send` OAuth scope; existing Google connections must reconnect to grant it. The send outcome is audited, and uncertain outcomes are locked for manual Sent-folder verification to reduce duplicate sends. AI chat context and Gmail/Calendar reads remain read-only; email/calendar content is untrusted data.
+Task actions remain limited to creating tasks inside this application. Email sending is available only through the dedicated `/email` workflow: a saved draft must be approved and then separately confirmed for sending. Sending requires the Gmail `gmail.send` OAuth scope; existing Google connections must reconnect to grant it. The send outcome is audited, and uncertain outcomes are locked for manual Sent-folder verification to reduce duplicate sends. Meeting creation is available at `/calendar`: proposals are saved, approved, and then separately confirmed before Google Calendar creates an event and sends invitations. Event creation requires the `calendar.events` OAuth scope; existing Google connections must reconnect to grant it. Uncertain outcomes are locked pending a manual Calendar check. AI chat context and Gmail/Calendar reads remain read-only; email and calendar content are untrusted data.
 
 ## Local development
 
@@ -56,18 +57,17 @@ Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live W
    npm run db:generate
    npm run db:migrate
    ```
-5. Set `OPENAI_API_KEY`; configure `OPENAI_MODEL` and `OPENAI_BASE_URL` if needed.
-6. Optionally configure Google OAuth and enable Gmail/Calendar APIs if you want Google sign-in or Workspace data. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
-7. Run `npm run dev` and open `http://localhost:3000/auth` to create an account with email and password.
+4. Set `OPENAI_API_KEY`; configure `OPENAI_MODEL` and `OPENAI_BASE_URL` if needed.
+5. Optionally configure Google OAuth and enable Gmail/Calendar APIs if you want Google sign-in or Workspace data. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
+6. Run `npm run dev` and open `http://localhost:3000/auth` to create an account with email and password.
 
 ## Security principles
 
 - Keep OAuth credentials and application secrets in environment variables or a managed secret store; never commit them.
 - Google tokens are encrypted at rest with AES-256-GCM.
 - Outreach drafts are never sent automatically; approval and sending require separate user actions.
-- The Gmail send scope may require additional Google OAuth verification before public production use.
-- Gmail and Calendar permissions are read-only; this app does not send messages or change events.
-- Email and calendar contents are untrusted data, never instructions to override system policy.
+- Calendar events are never created automatically; proposal approval and event creation require separate user actions.
+- The Gmail send and Calendar event scopes may require additional Google OAuth verification before public production use.
 - Enforce tenant ownership server-side for all data access.
 - Follow-up recommendations are heuristic and must be reviewed by the user before acting.
 - Google's OAuth verification and any required restricted-scope security assessment are external prerequisites for a public production launch.

@@ -50,6 +50,16 @@ enum EmailDraftStatus {
   CANCELLED
 }
 
+enum MeetingDraftStatus {
+  DRAFT
+  APPROVED
+  CREATING
+  CREATED
+  FAILED
+  CREATE_UNCERTAIN
+  CANCELLED
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -69,6 +79,7 @@ model User {
   dailyBriefings DailyBriefing[]
   notifications Notification[]
   emailDrafts  EmailDraft[]
+  meetingDrafts MeetingDraft[]
 }
 
 model UserPreference {
@@ -198,7 +209,6 @@ model AuditEvent {
   @@index([eventType, createdAt])
 }
 
-
 model DailyBriefing {
   id          String   @id @default(cuid())
   userId      String
@@ -248,4 +258,27 @@ model EmailDraft {
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status, updatedAt])
+}
+
+model MeetingDraft {
+  id                String             @id @default(cuid())
+  userId            String
+  title             String
+  description       String             @db.Text
+  location          String?
+  startAt           DateTime
+  endAt             DateTime
+  timezone          String             @default("Asia/Karachi")
+  attendees         String[]           @default([])
+  status            MeetingDraftStatus @default(DRAFT)
+  approvedAt        DateTime?
+  createdEventId    String?
+  createdEventLink  String?
+  lastError         String?            @db.Text
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, startAt])
+  @@index([userId, updatedAt])
 }
