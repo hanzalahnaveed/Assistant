@@ -6,7 +6,7 @@ This repository contains the application code and CI workflow. A real deployment
 
 - **Web app:** Vercel, connected to `hanzalahnaveed/Assistant` and the `main` branch.
 - **Database:** managed PostgreSQL 15+ (for example, a Vercel-connected PostgreSQL provider).
-- **Identity and Workspace data:** Google Cloud OAuth 2.0.
+- **Account identity:** built-in email/password authentication; Google OAuth is optional for Google sign-in and Workspace data.
 - **AI chat:** OpenAI API (or a compatible provider).
 - **Scheduled briefings:** the existing GitHub Actions workflow at `.github/workflows/daily-briefings.yml`.
 
@@ -24,7 +24,7 @@ Use the Google Cloud project that will own this application:
    - Local: `http://localhost:3000/api/auth/google/callback`
    - Production: `https://YOUR-REAL-APP-DOMAIN/api/auth/google/callback`
 6. Store the generated client ID and client secret only in the deployment environment. Set `GOOGLE_REDIRECT_URI` to the exact same callback URL; protocol, domain, path, and trailing slash must match.
-7. Test Google sign-up/sign-in first. Then use the separate Google integration connection to grant Gmail read-only and Calendar read-only access. Authentication alone does not connect Workspace data.
+7. Google sign-in is optional. If enabled, test it separately from email/password signup/login. Then use the Google integration connection to grant Gmail read-only and Calendar read-only access. Authentication alone does not connect Workspace data.
 
 The app requests identity scopes for sign-in/sign-up and the additional `gmail.readonly` and `calendar.readonly` scopes only for the optional Workspace integration. Do not request broader scopes unless a feature actually needs them.
 
@@ -39,9 +39,9 @@ Add these in the hosting provider's **Production** environment. Use unique rando
 | `DATABASE_URL` | Yes | Production PostgreSQL connection string |
 | `APP_URL` | Yes | Canonical deployed origin, e.g. `https://your-real-domain.example` (no trailing slash preferred) |
 | `AUTH_SECRET` | Yes | Random secret, at least 32 characters; generate with `openssl rand -base64 48` |
-| `GOOGLE_CLIENT_ID` | Yes | OAuth web-client ID from Google Cloud |
-| `GOOGLE_CLIENT_SECRET` | Yes | OAuth web-client secret from Google Cloud |
-| `GOOGLE_REDIRECT_URI` | Yes | Exact production callback URL from section 2 |
+| `GOOGLE_CLIENT_ID` | Optional | OAuth web-client ID from Google Cloud, only if enabling Google sign-in/Workspace |
+| `GOOGLE_CLIENT_SECRET` | Optional | OAuth web-client secret from Google Cloud, only if enabling Google sign-in/Workspace |
+| `GOOGLE_REDIRECT_URI` | Optional | Exact production callback URL from section 2, only if enabling Google sign-in/Workspace |
 | `OPENAI_API_KEY` | Yes for live AI chat | API key from the selected OpenAI account/project |
 | `OPENAI_MODEL` | Yes for live AI chat | Model available to that API project; default is `gpt-4o-mini` |
 | `OPENAI_BASE_URL` | Yes for live AI chat | `https://api.openai.com/v1`, or the compatible provider's API base URL |
@@ -77,7 +77,7 @@ Run the workflow manually once using Actions → Scheduled daily briefings → R
 
 ## 6. End-to-end smoke test
 
-Use a real Google test account and verify each item in order:
+Use credentials-based sign-up/sign-in for the core authentication checks. If Google OAuth is configured, also use a real Google test account and verify its optional flow:
 
 - [ ] `/api/health` responds successfully.
 - [ ] `/auth` loads and Google sign-up creates the first account.
