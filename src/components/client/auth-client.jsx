@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -129,8 +131,8 @@ export default function AuthPage() {
           role="tablist"
           aria-label="Account access"
         >
-          <button
-            type="button"
+          <Button
+            htmlType="button"
             role="tab"
             aria-selected={mode === "signin"}
             className={`${mode === "signin" ? "bg-white text-[#164e3b] shadow-[0_1px_4px_rgb(22_43_30/10%)]" : "bg-transparent text-[#738078]"}`}
@@ -140,9 +142,9 @@ export default function AuthPage() {
             }}
           >
             Sign in
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            htmlType="button"
             role="tab"
             aria-selected={mode === "signup"}
             className={`${mode === "signup" ? "bg-white text-[#164e3b]" : "bg-transparent text-[#738078]"}`}
@@ -152,7 +154,7 @@ export default function AuthPage() {
             }}
           >
             Create account
-          </button>
+          </Button>
         </div>
         {error && (
           <div
@@ -224,8 +226,8 @@ export default function AuthPage() {
               Use at least 8 characters. Your password is stored as a secure hash.
             </p>
           )}
-          <button
-            type="submit"
+          <Button
+            htmlType="submit"
             className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#7ba05b] bg-[#7ba05b] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#5d7d43] enabled:hover:bg-[#5d7d43]"
             disabled={busy || checking}
           >
@@ -240,7 +242,7 @@ export default function AuthPage() {
               {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
             </span>
             {!busy && !checking && <ArrowRight size={16} className="ml-auto text-white" />}
-          </button>
+          </Button>
         </form>
         <div className="flex items-center gap-3 text-[#9aa49c]">
           <span className="h-px flex-1 bg-[#e9ede9]" />{" "}
@@ -249,8 +251,8 @@ export default function AuthPage() {
           </small>{" "}
           <span className="h-px flex-1 bg-[#e9ede9]" />
         </div>
-        <button
-          type="button"
+        <Button
+          htmlType="button"
           className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#e1e7e1] bg-white text-[#26332b] disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#a9c6b2] enabled:hover:bg-[#f8faf8]"
           onClick={continueWithGoogle}
           disabled={busy || checking}
@@ -262,7 +264,7 @@ export default function AuthPage() {
           )}
           <span>{mode === "signin" ? "Continue with Google" : "Create account with Google"}</span>
           <ArrowRight size={16} className="ml-auto text-[#6f8175]" />
-        </button>
+        </Button>
         <div className="flex items-start gap-2.5 rounded-xl border border-[#e4eee5] bg-[#f4faf5] text-[#397055]">
           <ShieldCheck size={17} className="mt-px shrink-0" />
           <p className="h-8 text-[10px] leading-[1.75] text-[#5f7667] text-pretty">
@@ -276,8 +278,8 @@ export default function AuthPage() {
         </p>
         <div className="text-center text-[11px] text-[#7c887f]">
           {mode === "signin" ? "New to Assistant?" : "Already have an account?"}{" "}
-          <button
-            type="button"
+          <Button
+            htmlType="button"
             className="ml-1 border-0 bg-transparent p-0.5 text-[length:inherit] font-[750]! text-[#7ba05b] hover:underline"
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
@@ -285,7 +287,7 @@ export default function AuthPage() {
             }}
           >
             {mode === "signin" ? "Create an account" : "Sign in instead"}
-          </button>
+          </Button>
         </div>
       </div>
     </main>
