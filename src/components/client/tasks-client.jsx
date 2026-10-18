@@ -167,7 +167,7 @@ export default function TasksClient() {
             {notice}
           </div>
         )}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-4 sm:p-5 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-4 sm:p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
           <div>
             <h2 className="font-semibold tracking-[-0.025em]">Capture a commitment</h2>
             <p className="mt-1 text-xs leading-5 text-[#6B7280] text-pretty">
@@ -177,7 +177,7 @@ export default function TasksClient() {
           <Button
             htmlType="button"
             onClick={() => setShowComposer((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#FA8500]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
           >
             {showComposer ? <X size={16} /> : <Plus size={16} />}{" "}
             {showComposer ? "Close form" : "New task"}
@@ -186,7 +186,7 @@ export default function TasksClient() {
         {showComposer && (
           <form
             onSubmit={addTask}
-            className="mb-7 space-y-3 rounded-[18px] border border-[#E3E7ED] bg-white p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]"
+            className="mb-7 space-y-3 rounded-[18px] border border-[#E3E7ED] bg-white p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]"
           >
             <h2 className="font-semibold tracking-[-0.025em]">New task details</h2>
             <Input
@@ -232,7 +232,7 @@ export default function TasksClient() {
             </div>
             <Button
               disabled={busy || !title.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             >
               <Plus size={16} />
               {busy ? "Saving…" : "Save task"}
@@ -240,22 +240,22 @@ export default function TasksClient() {
           </form>
         )}
         <section className="mb-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">Active commitments</p>
             <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{open.length}</div>
           </div>
-          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">High / urgent</p>
             <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">
               {open.filter((task) => task.priority === "HIGH" || task.priority === "URGENT").length}
             </div>
           </div>
-          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">Completed</p>
             <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{done.length}</div>
           </div>
         </section>
-        <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="mb-4 flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
