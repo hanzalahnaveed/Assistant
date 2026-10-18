@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -138,8 +139,9 @@ export default function WorkspaceHeader() {
             </strong>
           </span>
         </div>
-        <button
-          type="button"
+        <Button
+          type="text"
+          htmlType="button"
           className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-white/28 bg-transparent p-[9px] text-[11px]! font-semibold! whitespace-nowrap text-white enabled:hover:border-white/55 enabled:hover:bg-white/12 disabled:opacity-65 min-[761px]:p-2.5"
           onClick={() => void signOut()}
           disabled={signingOut}
@@ -154,7 +156,7 @@ export default function WorkspaceHeader() {
           <span className="hidden min-[761px]:inline">
             {signingOut ? "Signing out" : "Sign out"}
           </span>
-        </button>
+        </Button>
       </div>
     </aside>
   );
