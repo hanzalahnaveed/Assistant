@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
@@ -339,7 +339,7 @@ export default function CalendarClient() {
             </div>
             <form onSubmit={save} className="space-y-4">
               <Field label="Meeting title">
-                <input
+                <Input
                   required
                   maxLength={250}
                   disabled={!editable || busy}
@@ -350,7 +350,7 @@ export default function CalendarClient() {
                 />
               </Field>
               <Field label="Agenda / description">
-                <textarea
+                <Input.TextArea
                   rows={3}
                   maxLength={10000}
                   disabled={!editable || busy}
@@ -361,7 +361,7 @@ export default function CalendarClient() {
                 />
               </Field>
               <Field label="Location or video link (optional)">
-                <input
+                <Input
                   maxLength={500}
                   disabled={!editable || busy}
                   value={form.location}
@@ -394,7 +394,7 @@ export default function CalendarClient() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Timezone (IANA)">
-                  <input
+                  <Input
                     required
                     maxLength={100}
                     disabled={!editable || busy}
@@ -405,7 +405,7 @@ export default function CalendarClient() {
                   />
                 </Field>
                 <Field label="Attendee emails (comma-separated)">
-                  <input
+                  <Input
                     disabled={!editable || busy}
                     value={form.attendees}
                     onChange={(e) => set("attendees", e.target.value)}
