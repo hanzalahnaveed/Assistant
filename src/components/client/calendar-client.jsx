@@ -201,9 +201,9 @@ export default function CalendarClient() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#5d7d43]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
           <CalendarDays size={14} />
           {" Calendar & meeting operations"}
         </div>
@@ -212,7 +212,7 @@ export default function CalendarClient() {
             <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
               Make every meeting intentional.
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766d] text-pretty">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B7280] text-pretty">
               Review your next 30 days, prepare an agenda, and create meetings only after explicit
               approval and confirmation.
             </p>
@@ -276,15 +276,15 @@ export default function CalendarClient() {
           />
         </div>
         <div className="grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
-          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="font-semibold tracking-[-0.025em]">Upcoming calendar</h2>
-                <p className="mt-1 text-xs text-[#68766d] text-pretty">
+                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
                   Next 30 days · primary Google Calendar
                 </p>
               </div>
-              <CalendarDays size={18} className="text-[#5d7d43]" />
+              <CalendarDays size={18} className="text-[#FA8500]" />
             </div>
             {loading ? (
               <Loading />
@@ -293,20 +293,20 @@ export default function CalendarClient() {
                 {data.events.map((e) => (
                   <article key={e.id} className="rounded-xl bg-[#f7f9f6] p-3.5 min-w-0">
                     <div className="text-sm font-semibold">{e.title}</div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-[#68766d]">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
                       <Clock3 size={13} />
                       {format(e.startAt)}
                     </div>
                     {e.location && <div className="mt-1 text-xs text-[#87918b]">{e.location}</div>}
                     {e.attendees.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-[#68766d]">
+                      <div className="mt-2 flex items-center gap-1 text-xs text-[#6B7280]">
                         <Users size={13} />
                         {e.attendees.length} attendees
                       </div>
                     )}
                     {e.link && (
                       <a
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#5d7d43]"
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#FA8500]"
                         href={e.link}
                         target="_blank"
                         rel="noreferrer"
@@ -321,11 +321,11 @@ export default function CalendarClient() {
               <Empty text="No upcoming events found. Create a proposal for your next meeting." />
             )}
           </section>
-          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold tracking-[-0.025em]">Meeting proposal</h2>
-                <p className="mt-1 text-xs text-[#68766d] text-pretty">
+                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
                   Save → approve → separately confirm creation
                 </p>
               </div>
@@ -346,7 +346,7 @@ export default function CalendarClient() {
                   value={form.title}
                   onChange={(e) => set("title", e.target.value)}
                   placeholder="Weekly product review"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                 />
               </Field>
               <Field label="Agenda / description">
@@ -357,7 +357,7 @@ export default function CalendarClient() {
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                   placeholder="Goals, topics, decisions needed…"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4] resize-y"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA] resize-y"
                 />
               </Field>
               <Field label="Location or video link (optional)">
@@ -367,7 +367,7 @@ export default function CalendarClient() {
                   value={form.location}
                   onChange={(e) => set("location", e.target.value)}
                   placeholder="Room, address, or video meeting link"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                 />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -378,7 +378,7 @@ export default function CalendarClient() {
                     disabled={!editable || busy}
                     value={form.startAt}
                     onChange={(e) => set("startAt", e.target.value)}
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
                 <Field label="End">
@@ -388,7 +388,7 @@ export default function CalendarClient() {
                     disabled={!editable || busy}
                     value={form.endAt}
                     onChange={(e) => set("endAt", e.target.value)}
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
               </div>
@@ -401,7 +401,7 @@ export default function CalendarClient() {
                     value={form.timezone}
                     onChange={(e) => set("timezone", e.target.value)}
                     placeholder="Asia/Karachi"
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
                 <Field label="Attendee emails (comma-separated)">
@@ -410,7 +410,7 @@ export default function CalendarClient() {
                     value={form.attendees}
                     onChange={(e) => set("attendees", e.target.value)}
                     placeholder="team@example.com"
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
               </div>
@@ -440,7 +440,7 @@ export default function CalendarClient() {
                 )}
                 {chosen.createdEventLink && (
                   <a
-                    className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#5d7d43]"
+                    className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#FA8500]"
                     href={chosen.createdEventLink}
                     target="_blank"
                     rel="noreferrer"
@@ -453,7 +453,7 @@ export default function CalendarClient() {
                     <Button
                       disabled={busy}
                       onClick={() => void act("APPROVE")}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <ShieldCheck size={15} /> Approve exact proposal
                     </Button>
@@ -462,7 +462,7 @@ export default function CalendarClient() {
                     <Button
                       disabled={busy || !data?.canCreateEvents}
                       onClick={() => void act("CREATE")}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <CheckCircle2 size={15} />
                       {" Confirm & create event"}
@@ -480,7 +480,7 @@ export default function CalendarClient() {
                       <Button
                         disabled={busy}
                         onClick={() => void act("CONFIRM_NOT_CREATED")}
-                        className="rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2 text-sm font-semibold text-white"
+                        className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2 text-sm font-semibold text-white"
                       >
                         Verified absent — unlock retry
                       </Button>
@@ -500,9 +500,9 @@ export default function CalendarClient() {
             )}
           </section>
         </div>
-        <section className="mt-5 rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="mt-5 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <h2 className="font-semibold tracking-[-0.025em]">Saved proposals</h2>
-          <p className="mt-1 text-xs text-[#68766d] text-pretty">
+          <p className="mt-1 text-xs text-[#6B7280] text-pretty">
             Select any editable proposal to revise it. Creation outcomes are retained for
             traceability.
           </p>
@@ -514,11 +514,11 @@ export default function CalendarClient() {
                 <Button
                   key={d.id}
                   onClick={() => selectDraft(d)}
-                  className={`flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#5d7d43]" : ""}`}
+                  className={`flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#FA8500]" : ""}`}
                 >
                   <span>
                     <span className="block text-sm font-semibold">{d.title}</span>
-                    <span className="mt-1 block text-xs text-[#68766d]">
+                    <span className="mt-1 block text-xs text-[#6B7280]">
                       {format(d.startAt)} · {d.attendees.length} attendees
                     </span>
                   </span>
@@ -551,7 +551,7 @@ function Field({ label, children }) {
 }
 function Stat({ label, value }) {
   return (
-    <div className="rounded-[18px] border border-[#e4e9e4] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
       <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b] text-pretty">
         {label}
       </p>
@@ -561,11 +561,11 @@ function Stat({ label, value }) {
 }
 function Loading() {
   return (
-    <div className="flex items-center gap-2 py-8 text-sm text-[#68766d]">
+    <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
       <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" /> Loading meetings…
     </div>
   );
 }
 function Empty({ text }) {
-  return <p className="py-8 text-sm text-[#68766d] text-pretty">{text}</p>;
+  return <p className="py-8 text-sm text-[#6B7280] text-pretty">{text}</p>;
 }
