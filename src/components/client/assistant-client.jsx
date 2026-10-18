@@ -104,15 +104,15 @@ export default function AssistantClient() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <div className="mx-auto grid max-w-7xl gap-5 px-4 sm:px-7 lg:grid-cols-[260px_minmax(0,1fr)] pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
-        <aside className="rounded-[18px] border border-[#e4e9e4] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
-          <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#5d7d43]">
+        <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#FA8500]">
             <Sparkles size={14} /> Your conversations
           </div>
           <Button
             onClick={newConversation}
-            className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-sm font-semibold text-white"
+            className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-sm font-semibold text-white"
           >
             <Plus size={15} /> New conversation
           </Button>
@@ -127,7 +127,7 @@ export default function AssistantClient() {
                 <Button
                   key={item.id}
                   onClick={() => void openConversation(item.id)}
-                  className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#5d7d43]" : "text-[#59665e] hover:bg-[#f7f8f5]"}`}
+                  className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#FA8500]" : "text-[#59665e] hover:bg-[#F8F9FA]"}`}
                 >
                   <MessageCircle size={14} className="mt-0.5 shrink-0" />
                   <span className="line-clamp-2">{item.title || "New conversation"}</span>
@@ -140,16 +140,16 @@ export default function AssistantClient() {
             </p>
           )}
         </aside>
-        <section className="flex min-h-[78vh] flex-col overflow-hidden rounded-[18px] border border-[#e4e9e4] shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
-          <header className="flex items-center gap-3 border-b border-[#e4e9e4] bg-[#fbfcfa] px-5 py-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white">
+        <section className="flex min-h-[78vh] flex-col overflow-hidden rounded-[18px] border border-[#E3E7ED] shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <header className="flex items-center gap-3 border-b border-[#E3E7ED] bg-[#fbfcfa] px-5 py-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white">
               <Sparkles size={17} />
             </div>
             <div>
               <h1 className="text-sm font-semibold tracking-[-0.045em] leading-[1.13]">
                 Your executive assistant
               </h1>
-              <p className="mt-1 text-[11px] text-[#68766d] text-pretty">
+              <p className="mt-1 text-[11px] text-[#6B7280] text-pretty">
                 AI chat with persistent conversation history and task context
               </p>
             </div>
@@ -170,13 +170,13 @@ export default function AssistantClient() {
           <div className="flex-1 space-y-4 p-5 sm:p-7">
             {messages.length === 0 && (
               <div className="mx-auto max-w-lg py-12 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e7f3ed] text-[#5d7d43]">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e7f3ed] text-[#FA8500]">
                   <Sparkles size={22} />
                 </div>
                 <h2 className="text-lg font-semibold tracking-[-0.025em]">
                   What would you like to move forward?
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-[#68766d] text-pretty">
+                <p className="mt-2 text-sm leading-6 text-[#6B7280] text-pretty">
                   Ask for help prioritizing tasks, preparing for a meeting, planning your week, or
                   drafting a message. Replies use your open-task context.
                 </p>
@@ -203,19 +203,19 @@ export default function AssistantClient() {
                 className={`flex gap-3 ${item.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {item.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#5d7d43]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#FA8500]">
                     <Sparkles size={15} />
                   </div>
                 )}
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
+                  className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
                 >
                   {item.content}
                 </div>
               </div>
             ))}
             {sending && (
-              <div className="flex items-center gap-2 text-xs text-[#68766d]">
+              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
                 <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
                 Thinking…
               </div>
@@ -243,7 +243,7 @@ export default function AssistantClient() {
               aria-label="Send message"
               htmlType="submit"
               disabled={!input.trim() || sending}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white disabled:opacity-40"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white disabled:opacity-40"
             >
               <Send size={15} />
             </Button>
