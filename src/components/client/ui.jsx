@@ -88,21 +88,21 @@ export default function IntegrationsClient() {
     window.location.assign("/");
   }
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
       <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#5d7d43]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
           <ShieldCheck size={14} /> Workspace settings
         </div>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-[#5d7d43]">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-[#FA8500]">
               <Sparkles size={14} /> Workspace connections
             </div>
             <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
               Connect your workday.
             </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#68766d] text-pretty">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[#6B7280] text-pretty">
               Connect Gmail and Google Calendar to surface the work that matters and send outreach
               or schedule meetings only after review and explicit confirmation.
             </p>
@@ -132,7 +132,7 @@ export default function IntegrationsClient() {
             {notice}
           </div>
         )}
-        <section className="mb-6 rounded-[18px] border border-[#e4e9e4] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e8f0ff] text-[#356ac3]">
@@ -140,15 +140,15 @@ export default function IntegrationsClient() {
               </div>
               <div>
                 <h2 className="text-base font-semibold tracking-[-0.025em]">Google Workspace</h2>
-                <p className="mt-1 text-sm text-[#68766d] text-pretty">
+                <p className="mt-1 text-sm text-[#6B7280] text-pretty">
                   Gmail inbox and primary calendar
                 </p>
-                <div className="mt-3 flex items-center gap-2 text-xs text-[#68766d]">
-                  <ShieldCheck size={14} className="text-[#5d7d43]" /> Gmail read + approved sending
+                <div className="mt-3 flex items-center gap-2 text-xs text-[#6B7280]">
+                  <ShieldCheck size={14} className="text-[#FA8500]" /> Gmail read + approved sending
                   · Calendar read + approved event creation
                 </div>
                 {data?.connected && (
-                  <div className="mt-3 flex items-center gap-2 text-sm font-medium text-[#5d7d43]">
+                  <div className="mt-3 flex items-center gap-2 text-sm font-medium text-[#FA8500]">
                     <CheckCircle2 size={16} /> Connected as{" "}
                     {data.integration?.email ?? data.user?.email}
                   </div>
@@ -156,7 +156,7 @@ export default function IntegrationsClient() {
               </div>
             </div>
             {loading ? (
-              <div className="flex items-center gap-2 text-sm text-[#68766d]">
+              <div className="flex items-center gap-2 text-sm text-[#6B7280]">
                 <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" /> Checking
                 connection…
               </div>
@@ -171,7 +171,7 @@ export default function IntegrationsClient() {
                 </Button>
                 <a
                   href="/api/auth/google/start"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#5d7d43]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#FA8500]"
                 >
                   Reconnect <ExternalLink size={14} />
                 </a>
@@ -179,7 +179,7 @@ export default function IntegrationsClient() {
             ) : (
               <a
                 href="/api/auth/google/start"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5d7d43]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#FA8500]"
               >
                 Connect Google <ExternalLink size={14} />
               </a>
@@ -210,15 +210,15 @@ export default function IntegrationsClient() {
         </section>
         {data?.connected && (
           <div className="grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold tracking-[-0.025em]">Recent inbox</h2>
-                  <p className="mt-1 text-xs text-[#68766d] text-pretty">
+                  <p className="mt-1 text-xs text-[#6B7280] text-pretty">
                     Latest matching messages · snippets only
                   </p>
                 </div>
-                <Inbox size={18} className="text-[#5d7d43]" />
+                <Inbox size={18} className="text-[#FA8500]" />
               </div>
               {loading ? (
                 <Loading />
@@ -227,7 +227,7 @@ export default function IntegrationsClient() {
                   {data.emails.map((email) => (
                     <article key={email.id} className="py-3 min-w-0">
                       <div className="truncate text-xs font-semibold">{email.subject}</div>
-                      <div className="mt-1 truncate text-[11px] text-[#68766d]">{email.from}</div>
+                      <div className="mt-1 truncate text-[11px] text-[#6B7280]">{email.from}</div>
                       <p className="mt-2 text-xs leading-5 text-[#5d6961] text-pretty">
                         {email.snippet}
                       </p>
@@ -241,15 +241,15 @@ export default function IntegrationsClient() {
                 <Empty text="No matching messages found in the recent inbox." />
               )}
             </section>
-            <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold tracking-[-0.025em]">Today’s calendar</h2>
-                  <p className="mt-1 text-xs text-[#68766d] text-pretty">
+                  <p className="mt-1 text-xs text-[#6B7280] text-pretty">
                     Upcoming events from your primary calendar
                   </p>
                 </div>
-                <CalendarDays size={18} className="text-[#5d7d43]" />
+                <CalendarDays size={18} className="text-[#FA8500]" />
               </div>
               {loading ? (
                 <Loading />
@@ -258,13 +258,13 @@ export default function IntegrationsClient() {
                   {data.events.map((event) => (
                     <article key={event.id} className="rounded-xl bg-[#f7f9f6] p-3.5 min-w-0">
                       <div className="text-sm font-semibold">{event.title}</div>
-                      <div className="mt-1 text-xs text-[#68766d]">{formatDate(event.start)}</div>
+                      <div className="mt-1 text-xs text-[#6B7280]">{formatDate(event.start)}</div>
                       {event.location && (
                         <div className="mt-1 text-xs text-[#87918b]">{event.location}</div>
                       )}
                       {event.link && (
                         <a
-                          className="mt-2 inline-block text-xs font-semibold text-[#5d7d43]"
+                          className="mt-2 inline-block text-xs font-semibold text-[#FA8500]"
                           href={event.link}
                           target="_blank"
                           rel="noreferrer"
@@ -300,22 +300,22 @@ export default function IntegrationsClient() {
 function Permission({ title, description, icon }) {
   return (
     <div className="flex gap-3 rounded-xl bg-[#f7f9f6] p-3.5">
-      <div className="mt-0.5 text-[#5d7d43]">{icon}</div>
+      <div className="mt-0.5 text-[#FA8500]">{icon}</div>
       <div>
         <div className="text-xs font-semibold">{title}</div>
-        <p className="mt-1 text-[11px] leading-5 text-[#68766d] text-pretty">{description}</p>
+        <p className="mt-1 text-[11px] leading-5 text-[#6B7280] text-pretty">{description}</p>
       </div>
     </div>
   );
 }
 function Loading() {
   return (
-    <div className="flex items-center gap-2 py-8 text-sm text-[#68766d]">
+    <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
       <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" /> Loading live Google
       data…
     </div>
   );
 }
 function Empty({ text }) {
-  return <p className="py-8 text-sm text-[#68766d] text-pretty">{text}</p>;
+  return <p className="py-8 text-sm text-[#6B7280] text-pretty">{text}</p>;
 }
