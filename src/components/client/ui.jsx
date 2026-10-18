@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
@@ -105,14 +107,14 @@ export default function IntegrationsClient() {
               or schedule meetings only after review and explicit confirmation.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => void load()}
             disabled={loading || busy}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? "animate-[spin_0.9s_linear_infinite]" : ""} />{" "}
             Refresh
-          </button>
+          </Button>
         </div>
         {error && (
           <div
@@ -160,13 +162,13 @@ export default function IntegrationsClient() {
               </div>
             ) : data?.connected ? (
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => void disconnect()}
                   disabled={busy}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-3.5 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
                 >
                   <Unplug size={15} /> Disconnect
-                </button>
+                </Button>
                 <a
                   href="/api/auth/google/start"
                   className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#5d7d43]"
@@ -282,13 +284,13 @@ export default function IntegrationsClient() {
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#87918b]">
           <span>OAuth credentials stay server-side and stored tokens are encrypted at rest.</span>
           {data?.user && (
-            <button
+            <Button
               onClick={() => void logout()}
               disabled={busy}
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white"
             >
               <LogOut size={14} /> Sign out {data.user.email}
-            </button>
+            </Button>
           )}
         </div>
       </div>
