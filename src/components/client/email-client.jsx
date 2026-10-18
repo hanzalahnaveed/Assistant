@@ -197,7 +197,7 @@ export default function EmailClient() {
           </div>
           <Button
             onClick={fresh}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-3 text-sm font-semibold text-white"
           >
             <MailPlus size={16} /> New email
           </Button>
@@ -226,7 +226,7 @@ export default function EmailClient() {
           </div>
         )}
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold tracking-[-0.025em]">Your emails</h2>
               <Button
@@ -272,7 +272,7 @@ export default function EmailClient() {
               </p>
             )}
           </aside>
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-5 flex items-center gap-3 border-b border-[#E3E7ED] pb-5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#FA8500]">
                 <Sparkles size={18} />
@@ -377,7 +377,7 @@ export default function EmailClient() {
                         e.preventDefault();
                         void save(e, true);
                       }}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <Sparkles size={15} />
                       {busy ? "Working…" : "Generate with AI"}
@@ -389,7 +389,7 @@ export default function EmailClient() {
                     htmlType="button"
                     disabled={busy || !form.toEmail || !form.subject.trim() || !form.body.trim()}
                     onClick={() => void act("APPROVE")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <ShieldCheck size={15} />
                     Approve exact draft
@@ -400,7 +400,7 @@ export default function EmailClient() {
                     htmlType="button"
                     disabled={busy}
                     onClick={() => void act("SEND")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <Send size={15} />
                     {"Confirm & send"}
@@ -420,7 +420,7 @@ export default function EmailClient() {
                       htmlType="button"
                       disabled={busy}
                       onClick={() => void act("CONFIRM_NOT_SENT")}
-                      className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white"
+                      className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white"
                     >
                       Verified absent — unlock retry
                     </Button>
@@ -458,7 +458,7 @@ function Field({ label, children }) {
 }
 function Stat({ label, value }) {
   return (
-    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
       <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b] text-pretty">
         {label}
       </p>
