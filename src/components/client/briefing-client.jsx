@@ -15,12 +15,12 @@ import {
 } from "lucide-react";
 function Metric({ label, value, icon }) {
   return (
-    <div className="rounded-[18px] border border-[#e4e9e4] bg-white p-5 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
-      <div className="flex items-center justify-between text-[#68766d]">
+    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+      <div className="flex items-center justify-between text-[#6B7280]">
         <span className="text-xs font-medium">{label}</span>
         {icon}
       </div>
-      <div className="mt-4 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-tight text-[#18211f] leading-9">
+      <div className="mt-4 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-tight text-[#212529] leading-9">
         {value}
       </div>
     </div>
@@ -53,17 +53,17 @@ export default function BriefingClient() {
     void load();
   }, [load]);
   return (
-    <main className="min-h-screen bg-[#f8faf7] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#f8faf7] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-[.14em] text-[#5d7d43]">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
               Overview
             </div>
             <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
               {data?.greeting ?? "Your day, under control"}.
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766d] text-pretty">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B7280] text-pretty">
               {data?.summary ?? "A clear summary of your tasks, calendar, and inbox."}
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function BriefingClient() {
           </div>
         )}
         {loading && !data ? (
-          <div className="flex items-center gap-3 rounded-[18px] border border-[#e4e9e4] bg-white p-8 text-sm text-[#68766d] shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+          <div className="flex items-center gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-8 text-sm text-[#6B7280] shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
             <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" /> Building your
             overview…
           </div>
