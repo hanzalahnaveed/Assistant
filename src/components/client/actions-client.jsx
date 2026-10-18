@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CheckCircle2, Clock3, LoaderCircle, Plus, ShieldCheck, X } from "lucide-react";
 const statusLabels = {
@@ -278,7 +280,7 @@ export default function ActionsClient() {
                   />
                 </label>
               </div>
-              <button
+              <Button
                 disabled={saving || !title.trim()}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5d7d43] disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -288,7 +290,7 @@ export default function ActionsClient() {
                   <Plus size={16} />
                 )}{" "}
                 Propose action
-              </button>
+              </Button>
               <p className="text-[11px] leading-5 text-[#89938d] text-pretty">
                 With CONFIRM mode, nothing is created until you approve. AUTO mode can create this
                 local task immediately. BLOCK mode prevents new proposals. No email or calendar
@@ -353,7 +355,7 @@ export default function ActionsClient() {
                       Proposed {new Date(action.createdAt).toLocaleString()}
                     </p>
                     <div className="mt-4 flex gap-2">
-                      <button
+                      <Button
                         disabled={busyId === action.id}
                         onClick={() => void decide(action.id, "APPROVE")}
                         className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
@@ -364,14 +366,14 @@ export default function ActionsClient() {
                           <Check size={14} />
                         )}
                         {" Approve & create"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         disabled={busyId === action.id}
                         onClick={() => void decide(action.id, "REJECT")}
                         className="flex items-center justify-center gap-2 rounded-lg border border-[#dce4dd] px-3 py-2.5 text-xs font-semibold text-[#526159] disabled:opacity-60"
                       >
                         <X size={14} /> Reject
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 ))}
@@ -402,7 +404,7 @@ export default function ActionsClient() {
                 <option value="BLOCK">Block — do not accept proposals</option>
               </select>
             </label>
-            <button
+            <Button
               disabled={savingRule}
               className="flex items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
@@ -412,15 +414,15 @@ export default function ActionsClient() {
                 <ShieldCheck size={15} />
               )}{" "}
               Save rule
-            </button>
+            </Button>
           </form>
           <div className="mt-4 flex flex-col gap-2 rounded-xl bg-[#f7f8f5] p-3 text-xs text-[#69756e] sm:flex-row sm:items-center sm:justify-between">
             <span>
               Default approval setting: <strong>{defaultApprovalMode}</strong>
             </span>
             {rules.some((rule) => rule.actionType === "CREATE_TASK" && rule.enabled) ? (
-              <button
-                type="button"
+              <Button
+                htmlType="button"
                 disabled={savingRule}
                 onClick={() =>
                   void removeRule(
@@ -430,7 +432,7 @@ export default function ActionsClient() {
                 className="w-fit font-semibold text-[#5d7d43] underline underline-offset-2 disabled:opacity-60"
               >
                 Remove rule and use default
-              </button>
+              </Button>
             ) : (
               <span>Using default setting</span>
             )}
