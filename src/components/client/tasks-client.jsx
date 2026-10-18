@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, Check, Circle, LoaderCircle, Plus, Search, Trash2, X } from "lucide-react";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -189,7 +189,7 @@ export default function TasksClient() {
             className="mb-7 space-y-3 rounded-[18px] border border-[#e4e9e4] bg-white p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]"
           >
             <h2 className="font-semibold tracking-[-0.025em]">New task details</h2>
-            <input
+            <Input
               required
               maxLength={200}
               value={title}
@@ -197,7 +197,7 @@ export default function TasksClient() {
               placeholder="What needs to get done?"
               className="w-full rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
             />
-            <textarea
+            <Input.TextArea
               maxLength={5000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -279,7 +279,7 @@ export default function TasksClient() {
                   size={16}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#87918b]"
                 />
-                <input
+                <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search by task or notes…"
