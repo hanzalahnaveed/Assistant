@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -193,12 +195,12 @@ export default function EmailClient() {
               Nothing sends automatically.
             </p>
           </div>
-          <button
+          <Button
             onClick={fresh}
             className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white"
           >
             <MailPlus size={16} /> New email
-          </button>
+          </Button>
         </div>
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <Stat label="Saved drafts" value={drafts.filter((d) => d.status === "DRAFT").length} />
@@ -227,13 +229,13 @@ export default function EmailClient() {
           <aside className="rounded-[18px] border border-[#e4e9e4] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold tracking-[-0.025em]">Your emails</h2>
-              <button
+              <Button
                 aria-label="Refresh drafts"
                 onClick={() => void load()}
                 className="rounded-lg p-2 text-[#68766d] hover:bg-[#f4f7f3]"
               >
                 <RefreshCw size={14} />
-              </button>
+              </Button>
             </div>
             {loading ? (
               <div className="flex items-center gap-2 py-8 text-sm text-[#68766d]">
@@ -243,7 +245,7 @@ export default function EmailClient() {
             ) : drafts.length ? (
               <div className="space-y-1">
                 {drafts.map((d) => (
-                  <button
+                  <Button
                     key={d.id}
                     onClick={() => choose(d)}
                     className={
@@ -261,7 +263,7 @@ export default function EmailClient() {
                     <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-[#8b958e] text-pretty">
                       {d.body || "No message body yet."}
                     </p>
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -360,16 +362,16 @@ export default function EmailClient() {
               <div className="flex flex-wrap gap-2 border-t border-[#edf0ec] pt-5">
                 {editable && (
                   <>
-                    <button
-                      type="submit"
+                    <Button
+                      htmlType="submit"
                       disabled={busy}
                       className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold hover:bg-[#f7f9f6] disabled:opacity-50"
                     >
                       <Save size={15} />
                       Save draft
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      htmlType="button"
                       disabled={busy || !form.toEmail.trim() || !form.goal.trim()}
                       onClick={(e) => {
                         e.preventDefault();
@@ -379,60 +381,60 @@ export default function EmailClient() {
                     >
                       <Sparkles size={15} />
                       {busy ? "Working…" : "Generate with AI"}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {selected?.status === "DRAFT" && (
-                  <button
-                    type="button"
+                  <Button
+                    htmlType="button"
                     disabled={busy || !form.toEmail || !form.subject.trim() || !form.body.trim()}
                     onClick={() => void act("APPROVE")}
                     className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <ShieldCheck size={15} />
                     Approve exact draft
-                  </button>
+                  </Button>
                 )}
                 {selected?.status === "APPROVED" && (
-                  <button
-                    type="button"
+                  <Button
+                    htmlType="button"
                     disabled={busy}
                     onClick={() => void act("SEND")}
                     className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <Send size={15} />
                     {"Confirm & send"}
-                  </button>
+                  </Button>
                 )}
                 {selected?.status === "SEND_UNCERTAIN" && (
                   <>
-                    <button
-                      type="button"
+                    <Button
+                      htmlType="button"
                       disabled={busy}
                       onClick={() => void act("CONFIRM_SENT")}
                       className="rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold"
                     >
                       I found it in Sent
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      htmlType="button"
                       disabled={busy}
                       onClick={() => void act("CONFIRM_NOT_SENT")}
                       className="rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white"
                     >
                       Verified absent — unlock retry
-                    </button>
+                    </Button>
                   </>
                 )}
                 {selected && ["DRAFT", "APPROVED", "FAILED"].includes(selected.status) && (
-                  <button
-                    type="button"
+                  <Button
+                    htmlType="button"
                     disabled={busy}
                     onClick={() => void act("CANCEL")}
                     className="rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-medium text-[#68766d] disabled:opacity-50"
                   >
                     Cancel draft
-                  </button>
+                  </Button>
                 )}
               </div>
             </form>
