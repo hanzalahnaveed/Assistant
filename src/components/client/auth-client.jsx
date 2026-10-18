@@ -228,7 +228,7 @@ export default function AuthPage() {
           )}
           <Button
             htmlType="submit"
-            className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#FA8500] bg-[#FA8500] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#FA8500] enabled:hover:bg-[#FA8500]"
+            className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#FA8500] bg-[#FA8500] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#FA8500] enabled:hover:bg-[#001d3d]"
             disabled={busy || checking}
           >
             {busy || checking ? (
