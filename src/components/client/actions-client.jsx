@@ -185,11 +185,11 @@ export default function ActionsClient() {
   const pending = actions.filter((action) => action.status === "PENDING");
   const history = actions.filter((action) => action.status !== "PENDING");
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#5d7d43] text-pretty">
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#FA8500] text-pretty">
               Controlled autonomy
             </p>
             <h1 className="mt-2 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
@@ -201,7 +201,7 @@ export default function ActionsClient() {
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs text-[#526159]">
-            <ShieldCheck size={16} className="text-[#5d7d43]" /> Your approval settings apply
+            <ShieldCheck size={16} className="text-[#FA8500]" /> Your approval settings apply
           </div>
         </div>
         {error && (
@@ -215,15 +215,15 @@ export default function ActionsClient() {
         {notice && (
           <div
             role="status"
-            className="border border-[#cde6d7] bg-[#eff8f1] px-4 py-3 text-sm text-[#5d7d43] rounded-[13px]"
+            className="border border-[#cde6d7] bg-[#eff8f1] px-4 py-3 text-sm text-[#FA8500] rounded-[13px]"
           >
             {notice}
           </div>
         )}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-5 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#5d7d43]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#FA8500]">
                 <Plus size={18} />
               </span>
               <div>
@@ -242,7 +242,7 @@ export default function ActionsClient() {
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder="e.g. Prepare the weekly leadership update"
-                  className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3.5 py-3 text-sm font-normal text-[#18211f] outline-none focus:border-[#176b52] focus:ring-2 focus:ring-[#176b52]/10"
+                  className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3.5 py-3 text-sm font-normal text-[#212529] outline-none focus:border-[#176b52] focus:ring-2 focus:ring-[#176b52]/10"
                 />
               </label>
               <label className="block text-xs font-semibold text-[#526159]">
@@ -253,7 +253,7 @@ export default function ActionsClient() {
                   onChange={(event) => setDescription(event.target.value)}
                   rows={3}
                   placeholder="Context, expected outcome, or next steps"
-                  className="mt-2 w-full resize-y rounded-xl border border-[#dce4dd] px-3.5 py-3 text-sm font-normal text-[#18211f] outline-none focus:border-[#176b52] focus:ring-2 focus:ring-[#176b52]/10"
+                  className="mt-2 w-full resize-y rounded-xl border border-[#dce4dd] px-3.5 py-3 text-sm font-normal text-[#212529] outline-none focus:border-[#176b52] focus:ring-2 focus:ring-[#176b52]/10"
                 />
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -282,7 +282,7 @@ export default function ActionsClient() {
               </div>
               <Button
                 disabled={saving || !title.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5d7d43] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#FA8500] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? (
                   <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
@@ -298,7 +298,7 @@ export default function ActionsClient() {
               </p>
             </form>
           </section>
-          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="font-semibold tracking-[-0.025em]">Awaiting your decision</h2>
@@ -358,7 +358,7 @@ export default function ActionsClient() {
                       <Button
                         disabled={busyId === action.id}
                         onClick={() => void decide(action.id, "APPROVE")}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         {busyId === action.id ? (
                           <LoaderCircle size={14} className="animate-[spin_0.9s_linear_infinite]" />
@@ -381,9 +381,9 @@ export default function ActionsClient() {
             )}
           </section>
         </div>
-        <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
-            <ShieldCheck size={17} className="text-[#5d7d43]" />
+            <ShieldCheck size={17} className="text-[#FA8500]" />
             <div>
               <h2 className="font-semibold tracking-[-0.025em]">Task automation rule</h2>
               <p className="mt-1 text-xs text-[#7a857e] text-pretty">
@@ -406,7 +406,7 @@ export default function ActionsClient() {
             </label>
             <Button
               disabled={savingRule}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {savingRule ? (
                 <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
@@ -416,7 +416,7 @@ export default function ActionsClient() {
               Save rule
             </Button>
           </form>
-          <div className="mt-4 flex flex-col gap-2 rounded-xl bg-[#f7f8f5] p-3 text-xs text-[#69756e] sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-2 rounded-xl bg-[#F8F9FA] p-3 text-xs text-[#69756e] sm:flex-row sm:items-center sm:justify-between">
             <span>
               Default approval setting: <strong>{defaultApprovalMode}</strong>
             </span>
@@ -429,7 +429,7 @@ export default function ActionsClient() {
                     rules.find((rule) => rule.actionType === "CREATE_TASK" && rule.enabled).id,
                   )
                 }
-                className="w-fit font-semibold text-[#5d7d43] underline underline-offset-2 disabled:opacity-60"
+                className="w-fit font-semibold text-[#FA8500] underline underline-offset-2 disabled:opacity-60"
               >
                 Remove rule and use default
               </Button>
@@ -438,9 +438,9 @@ export default function ActionsClient() {
             )}
           </div>
         </section>
-        <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
-            <Clock3 size={17} className="text-[#5d7d43]" />
+            <Clock3 size={17} className="text-[#FA8500]" />
             <div>
               <h2 className="font-semibold tracking-[-0.025em]">Action history</h2>
               <p className="mt-1 text-xs text-[#7a857e] text-pretty">
@@ -466,7 +466,7 @@ export default function ActionsClient() {
                     </p>
                   </div>
                   <span
-                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${action.status === "SUCCEEDED tracking-[0.01em]" ? "bg-[#e7f3ed] text-[#5d7d43]" : action.status === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-[#f1f3f0] text-[#68746d]"}`}
+                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${action.status === "SUCCEEDED tracking-[0.01em]" ? "bg-[#e7f3ed] text-[#FA8500]" : action.status === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-[#f1f3f0] text-[#68746d]"}`}
                   >
                     {statusLabels[action.status]}
                     {action.errorCode ? ` · ${action.errorCode}` : ""}
