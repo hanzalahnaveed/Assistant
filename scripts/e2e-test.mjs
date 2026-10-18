@@ -83,7 +83,7 @@ try {
   assert.deepEqual(readinessBody.checks.missingConfiguration, []);
   check(true, "readiness endpoint verifies database connectivity and required configuration without exposing secret values");
 
-  for (const path of ["/auth", "/", "/integrations", "/tasks", "/assistant", "/briefing"]) {
+  for (const path of ["/auth", "/", "/integrations", "/tasks", "/assistant", "/briefing", "/calendar", "/email", "/actions"]) {
     const response = await expectStatus(path, 200);
     const html = await response.text();
     check(html.length > 0, path + " page renders");
