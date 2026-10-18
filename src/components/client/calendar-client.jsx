@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
@@ -215,14 +217,14 @@ export default function CalendarClient() {
               approval and confirmation.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => void load()}
             disabled={loading || busy}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? "animate-[spin_0.9s_linear_infinite]" : ""} />{" "}
             Refresh
-          </button>
+          </Button>
         </div>
         {error && (
           <div
@@ -327,13 +329,13 @@ export default function CalendarClient() {
                   Save → approve → separately confirm creation
                 </p>
               </div>
-              <button
+              <Button
                 onClick={fresh}
-                type="button"
+                htmlType="button"
                 className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
               >
                 <Plus size={15} /> New
-              </button>
+              </Button>
             </div>
             <form onSubmit={save} className="space-y-4">
               <Field label="Meeting title">
@@ -413,14 +415,14 @@ export default function CalendarClient() {
                 </Field>
               </div>
               {editable && (
-                <button
-                  type="submit"
+                <Button
+                  htmlType="submit"
                   disabled={busy}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
                   <Save size={15} />
                   {busy ? "Saving…" : "Save proposal"}
-                </button>
+                </Button>
               )}
             </form>
             {chosen && (
@@ -448,50 +450,50 @@ export default function CalendarClient() {
                 )}
                 <div className="flex flex-wrap gap-2">
                   {chosen.status === "DRAFT" && (
-                    <button
+                    <Button
                       disabled={busy}
                       onClick={() => void act("APPROVE")}
                       className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <ShieldCheck size={15} /> Approve exact proposal
-                    </button>
+                    </Button>
                   )}
                   {chosen.status === "APPROVED" && (
-                    <button
+                    <Button
                       disabled={busy || !data?.canCreateEvents}
                       onClick={() => void act("CREATE")}
                       className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <CheckCircle2 size={15} />
                       {" Confirm & create event"}
-                    </button>
+                    </Button>
                   )}
                   {chosen.status === "CREATE_UNCERTAIN" && (
                     <>
-                      <button
+                      <Button
                         disabled={busy}
                         onClick={() => void act("CONFIRM_CREATED")}
                         className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
                       >
                         I found it in Calendar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         disabled={busy}
                         onClick={() => void act("CONFIRM_NOT_CREATED")}
                         className="rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2 text-sm font-semibold text-white"
                       >
                         Verified absent — unlock retry
-                      </button>
+                      </Button>
                     </>
                   )}
                   {["DRAFT", "APPROVED", "FAILED"].includes(chosen.status) && (
-                    <button
+                    <Button
                       disabled={busy}
                       onClick={() => void act("CANCEL")}
                       className="rounded-xl border border-[#e2e8e0] px-3 py-2 text-sm font-medium"
                     >
                       Cancel proposal
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -509,7 +511,7 @@ export default function CalendarClient() {
           ) : data?.drafts.length ? (
             <div className="mt-4 divide-y divide-[#edf1ed]">
               {data.drafts.map((d) => (
-                <button
+                <Button
                   key={d.id}
                   onClick={() => selectDraft(d)}
                   className={`flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#5d7d43]" : ""}`}
@@ -523,7 +525,7 @@ export default function CalendarClient() {
                   <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
                     {labels[d.status]}
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           ) : (
