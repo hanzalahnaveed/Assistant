@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -65,7 +67,7 @@ export default function BriefingClient() {
               {data?.summary ?? "A clear summary of your tasks, calendar, and inbox."}
             </p>
           </div>
-          <button
+          <Button
             onClick={() => void load(true)}
             disabled={refreshing || loading}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
@@ -75,7 +77,7 @@ export default function BriefingClient() {
               className={refreshing ? "animate-[spin_0.9s_linear_infinite]" : ""}
             />{" "}
             Refresh
-          </button>
+          </Button>
         </div>
         {error && (
           <div
