@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -180,7 +180,7 @@ export default function AuthPage() {
           {mode === "signup" && (
             <label className="flex flex-col text-[11px] font-bold text-[#46564b]">
               <span>Your name</span>
-              <input
+              <Input
                 className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
                 autoComplete="name"
                 name="name"
@@ -194,7 +194,7 @@ export default function AuthPage() {
           )}
           <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
             <span>Email address</span>
-            <input
+            <Input
               className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
               autoComplete="email"
               name="email"
@@ -208,7 +208,7 @@ export default function AuthPage() {
           </label>
           <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
             <span>Password</span>
-            <input
+            <Input
               className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               name="password"
