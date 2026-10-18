@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
 export default function AssistantClient() {
@@ -225,7 +225,7 @@ export default function AssistantClient() {
             onSubmit={sendMessage}
             className="m-4 flex items-end gap-2 rounded-xl border border-[#dfe6dd] p-2 focus-within:border-[#a4c8b0] sm:m-5"
           >
-            <textarea
+            <Input.TextArea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
