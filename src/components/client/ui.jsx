@@ -132,7 +132,7 @@ export default function IntegrationsClient() {
             {notice}
           </div>
         )}
-        <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e8f0ff] text-[#356ac3]">
@@ -171,7 +171,7 @@ export default function IntegrationsClient() {
                 </Button>
                 <a
                   href="/api/auth/google/start"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#FA8500]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
                 >
                   Reconnect <ExternalLink size={14} />
                 </a>
@@ -179,7 +179,7 @@ export default function IntegrationsClient() {
             ) : (
               <a
                 href="/api/auth/google/start"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#FA8500]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
               >
                 Connect Google <ExternalLink size={14} />
               </a>
@@ -210,7 +210,7 @@ export default function IntegrationsClient() {
         </section>
         {data?.connected && (
           <div className="grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold tracking-[-0.025em]">Recent inbox</h2>
@@ -241,7 +241,7 @@ export default function IntegrationsClient() {
                 <Empty text="No matching messages found in the recent inbox." />
               )}
             </section>
-            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold tracking-[-0.025em]">Today’s calendar</h2>
