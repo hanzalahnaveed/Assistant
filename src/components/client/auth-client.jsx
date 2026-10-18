@@ -1,62 +1,17 @@
 "use client";
 
-
 import { Button, Input } from "antd";
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  LoaderCircle,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-const queryErrors = {
-  google_not_configured:
-    "Google sign-in is not configured. Use your email and password, or configure Google Workspace later.",
-  google_consent_cancelled:
-    "Google sign-in was cancelled. You can try again whenever you're ready.",
-  invalid_oauth_state: "Your sign-in session expired or could not be verified. Please try again.",
-  google_connection_failed: "We couldn't complete Google sign-in. Please try again.",
-  account_not_found:
-    "No account exists for that Google account yet. Choose Create account to get started.",
-  account_exists: "An account already exists for that Google account. Choose Sign in instead.",
-};
+
 export default function AuthPage() {
+
   const [mode, setMode] = useState("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [loggedOut, setLoggedOut] = useState(false);
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const queryError = params.get("error");
-    setError(
-      queryError ? (queryErrors[queryError] ?? "Something went wrong. Please try again.") : null,
-    );
-    setLoggedOut(params.get("loggedOut") === "1");
-    if (queryError === "account_not_found") setMode("signup");
-    if (queryError === "account_exists") setMode("signin");
-    let cancelled = false;
-    fetch("/api/auth/session", {
-      cache: "no-store",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (!cancelled && data.user) window.location.replace("/");
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+
   async function submitCredentials(event) {
     event.preventDefault();
     setBusy(true);
@@ -116,18 +71,27 @@ export default function AuthPage() {
       setBusy(false);
     }
   }
-  function continueWithGoogle() {
-    setBusy(true);
-    window.location.assign("/api/auth/google/start?intent=" + mode);
-  }
+
   return (
-    <main className="flex bg-red-300 justify-center items-center h-screen">
-      <div className="flex flex-col bg-amber-300 p-10">
-        <h2 className="">
-          {mode === "signin" ? "Welcome back" : "Create your account"}
-        </h2>
+    <main className="flex justify-center items-center h-screen py-16 bg-gradient-to-br from-[#698cbf] to-[#4b749f]">
+      <div className="flex flex-col justify-between w-[35%] h-full border rounded-2xl p-12 bg-white/70">
+        <div className="">
+          {mode === "signin" ? 
+            <div className={``}>
+              <p className={`font-semibold font-sans text-[32px] text-black`}>
+                Welcome back
+              </p>
+              <p className={`text-black`}>
+                Sign in to continue to your workspace.
+              </p> 
+            </div> :
+            <p className={`text-black`}>
+              Create your account
+            </p>
+          }
+        </div>
         <div
-          className="grid grid-cols-2 h-10 gap-1 rounded-xl border border-[#e8ece8] bg-[#f6f8f5] p-1"
+          className="grid grid-cols-2 gap-1 rounded-xl border border-[#e8ece8] bg-[#f6f8f5] p-1"
           role="tablist"
           aria-label="Account access"
         >
@@ -167,18 +131,9 @@ export default function AuthPage() {
             <p className="m-0 text-pretty">{error}</p>
           </div>
         )}
-        {loggedOut && (
-          <div
-            role="status"
-            className=" flex items-center gap-2.5 rounded-[13px] border border-[#d6e9db] bg-[#f3faf5] p-3 text-[11px] leading-[1.65] text-[#276447]"
-          >
-            <CheckCircle2 size={16} />
-            <span>You have been signed out securely.</span>
-          </div>
-        )}
-        <form className="flex flex-col gap-3.5" onSubmit={submitCredentials}>
+        <form className="flex flex-col gap-10" onSubmit={submitCredentials}>
           {mode === "signup" && (
-            <label className="flex flex-col text-[11px] font-bold text-[#46564b]">
+            <label className="flex flex-col gap-2 text-[14px]">
               <span>Your name</span>
               <Input
                 className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
@@ -192,7 +147,7 @@ export default function AuthPage() {
               />
             </label>
           )}
-          <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
+          <label className="flex flex-col gap-2 text-[14px]">
             <span>Email address</span>
             <Input
               className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
@@ -206,7 +161,7 @@ export default function AuthPage() {
               placeholder="you@company.com"
             />
           </label>
-          <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
+          <label className="flex flex-col gap-2 text-[14px]">
             <span>Password</span>
             <Input
               className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
@@ -226,93 +181,13 @@ export default function AuthPage() {
               Use at least 8 characters. Your password is stored as a secure hash.
             </p>
           )}
-          <Button
-            htmlType="submit"
-            className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#FA8500] bg-[#FA8500] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#FA8500] enabled:hover:bg-[#001d3d]"
-            disabled={busy || checking}
-          >
-            {busy || checking ? (
-              <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" />
-            ) : (
-              <span className="grid h-5 w-5 place-items-center text-white">
-                <ShieldCheck size={17} />
-              </span>
-            )}
-            <span>
-              {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
-            </span>
-            {!busy && !checking && <ArrowRight size={16} className="ml-auto text-white" />}
-          </Button>
         </form>
-        <div className="flex items-center gap-3 text-[#9aa49c]">
-          <span className="h-px flex-1 bg-[#e9ede9]" />{" "}
-          <small className="text-[8px] font-bold tracking-[1px] whitespace-nowrap">
-            OR CONTINUE WITH
-          </small>{" "}
-          <span className="h-px flex-1 bg-[#e9ede9]" />
-        </div>
         <Button
-          htmlType="button"
-          className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#e1e7e1] bg-white text-[#26332b] disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#a9c6b2] enabled:hover:bg-[#f8faf8]"
-          onClick={continueWithGoogle}
-          disabled={busy || checking}
+          className="flex w-full h-10 items-center justify-center rounded-xl"
         >
-          {busy || checking ? (
-            <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" />
-          ) : (
-            <GoogleMark />
-          )}
-          <span>{mode === "signin" ? "Continue with Google" : "Create account with Google"}</span>
-          <ArrowRight size={16} className="ml-auto text-[#6f8175]" />
+            {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
         </Button>
-        <div className="flex items-start gap-2.5 rounded-xl border border-[#e4eee5] bg-[#f4faf5] text-[#397055]">
-          <ShieldCheck size={17} className="mt-px shrink-0" />
-          <p className="h-8 text-[10px] leading-[1.75] text-[#5f7667] text-pretty">
-            Google is optional for sign-in. Connect Google Workspace later if you want inbox and
-            calendar context.
-          </p>
-        </div>
-        <p className="mb-0 text-center text-[10px] leading-[1.8] text-[#99a39b] text-pretty">
-          Your workspace data is private to your account. Never reuse a password you use for another
-          service.
-        </p>
-        <div className="text-center text-[11px] text-[#7c887f]">
-          {mode === "signin" ? "New to Assistant?" : "Already have an account?"}{" "}
-          <Button
-            htmlType="button"
-            className="ml-1 border-0 bg-transparent p-0.5 text-[length:inherit] font-[750]! text-[#FA8500] hover:underline"
-            onClick={() => {
-              setMode(mode === "signin" ? "signup" : "signin");
-              setError(null);
-            }}
-          >
-            {mode === "signin" ? "Create an account" : "Sign in instead"}
-          </Button>
-        </div>
       </div>
     </main>
-  );
-}
-
-function GoogleMark() {
-  return (
-    <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2 13.22l7.98 6.19C11.88 13.72 17.48 9.5 24 9.5z"
-      />
-      <path
-        fill="#4285F4"
-        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 37.98 46.98 31.86 46.98 24.55z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M9.98 28.59A14.4 14.4 0 0 1 9.2 24c0-1.6.28-3.15.78-4.59L2 13.22A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.42-6.19z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.14 1.45-4.89 2.3-8.18 2.3-6.52 0-12.12-4.22-14.02-10.09L2 34.78C6.51 42.62 14.62 48 24 48z"
-      />
-    </svg>
   );
 }

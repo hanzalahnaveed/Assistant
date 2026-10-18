@@ -17,14 +17,15 @@
     "format:check": "npx --yes prettier@3 --check ."
   },
   "dependencies": {
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@prisma/client": "^6.16.2",
+    "antd": "^5.29.3",
     "lucide-react": "^0.468.0",
     "next": "^15.5.4",
+    "nextjs-toploader": "^3.9.17",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "zod": "^4.1.11",
-    "antd": "^5.26.6",
-    "@ant-design/v5-patch-for-react-19": "^1.0.3"
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
