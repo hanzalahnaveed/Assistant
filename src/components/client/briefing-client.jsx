@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 function Metric({ label, value, icon }) {
   return (
-    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
       <div className="flex items-center justify-between text-[#6B7280]">
         <span className="text-xs font-medium">{label}</span>
         {icon}
@@ -100,7 +100,7 @@ export default function BriefingClient() {
           </div>
         )}
         {loading && !data ? (
-          <div className="flex items-center gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-8 text-sm text-[#6B7280] shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+          <div className="flex items-center gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-8 text-sm text-[#6B7280] shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" /> Building your
             overview…
           </div>
