@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, Check, Circle, LoaderCircle, Plus, Search, Trash2, X } from "lucide-react";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -172,14 +174,14 @@ export default function TasksClient() {
               Turn a next step into a tracked task with an owner, priority, and deadline.
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            htmlType="button"
             onClick={() => setShowComposer((value) => !value)}
             className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5d7d43]"
           >
             {showComposer ? <X size={16} /> : <Plus size={16} />}{" "}
             {showComposer ? "Close form" : "New task"}
-          </button>
+          </Button>
         </div>
         {showComposer && (
           <form
@@ -228,13 +230,13 @@ export default function TasksClient() {
                 />
               </label>
             </div>
-            <button
+            <Button
               disabled={busy || !title.trim()}
               className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             >
               <Plus size={16} />
               {busy ? "Saving…" : "Save task"}
-            </button>
+            </Button>
           </form>
         )}
         <section className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -262,13 +264,13 @@ export default function TasksClient() {
                   Search, filter, and update progress without losing your place.
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => void load()}
                 disabled={loading}
                 className="text-xs font-semibold text-[#5d7d43] disabled:opacity-50"
               >
                 Refresh
-              </button>
+              </Button>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
               <label className="relative min-w-0 flex-1">
@@ -316,15 +318,15 @@ export default function TasksClient() {
                   count: tasks.length,
                 },
               ].map((tab) => (
-                <button
+                <Button
                   key={tab.id}
-                  type="button"
+                  htmlType="button"
                   onClick={() => setView(tab.id)}
                   className={`rounded-xl px-3.5 py-2 text-xs font-semibold ${view === tab.id ? "bg-[#e7f3ed] text-[#5d7d43]" : "border border-[#e2e8e0] text-[#68766d] hover:bg-[#f8faf7]"}`}
                 >
                   {tab.label}
                   <span className="ml-2 opacity-70">{tab.count}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -359,7 +361,7 @@ export default function TasksClient() {
                   : "Create a task when a new commitment comes in."}
               </p>
               {(query || priorityFilter !== "ALL") && (
-                <button
+                <Button
                   onClick={() => {
                     setQuery("");
                     setPriorityFilter("ALL");
@@ -367,7 +369,7 @@ export default function TasksClient() {
                   className="mt-3 text-xs font-semibold text-[#5d7d43]"
                 >
                   Clear filters
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -379,7 +381,7 @@ export default function TasksClient() {
 function TaskRow({ task, updateTask, removeTask }) {
   return (
     <article className="flex flex-wrap items-start gap-3 py-4 min-w-0">
-      <button
+      <Button
         aria-label={task.status === "DONE" ? "Reopen task" : "Complete task"}
         onClick={() =>
           void updateTask(task, {
@@ -389,7 +391,7 @@ function TaskRow({ task, updateTask, removeTask }) {
         className="mt-1 text-[#5d7d43]"
       >
         {task.status === "DONE" ? <Check size={18} /> : <Circle size={18} />}
-      </button>
+      </Button>
       <div className="min-w-0 flex-1">
         <div
           className={`text-sm font-medium ${task.status === "DONE" ? "text-[#929c95] line-through" : ""}`}
@@ -429,13 +431,13 @@ function TaskRow({ task, updateTask, removeTask }) {
           </option>
         ))}
       </select>
-      <button
+      <Button
         aria-label="Archive task"
         onClick={() => void removeTask(task)}
         className="rounded-lg p-1.5 text-[#9b6a60] hover:bg-rose-50"
       >
         <Trash2 size={15} />
-      </button>
+      </Button>
     </article>
   );
 }
