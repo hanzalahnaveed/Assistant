@@ -180,24 +180,24 @@ export default function EmailClient() {
   const sent = drafts.filter((d) => d.status === "SENT").length,
     pending = drafts.filter((d) => d.status === "DRAFT" || d.status === "APPROVED").length;
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <div className="mx-auto max-w-7xl px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#5d7d43]">
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#FA8500]">
               <MailPlus size={15} /> Outreach workspace
             </div>
             <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
               {"Email & cold outreach"}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766d] text-pretty">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B7280] text-pretty">
               Draft and review outreach, approve the exact message, then confirm sending separately.
               Nothing sends automatically.
             </p>
           </div>
           <Button
             onClick={fresh}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white"
           >
             <MailPlus size={16} /> New email
           </Button>
@@ -226,19 +226,19 @@ export default function EmailClient() {
           </div>
         )}
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="rounded-[18px] border border-[#e4e9e4] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold tracking-[-0.025em]">Your emails</h2>
               <Button
                 aria-label="Refresh drafts"
                 onClick={() => void load()}
-                className="rounded-lg p-2 text-[#68766d] hover:bg-[#f4f7f3]"
+                className="rounded-lg p-2 text-[#6B7280] hover:bg-[#f4f7f3]"
               >
                 <RefreshCw size={14} />
               </Button>
             </div>
             {loading ? (
-              <div className="flex items-center gap-2 py-8 text-sm text-[#68766d]">
+              <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
                 <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
                 Loading…
               </div>
@@ -257,9 +257,9 @@ export default function EmailClient() {
                       <span className="truncate text-xs font-semibold">
                         {d.subject || "(No subject)"}
                       </span>
-                      <span className="shrink-0 text-[9px] text-[#68766d]">{labels[d.status]}</span>
+                      <span className="shrink-0 text-[9px] text-[#6B7280]">{labels[d.status]}</span>
                     </div>
-                    <div className="mt-1 truncate text-[11px] text-[#68766d]">{d.toEmail}</div>
+                    <div className="mt-1 truncate text-[11px] text-[#6B7280]">{d.toEmail}</div>
                     <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-[#8b958e] text-pretty">
                       {d.body || "No message body yet."}
                     </p>
@@ -267,21 +267,21 @@ export default function EmailClient() {
                 ))}
               </div>
             ) : (
-              <p className="py-8 text-center text-xs leading-5 text-[#68766d] text-pretty">
+              <p className="py-8 text-center text-xs leading-5 text-[#6B7280] text-pretty">
                 No emails yet. Create your first outreach draft.
               </p>
             )}
           </aside>
-          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#e4e9e4] pb-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#5d7d43]">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#E3E7ED] pb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#FA8500]">
                 <Sparkles size={18} />
               </div>
               <div>
                 <h2 className="font-semibold tracking-[-0.025em]">
                   {selected ? "Review email draft" : "Compose an email"}
                 </h2>
-                <p className="mt-1 text-xs text-[#68766d] text-pretty">
+                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
                   {selected
                     ? "Created " + new Date(selected.createdAt).toLocaleString()
                     : "Describe your goal and let AI prepare a starting point."}
@@ -297,7 +297,7 @@ export default function EmailClient() {
               </div>
             )}
             {selected?.lastError && selected.status !== "SEND_UNCERTAIN" && (
-              <p className="mb-4 rounded-xl bg-[#f7f9f6] p-3 text-xs leading-5 text-[#68766d] text-pretty">
+              <p className="mb-4 rounded-xl bg-[#f7f9f6] p-3 text-xs leading-5 text-[#6B7280] text-pretty">
                 {selected.lastError}
               </p>
             )}
@@ -311,7 +311,7 @@ export default function EmailClient() {
                     value={form.toEmail}
                     onChange={(e) => change("toEmail", e.target.value)}
                     placeholder="person@company.com"
-                    className="w-full border px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full border px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
                 <Field label="CC (optional)">
@@ -321,7 +321,7 @@ export default function EmailClient() {
                     value={form.ccEmail}
                     onChange={(e) => change("ccEmail", e.target.value)}
                     placeholder="colleague@company.com"
-                    className="w-full border px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                    className="w-full border px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                   />
                 </Field>
               </div>
@@ -333,7 +333,7 @@ export default function EmailClient() {
                   value={form.goal}
                   onChange={(e) => change("goal", e.target.value)}
                   placeholder="Introduce your service and ask for a 15-minute call…"
-                  className="w-full resize-y border px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  className="w-full resize-y border px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                 />
               </Field>
               <Field label="Subject">
@@ -344,7 +344,7 @@ export default function EmailClient() {
                   value={form.subject}
                   onChange={(e) => change("subject", e.target.value)}
                   placeholder="A concise, relevant subject"
-                  className="w-full border px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  className="w-full border px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
                 />
               </Field>
               <Field label="Message">
@@ -356,7 +356,7 @@ export default function EmailClient() {
                   value={form.body}
                   onChange={(e) => change("body", e.target.value)}
                   placeholder="Write your message or generate a starting draft…"
-                  className="w-full resize-y border px-3.5 py-3 text-sm leading-6 disabled:bg-[#f5f7f4]"
+                  className="w-full resize-y border px-3.5 py-3 text-sm leading-6 disabled:bg-[#F8F9FA]"
                 />
               </Field>
               <div className="flex flex-wrap gap-2 border-t border-[#edf0ec] pt-5">
@@ -377,7 +377,7 @@ export default function EmailClient() {
                         e.preventDefault();
                         void save(e, true);
                       }}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <Sparkles size={15} />
                       {busy ? "Working…" : "Generate with AI"}
@@ -389,7 +389,7 @@ export default function EmailClient() {
                     htmlType="button"
                     disabled={busy || !form.toEmail || !form.subject.trim() || !form.body.trim()}
                     onClick={() => void act("APPROVE")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <ShieldCheck size={15} />
                     Approve exact draft
@@ -400,7 +400,7 @@ export default function EmailClient() {
                     htmlType="button"
                     disabled={busy}
                     onClick={() => void act("SEND")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <Send size={15} />
                     {"Confirm & send"}
@@ -420,7 +420,7 @@ export default function EmailClient() {
                       htmlType="button"
                       disabled={busy}
                       onClick={() => void act("CONFIRM_NOT_SENT")}
-                      className="rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white"
+                      className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white"
                     >
                       Verified absent — unlock retry
                     </Button>
@@ -431,7 +431,7 @@ export default function EmailClient() {
                     htmlType="button"
                     disabled={busy}
                     onClick={() => void act("CANCEL")}
-                    className="rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-medium text-[#68766d] disabled:opacity-50"
+                    className="rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-medium text-[#6B7280] disabled:opacity-50"
                   >
                     Cancel draft
                   </Button>
@@ -458,7 +458,7 @@ function Field({ label, children }) {
 }
 function Stat({ label, value }) {
   return (
-    <div className="rounded-[18px] border border-[#e4e9e4] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+    <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
       <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b] text-pretty">
         {label}
       </p>
