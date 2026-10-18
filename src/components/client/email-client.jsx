@@ -178,22 +178,24 @@ export default function EmailClient() {
   const sent = drafts.filter((d) => d.status === "SENT").length,
     pending = drafts.filter((d) => d.status === "DRAFT" || d.status === "APPROVED").length;
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
-      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-7">
+    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#176b52]">
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#5d7d43]">
               <MailPlus size={15} /> Outreach workspace
             </div>
-            <h1 className="text-3xl font-semibold">{"Email & cold outreach"}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#76817c]">
+            <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+              {"Email & cold outreach"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766d] text-pretty">
               Draft and review outreach, approve the exact message, then confirm sending separately.
               Nothing sends automatically.
             </p>
           </div>
           <button
             onClick={fresh}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white"
           >
             <MailPlus size={16} /> New email
           </button>
@@ -206,7 +208,7 @@ export default function EmailClient() {
         {error && (
           <div
             role="alert"
-            className="mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950"
+            className="mb-4 flex gap-2 border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950 rounded-[13px]"
           >
             <AlertCircle size={17} />
             {error}
@@ -215,27 +217,27 @@ export default function EmailClient() {
         {notice && (
           <div
             role="status"
-            className="mb-4 flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-900"
+            className="mb-4 flex gap-2 border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-900 rounded-[13px]"
           >
             <CheckCircle2 size={17} />
             {notice}
           </div>
         )}
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="rounded-2xl border border-[#e2e8e0] bg-white p-4">
+          <aside className="rounded-[18px] border border-[#e4e9e4] p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Your emails</h2>
+              <h2 className="text-sm font-semibold tracking-[-0.025em]">Your emails</h2>
               <button
                 aria-label="Refresh drafts"
                 onClick={() => void load()}
-                className="rounded-lg p-2 text-[#76817c] hover:bg-[#f4f7f3]"
+                className="rounded-lg p-2 text-[#68766d] hover:bg-[#f4f7f3]"
               >
                 <RefreshCw size={14} />
               </button>
             </div>
             {loading ? (
-              <div className="flex items-center gap-2 py-8 text-sm text-[#76817c]">
-                <LoaderCircle size={16} className="animate-spin" />
+              <div className="flex items-center gap-2 py-8 text-sm text-[#68766d]">
+                <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
                 Loading…
               </div>
             ) : drafts.length ? (
@@ -253,31 +255,31 @@ export default function EmailClient() {
                       <span className="truncate text-xs font-semibold">
                         {d.subject || "(No subject)"}
                       </span>
-                      <span className="shrink-0 text-[9px] text-[#68756d]">{labels[d.status]}</span>
+                      <span className="shrink-0 text-[9px] text-[#68766d]">{labels[d.status]}</span>
                     </div>
-                    <div className="mt-1 truncate text-[11px] text-[#76817c]">{d.toEmail}</div>
-                    <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-[#8b958e]">
+                    <div className="mt-1 truncate text-[11px] text-[#68766d]">{d.toEmail}</div>
+                    <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-[#8b958e] text-pretty">
                       {d.body || "No message body yet."}
                     </p>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="py-8 text-center text-xs leading-5 text-[#76817c]">
+              <p className="py-8 text-center text-xs leading-5 text-[#68766d] text-pretty">
                 No emails yet. Create your first outreach draft.
               </p>
             )}
           </aside>
-          <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-7">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#edf0ec] pb-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#176b52]">
+          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-7 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#e4e9e4] pb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#5d7d43]">
                 <Sparkles size={18} />
               </div>
               <div>
-                <h2 className="font-semibold">
+                <h2 className="font-semibold tracking-[-0.025em]">
                   {selected ? "Review email draft" : "Compose an email"}
                 </h2>
-                <p className="mt-1 text-xs text-[#76817c]">
+                <p className="mt-1 text-xs text-[#68766d] text-pretty">
                   {selected
                     ? "Created " + new Date(selected.createdAt).toLocaleString()
                     : "Describe your goal and let AI prepare a starting point."}
@@ -293,7 +295,7 @@ export default function EmailClient() {
               </div>
             )}
             {selected?.lastError && selected.status !== "SEND_UNCERTAIN" && (
-              <p className="mb-4 rounded-xl bg-[#f8faf7] p-3 text-xs leading-5 text-[#68756d]">
+              <p className="mb-4 rounded-xl bg-[#f7f9f6] p-3 text-xs leading-5 text-[#68766d] text-pretty">
                 {selected.lastError}
               </p>
             )}
@@ -373,7 +375,7 @@ export default function EmailClient() {
                         e.preventDefault();
                         void save(e, true);
                       }}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       <Sparkles size={15} />
                       {busy ? "Working…" : "Generate with AI"}
@@ -385,7 +387,7 @@ export default function EmailClient() {
                     type="button"
                     disabled={busy || !form.toEmail || !form.subject.trim() || !form.body.trim()}
                     onClick={() => void act("APPROVE")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <ShieldCheck size={15} />
                     Approve exact draft
@@ -396,7 +398,7 @@ export default function EmailClient() {
                     type="button"
                     disabled={busy}
                     onClick={() => void act("SEND")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <Send size={15} />
                     {"Confirm & send"}
@@ -416,7 +418,7 @@ export default function EmailClient() {
                       type="button"
                       disabled={busy}
                       onClick={() => void act("CONFIRM_NOT_SENT")}
-                      className="rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white"
+                      className="rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-2.5 text-sm font-semibold text-white"
                     >
                       Verified absent — unlock retry
                     </button>
@@ -427,14 +429,14 @@ export default function EmailClient() {
                     type="button"
                     disabled={busy}
                     onClick={() => void act("CANCEL")}
-                    className="rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-medium text-[#68756d] disabled:opacity-50"
+                    className="rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-medium text-[#68766d] disabled:opacity-50"
                   >
                     Cancel draft
                   </button>
                 )}
               </div>
             </form>
-            <p className="mt-5 text-[11px] leading-5 text-[#87918b]">
+            <p className="mt-5 text-[11px] leading-5 text-[#87918b] text-pretty">
               AI output is not verified fact. Review recipient, claims, links, tone, and subject.
               Approval and sending are separate actions.
             </p>
@@ -454,9 +456,11 @@ function Field({ label, children }) {
 }
 function Stat({ label, value }) {
   return (
-    <div className="rounded-2xl border border-[#e2e8e0] bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
+    <div className="rounded-[18px] border border-[#e4e9e4] bg-white p-4 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b] text-pretty">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold text-pretty tracking-[-0.045em]">{value}</p>
     </div>
   );
 }

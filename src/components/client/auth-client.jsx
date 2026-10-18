@@ -120,175 +120,193 @@ export default function AuthPage() {
   }
   return (
     <main className="flex flex-col items-center justify-center">
-        <div className="auth-mobile-brand">
-          <span className="auth-brand-mark">
-            <Sparkles size={19} />
-          </span>
-          <strong>
-            assistant<span className="workspace-brand-dot">.</span>
-          </strong>
-        </div>
-        <div className="auth-card">
-          <h2>{mode === "signin" ? "Welcome back" : "Create your account"}</h2>
-          <p className="auth-subtitle">
-            {mode === "signin"
-              ? "Sign in to pick up where your workday left off."
-              : "Set up your personal workspace with your email."}
-          </p>
-          <div className="auth-mode-switch" role="tablist" aria-label="Account access">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signin"}
-              className={mode === "signin" ? "active" : ""}
-              onClick={() => {
-                setMode("signin");
-                setError(null);
-              }}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signup"}
-              className={mode === "signup" ? "active" : ""}
-              onClick={() => {
-                setMode("signup");
-                setError(null);
-              }}
-            >
-              Create account
-            </button>
-          </div>
-          {error && (
-            <div role="alert" className="auth-alert">
-              <span>!</span>
-              <p>{error}</p>
-            </div>
-          )}
-          {loggedOut && (
-            <div role="status" className="auth-success">
-              <CheckCircle2 size={16} />
-              <span>You have been signed out securely.</span>
-            </div>
-          )}
-          <form className="auth-credentials-form" onSubmit={submitCredentials}>
-            {mode === "signup" && (
-              <label className="auth-field">
-                <span>Your name</span>
-                <input
-                  autoComplete="name"
-                  name="name"
-                  type="text"
-                  maxLength={80}
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="How should we address you?"
-                />
-              </label>
-            )}
-            <label className="auth-field">
-              <span>Email address</span>
-              <input
-                autoComplete="email"
-                name="email"
-                type="email"
-                required
-                maxLength={254}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@company.com"
-              />
-            </label>
-            <label className="auth-field">
-              <span>Password</span>
-              <input
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                name="password"
-                type="password"
-                required
-                minLength={mode === "signup" ? 8 : 1}
-                maxLength={128}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
-              />
-            </label>
-            {mode === "signup" && (
-              <p className="auth-password-hint">
-                Use at least 8 characters. Your password is stored as a secure hash.
-              </p>
-            )}
-            <button
-              type="submit"
-              className="auth-google-button auth-primary-button"
-              disabled={busy || checking}
-            >
-              {busy || checking ? (
-                <LoaderCircle size={18} className="animate-spin" />
-              ) : (
-                <span className="auth-primary-mark">
-                  <ShieldCheck size={17} />
-                </span>
-              )}
-              <span>
-                {busy
-                  ? "Please wait…"
-                  : mode === "signin"
-                    ? "Sign in with email"
-                    : "Create account"}
-              </span>
-              {!busy && !checking && <ArrowRight size={16} className="auth-button-arrow" />}
-            </button>
-          </form>
-          <div className="auth-divider">
-            <span /> <small>OR CONTINUE WITH</small> <span />
-          </div>
+      <div className="mb-[clamp(38px,9vh,72px)] hidden w-full max-w-[410px] items-center gap-2.5 text-[17px] tracking-[-0.6px] max-[700px]:flex">
+        <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-[#d8efe0] text-[#174c39]">
+          <Sparkles size={19} />
+        </span>
+        <strong>
+          assistant<span className="text-[#dce9d1]">.</span>
+        </strong>
+      </div>
+      <div className="w-full max-w-[410px] max-[700px]:rounded-[20px] max-[700px]:border max-[700px]:border-[#e7ece7] max-[700px]:bg-white max-[700px]:px-[22px] max-[700px]:pt-[27px] max-[700px]:pb-6 max-[700px]:shadow-[0_9px_32px_rgb(25_48_36/4%)] max-[370px]:px-4">
+        <h2 className="m-0 text-[clamp(2rem,3vw,2.5rem)] leading-[1.16] font-[650] tracking-[-0.06em]">
+          {mode === "signin" ? "Welcome back" : "Create your account"}
+        </h2>
+        <p className="mt-3 mb-[27px] text-[13px] leading-[1.75] text-[#738078] text-pretty">
+          {mode === "signin"
+            ? "Sign in to pick up where your workday left off."
+            : "Set up your personal workspace with your email."}
+        </p>
+        <div
+          className="mb-[22px] grid grid-cols-2 gap-1 rounded-xl border border-[#e8ece8] bg-[#f6f8f5] p-1"
+          role="tablist"
+          aria-label="Account access"
+        >
           <button
             type="button"
-            className="auth-google-button auth-secondary-button"
-            onClick={continueWithGoogle}
+            role="tab"
+            aria-selected={mode === "signin"}
+            className={`min-h-[39px] rounded-[9px] border-0 text-xs! font-[650]! ${mode === "signin" ? "bg-white text-[#164e3b] shadow-[0_1px_4px_rgb(22_43_30/10%)]" : "bg-transparent text-[#738078]"}`}
+            onClick={() => {
+              setMode("signin");
+              setError(null);
+            }}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "signup"}
+            className={`min-h-[39px] rounded-[9px] border-0 text-xs! font-[650]! ${mode === "signup" ? "bg-white text-[#164e3b] shadow-[0_1px_4px_rgb(22_43_30/10%)]" : "bg-transparent text-[#738078]"}`}
+            onClick={() => {
+              setMode("signup");
+              setError(null);
+            }}
+          >
+            Create account
+          </button>
+        </div>
+        {error && (
+          <div
+            role="alert"
+            className="mb-[17px] flex items-start gap-2.5 rounded-[13px] border border-[#f0d8d2] bg-[#fff7f5] p-3 text-[11px] leading-[1.65] text-[#8b4134]"
+          >
+            <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-[#b65b49] font-[750] text-white">
+              !
+            </span>
+            <p className="m-0 text-pretty">{error}</p>
+          </div>
+        )}
+        {loggedOut && (
+          <div
+            role="status"
+            className="mb-[17px] flex items-center gap-2.5 rounded-[13px] border border-[#d6e9db] bg-[#f3faf5] p-3 text-[11px] leading-[1.65] text-[#276447]"
+          >
+            <CheckCircle2 size={16} />
+            <span>You have been signed out securely.</span>
+          </div>
+        )}
+        <form className="mt-[3px] flex flex-col gap-3.5" onSubmit={submitCredentials}>
+          {mode === "signup" && (
+            <label className="flex flex-col gap-[7px] text-[11px] font-bold text-[#46564b]">
+              <span>Your name</span>
+              <input
+                className="min-h-[43px] w-full rounded-[11px] border border-[#dce4dc] bg-white px-[13px] py-[11px] font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+                autoComplete="name"
+                name="name"
+                type="text"
+                maxLength={80}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="How should we address you?"
+              />
+            </label>
+          )}
+          <label className="flex flex-col gap-[7px] text-[11px] font-bold text-[#46564b]">
+            <span>Email address</span>
+            <input
+              className="min-h-[43px] w-full rounded-[11px] border border-[#dce4dc] bg-white px-[13px] py-[11px] font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+              autoComplete="email"
+              name="email"
+              type="email"
+              required
+              maxLength={254}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@company.com"
+            />
+          </label>
+          <label className="flex flex-col gap-[7px] text-[11px] font-bold text-[#46564b]">
+            <span>Password</span>
+            <input
+              className="min-h-[43px] w-full rounded-[11px] border border-[#dce4dc] bg-white px-[13px] py-[11px] font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              name="password"
+              type="password"
+              required
+              minLength={mode === "signup" ? 8 : 1}
+              maxLength={128}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
+            />
+          </label>
+          {mode === "signup" && (
+            <p className="-mt-[5px] mb-0 text-[10px] leading-normal text-[#89958c] text-pretty">
+              Use at least 8 characters. Your password is stored as a secure hash.
+            </p>
+          )}
+          <button
+            type="submit"
+            className="mt-[3px] flex min-h-[51px] w-full items-center justify-center gap-3 rounded-xl border px-[15px] py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#7ba05b] bg-[#7ba05b] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#5d7d43] enabled:hover:bg-[#5d7d43]"
             disabled={busy || checking}
           >
             {busy || checking ? (
-              <LoaderCircle size={18} className="animate-spin" />
+              <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" />
             ) : (
-              <GoogleMark />
+              <span className="grid h-5 w-5 place-items-center text-white">
+                <ShieldCheck size={17} />
+              </span>
             )}
-            <span>{mode === "signin" ? "Continue with Google" : "Create account with Google"}</span>
-            <ArrowRight size={16} className="auth-button-arrow" />
+            <span>
+              {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
+            </span>
+            {!busy && !checking && <ArrowRight size={16} className="ml-auto text-white" />}
           </button>
-          <div className="auth-trust-note">
-            <ShieldCheck size={17} />
-            <p>
-              Google is optional for sign-in. Connect Google Workspace later if you want inbox and
-              calendar context.
-            </p>
-          </div>
-          <p className="auth-terms">
-            Your workspace data is private to your account. Never reuse a password you use for
-            another service.
+        </form>
+        <div className="mt-[21px] mb-[15px] flex items-center gap-3 text-[#9aa49c]">
+          <span className="h-px flex-1 bg-[#e9ede9]" />{" "}
+          <small className="text-[8px] font-bold tracking-[1px] whitespace-nowrap">
+            OR CONTINUE WITH
+          </small>{" "}
+          <span className="h-px flex-1 bg-[#e9ede9]" />
+        </div>
+        <button
+          type="button"
+          className="flex min-h-[51px] w-full items-center justify-center gap-3 rounded-xl border px-[15px] py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#e1e7e1] bg-white text-[#26332b] disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#a9c6b2] enabled:hover:bg-[#f8faf8]"
+          onClick={continueWithGoogle}
+          disabled={busy || checking}
+        >
+          {busy || checking ? (
+            <LoaderCircle size={18} className="animate-[spin_0.9s_linear_infinite]" />
+          ) : (
+            <GoogleMark />
+          )}
+          <span>{mode === "signin" ? "Continue with Google" : "Create account with Google"}</span>
+          <ArrowRight size={16} className="ml-auto text-[#6f8175]" />
+        </button>
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#e4eee5] bg-[#f4faf5] p-[13px] text-[#397055]">
+          <ShieldCheck size={17} className="mt-px shrink-0" />
+          <p className="m-0 text-[10px] leading-[1.75] text-[#5f7667] text-pretty">
+            Google is optional for sign-in. Connect Google Workspace later if you want inbox and
+            calendar context.
           </p>
-          <div className="auth-switch-copy">
-            {mode === "signin" ? "New to Assistant?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setError(null);
-              }}
-            >
-              {mode === "signin" ? "Create an account" : "Sign in instead"}
-            </button>
-          </div>
         </div>
-        <div className="auth-panel-footer">
-          <span>
-            <Clock3 size={13} /> A clearer start to your day
-          </span>
-          <span>Privacy-first access</span>
+        <p className="mt-[19px] mb-0 text-center text-[10px] leading-[1.8] text-[#99a39b] text-pretty">
+          Your workspace data is private to your account. Never reuse a password you use for another
+          service.
+        </p>
+        <div className="mt-[27px] text-center text-[11px] text-[#7c887f]">
+          {mode === "signin" ? "New to Assistant?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            className="ml-1 border-0 bg-transparent p-0.5 text-[length:inherit] font-[750]! text-[#7ba05b] hover:underline"
+            onClick={() => {
+              setMode(mode === "signin" ? "signup" : "signin");
+              setError(null);
+            }}
+          >
+            {mode === "signin" ? "Create an account" : "Sign in instead"}
+          </button>
         </div>
+      </div>
+      <div className="mt-auto flex w-full max-w-[410px] justify-between gap-3 pt-[42px] text-[9px] text-[#9ba59d] max-[700px]:pt-[30px] max-[370px]:text-[8px]">
+        <span className="inline-flex items-center gap-1.5">
+          <Clock3 size={13} /> A clearer start to your day
+        </span>
+        <span className="inline-flex items-center gap-1.5">Privacy-first access</span>
+      </div>
     </main>
   );
 }

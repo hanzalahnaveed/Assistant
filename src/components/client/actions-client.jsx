@@ -183,27 +183,29 @@ export default function ActionsClient() {
   const pending = actions.filter((action) => action.status === "PENDING");
   const history = actions.filter((action) => action.status !== "PENDING");
   return (
-    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-7 sm:px-7">
+    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#176b52]">
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#5d7d43] text-pretty">
               Controlled autonomy
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Action center</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69756e]">
+            <h1 className="mt-2 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+              Action center
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69756e] text-pretty">
               Review assistant-proposed work, approve safe actions, and keep a clear record of what
               happened.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs text-[#526159]">
-            <ShieldCheck size={16} className="text-[#176b52]" /> Your approval settings apply
+            <ShieldCheck size={16} className="text-[#5d7d43]" /> Your approval settings apply
           </div>
         </div>
         {error && (
           <div
             role="alert"
-            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+            className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 rounded-[13px]"
           >
             {error}
           </div>
@@ -211,20 +213,20 @@ export default function ActionsClient() {
         {notice && (
           <div
             role="status"
-            className="rounded-xl border border-[#cde6d7] bg-[#eff8f1] px-4 py-3 text-sm text-[#176b52]"
+            className="border border-[#cde6d7] bg-[#eff8f1] px-4 py-3 text-sm text-[#5d7d43] rounded-[13px]"
           >
             {notice}
           </div>
         )}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-5 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#176b52]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#5d7d43]">
                 <Plus size={18} />
               </span>
               <div>
-                <h2 className="font-semibold">Propose a task</h2>
-                <p className="mt-1 text-xs text-[#7a857e]">
+                <h2 className="font-semibold tracking-[-0.025em]">Propose a task</h2>
+                <p className="mt-1 text-xs text-[#7a857e] text-pretty">
                   The first executable action type is task creation.
                 </p>
               </div>
@@ -278,76 +280,86 @@ export default function ActionsClient() {
               </div>
               <button
                 disabled={saving || !title.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#176b52] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#125840] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5d7d43] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? <LoaderCircle size={16} className="animate-spin" /> : <Plus size={16} />}{" "}
+                {saving ? (
+                  <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
+                ) : (
+                  <Plus size={16} />
+                )}{" "}
                 Propose action
               </button>
-              <p className="text-[11px] leading-5 text-[#89938d]">
+              <p className="text-[11px] leading-5 text-[#89938d] text-pretty">
                 With CONFIRM mode, nothing is created until you approve. AUTO mode can create this
                 local task immediately. BLOCK mode prevents new proposals. No email or calendar
                 changes are performed.
               </p>
             </form>
           </section>
-          <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+          <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="font-semibold">Awaiting your decision</h2>
-                <p className="mt-1 text-xs text-[#7a857e]">Only pending proposals appear here.</p>
+                <h2 className="font-semibold tracking-[-0.025em]">Awaiting your decision</h2>
+                <p className="mt-1 text-xs text-[#7a857e] text-pretty">
+                  Only pending proposals appear here.
+                </p>
               </div>
-              <span className="rounded-full bg-[#fff3dc] px-2.5 py-1 text-xs font-semibold text-[#94651a]">
+              <span className="rounded-full bg-[#fff3dc] px-2.5 py-1 text-xs font-semibold text-[#94651a] tracking-[0.01em]">
                 {pending.length} pending
               </span>
             </div>
             {loading ? (
               <div className="flex items-center gap-2 py-8 text-sm text-[#7a857e]">
-                <LoaderCircle size={16} className="animate-spin" /> Loading actions…
+                <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" /> Loading
+                actions…
               </div>
             ) : pending.length === 0 ? (
               <div className="rounded-xl border border-dashed border-[#dce4dd] px-4 py-10 text-center">
                 <CheckCircle2 size={24} className="mx-auto text-[#8a9b90]" />
-                <p className="mt-3 text-sm font-medium">You’re all caught up</p>
-                <p className="mt-1 text-xs text-[#87918b]">
+                <p className="mt-3 text-sm font-medium text-pretty">You’re all caught up</p>
+                <p className="mt-1 text-xs text-[#87918b] text-pretty">
                   New proposals that need approval will appear here.
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {pending.map((action) => (
-                  <article key={action.id} className="rounded-xl border border-[#e6eae5] p-4">
+                  <article
+                    key={action.id}
+                    className="rounded-xl border border-[#e6eae5] p-4 min-w-0"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-semibold">
                           {action.input.title || "Proposed task"}
                         </h3>
-                        <p className="mt-1 text-xs text-[#7a857e]">
+                        <p className="mt-1 text-xs text-[#7a857e] text-pretty">
                           {action.input.priority || "MEDIUM"} priority
                           {action.input.dueAt
                             ? ` · Due ${new Date(action.input.dueAt).toLocaleString()}`
                             : ""}
                         </p>
                       </div>
-                      <span className="rounded-full bg-[#fff3dc] px-2 py-1 text-[10px] font-semibold text-[#94651a]">
+                      <span className="rounded-full bg-[#fff3dc] px-2 py-1 text-[10px] font-semibold text-[#94651a] tracking-[0.01em]">
                         Approval required
                       </span>
                     </div>
                     {action.input.description && (
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#526159]">
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#526159] text-pretty">
                         {action.input.description}
                       </p>
                     )}
-                    <p className="mt-3 text-[10px] text-[#9aa39d]">
+                    <p className="mt-3 text-[10px] text-[#9aa39d] text-pretty">
                       Proposed {new Date(action.createdAt).toLocaleString()}
                     </p>
                     <div className="mt-4 flex gap-2">
                       <button
                         disabled={busyId === action.id}
                         onClick={() => void decide(action.id, "APPROVE")}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#176b52] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         {busyId === action.id ? (
-                          <LoaderCircle size={14} className="animate-spin" />
+                          <LoaderCircle size={14} className="animate-[spin_0.9s_linear_infinite]" />
                         ) : (
                           <Check size={14} />
                         )}
@@ -367,12 +379,12 @@ export default function ActionsClient() {
             )}
           </section>
         </div>
-        <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+        <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
-            <ShieldCheck size={17} className="text-[#176b52]" />
+            <ShieldCheck size={17} className="text-[#5d7d43]" />
             <div>
-              <h2 className="font-semibold">Task automation rule</h2>
-              <p className="mt-1 text-xs text-[#7a857e]">
+              <h2 className="font-semibold tracking-[-0.025em]">Task automation rule</h2>
+              <p className="mt-1 text-xs text-[#7a857e] text-pretty">
                 Choose how the assistant handles future task-creation proposals.
               </p>
             </div>
@@ -392,10 +404,10 @@ export default function ActionsClient() {
             </label>
             <button
               disabled={savingRule}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#176b52] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {savingRule ? (
-                <LoaderCircle size={15} className="animate-spin" />
+                <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
               ) : (
                 <ShieldCheck size={15} />
               )}{" "}
@@ -415,7 +427,7 @@ export default function ActionsClient() {
                     rules.find((rule) => rule.actionType === "CREATE_TASK" && rule.enabled).id,
                   )
                 }
-                className="w-fit font-semibold text-[#176b52] underline underline-offset-2 disabled:opacity-60"
+                className="w-fit font-semibold text-[#5d7d43] underline underline-offset-2 disabled:opacity-60"
               >
                 Remove rule and use default
               </button>
@@ -424,35 +436,35 @@ export default function ActionsClient() {
             )}
           </div>
         </section>
-        <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+        <section className="rounded-[18px] border border-[#e4e9e4] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
-            <Clock3 size={17} className="text-[#176b52]" />
+            <Clock3 size={17} className="text-[#5d7d43]" />
             <div>
-              <h2 className="font-semibold">Action history</h2>
-              <p className="mt-1 text-xs text-[#7a857e]">
+              <h2 className="font-semibold tracking-[-0.025em]">Action history</h2>
+              <p className="mt-1 text-xs text-[#7a857e] text-pretty">
                 A record of completed, rejected, and other past actions.
               </p>
             </div>
           </div>
           {history.length === 0 ? (
-            <p className="py-6 text-sm text-[#87918b]">No previous actions yet.</p>
+            <p className="py-6 text-sm text-[#87918b] text-pretty">No previous actions yet.</p>
           ) : (
-            <div className="divide-y divide-[#edf0ec]">
+            <div className="divide-y divide-[#edf1ed]">
               {history.map((action) => (
                 <div
                   key={action.id}
                   className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium text-pretty">
                       {action.input.title || action.result.title || "Task action"}
                     </p>
-                    <p className="mt-1 text-xs text-[#87918b]">
+                    <p className="mt-1 text-xs text-[#87918b] text-pretty">
                       {new Date(action.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <span
-                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${action.status === "SUCCEEDED" ? "bg-[#e7f3ed] text-[#176b52]" : action.status === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-[#f1f3f0] text-[#68746d]"}`}
+                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${action.status === "SUCCEEDED tracking-[0.01em]" ? "bg-[#e7f3ed] text-[#5d7d43]" : action.status === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-[#f1f3f0] text-[#68746d]"}`}
                   >
                     {statusLabels[action.status]}
                     {action.errorCode ? ` · ${action.errorCode}` : ""}

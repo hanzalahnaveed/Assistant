@@ -56,12 +56,12 @@ export default function AuthGate({ children }) {
     );
   }
   return (
-    <main className="auth-loading">
-      <span className="auth-loading-mark">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-[15px] bg-[#f5f7f4] text-xs text-[#6d7b71]">
+      <span className="grid h-[47px] w-[47px] place-items-center rounded-[15px] bg-[#7ba05b] text-white">
         <Sparkles size={21} />
       </span>
-      <LoaderCircle size={19} className="animate-spin" />
-      <p>Securing your workspace…</p>
+      <LoaderCircle size={19} className="animate-[spin_0.9s_linear_infinite]" />
+      <p className="m-0 text-pretty">Securing your workspace…</p>
     </main>
   );
 }
