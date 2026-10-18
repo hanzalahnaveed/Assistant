@@ -41,16 +41,26 @@ function outputPath(file) {
 }
 for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
-  const result = ts.transpileModule(source, { fileName: file, reportDiagnostics: true, compilerOptions: options });
-  const errors = (result.diagnostics ?? []).filter(d => d.category === ts.DiagnosticCategory.Error);
+  const result = ts.transpileModule(source, {
+    fileName: file,
+    reportDiagnostics: true,
+    compilerOptions: options,
+  });
+  const errors = (result.diagnostics ?? []).filter(
+    (d) => d.category === ts.DiagnosticCategory.Error,
+  );
   if (errors.length) {
-    const detail = errors.map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")).join("\n");
+    const detail = errors
+      .map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n"))
+      .join("\n");
     throw new Error(`Could not convert ${path.relative(root, file)}:\n${detail}`);
   }
   let output = result.outputText;
-  output = output.replace(/((?:from\s*|import\s*\()(["']))([^"']+)(\.tsx?)(["'])/g,
+  output = output.replace(
+    /((?:from\s*|import\s*\()(["']))([^"']+)(\.tsx?)(["'])/g,
     (_match, prefix, _openingQuote, specifier, extension, closingQuote) =>
-      prefix + specifier + (extension === ".tsx" ? ".jsx" : ".js") + closingQuote);
+      prefix + specifier + (extension === ".tsx" ? ".jsx" : ".js") + closingQuote,
+  );
   const destination = outputPath(file);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, output);
@@ -77,9 +87,19 @@ if (fs.existsSync(nextConfigPath)) {
   config = config.replace(/^\s*typedRoutes:\s*true,?\s*$/m, "");
   fs.writeFileSync(nextConfigPath, config);
 }
-fs.writeFileSync(path.join(root, "jsconfig.json"), JSON.stringify({
-  compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
-  exclude: ["node_modules", ".next"]
-}, null, 2) + "\n");
-execFileSync("npm", ["install", "--package-lock-only", "--ignore-scripts"], { cwd: root, stdio: "inherit" });
+fs.writeFileSync(
+  path.join(root, "jsconfig.json"),
+  JSON.stringify(
+    {
+      compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+      exclude: ["node_modules", ".next"],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+execFileSync("npm", ["install", "--package-lock-only", "--ignore-scripts"], {
+  cwd: root,
+  stdio: "inherit",
+});
 console.log(`JavaScript migration complete: converted ${files.length} TypeScript files.`);

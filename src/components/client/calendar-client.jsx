@@ -1,76 +1,566 @@
 "use client";
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3, ExternalLink, LoaderCircle, Plus, RefreshCw, Save, ShieldCheck, Users } from "lucide-react";
-const blank = { title: "", description: "", location: "", startAt: "", endAt: "", timezone: "Asia/Karachi", attendees: "" };
-const labels = { DRAFT: "Draft", APPROVED: "Approved", CREATING: "Creating…", CREATED: "Created", FAILED: "Failed", CREATE_UNCERTAIN: "Check Calendar", CANCELLED: "Cancelled" };
-function toLocal(value) { const d = new Date(value); if (Number.isNaN(d.getTime()))
-    return ""; const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
-function format(value) { if (!value)
-    return "Time not set"; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
-function fromForm(f) { return { title: f.title, description: f.description, location: f.location, startAt: new Date(f.startAt).toISOString(), endAt: new Date(f.endAt).toISOString(), timezone: f.timezone, attendees: f.attendees.split(/[;,\n]/).map(s => s.trim()).filter(Boolean) }; }
-export default function CalendarClient() {
-    const [data, setData] = useState(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
-    const [selected, setSelected] = useState(""), [form, setForm] = useState(blank);
-    const load = useCallback(async () => { setError(""); try {
-        const r = await fetch("/api/meeting-drafts", { cache: "no-store" });
-        const d = await r.json();
-        if (!r.ok)
-            throw Error(d.error || "Could not load meetings.");
-        setData(d);
-    }
-    catch (e) {
-        setError(e instanceof Error ? e.message : "Could not load meetings.");
-    }
-    finally {
-        setLoading(false);
-    } }, []);
-    useEffect(() => { void load(); }, [load]);
-    const chosen = data?.drafts.find(d => d.id === selected);
-    const editable = !chosen || chosen.status === "DRAFT" || chosen.status === "FAILED";
-    function selectDraft(d) { setSelected(d.id); setForm({ title: d.title, description: d.description, location: d.location || "", startAt: toLocal(d.startAt), endAt: toLocal(d.endAt), timezone: d.timezone, attendees: d.attendees.join(", ") }); setError(""); setNotice(""); }
-    function fresh() { setSelected(""); setForm({ ...blank, timezone: data?.drafts[0]?.timezone || "Asia/Karachi" }); setError(""); setNotice(""); }
-    function set(key, value) { setForm(f => ({ ...f, [key]: value })); }
-    async function save(e) { e.preventDefault(); setBusy(true); setError(""); setNotice(""); try {
-        const payload = fromForm(form);
-        const r = await fetch(selected ? "/api/meeting-drafts/" + selected : "/api/meeting-drafts", { method: selected ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-        const d = await r.json();
-        if (!r.ok)
-            throw Error(d.error || "Could not save meeting.");
-        setNotice("Meeting proposal saved. Review it before approving.");
-        await load();
-        selectDraft(d.draft);
-    }
-    catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save meeting.");
-    }
-    finally {
-        setBusy(false);
-    } }
-    async function act(action) { if (!chosen)
-        return; if (action === "CREATE" && !window.confirm("Create this approved meeting in your primary Google Calendar and send invitations to listed attendees?"))
-        return; if (action === "CONFIRM_NOT_CREATED" && !window.confirm("Only unlock retry after checking Google Calendar and confirming the event is absent."))
-        return; if (action === "CONFIRM_CREATED" && !window.confirm("Confirm that you found this event in Google Calendar?"))
-        return; setBusy(true); setError(""); setNotice(""); try {
-        const r = await fetch("/api/meeting-drafts/" + chosen.id, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
-        const d = await r.json();
-        if (!r.ok)
-            throw Error(d.error || "Meeting action failed.");
-        setNotice(action === "CREATE" ? "Meeting created in Google Calendar." : action === "APPROVE" ? "Proposal approved. Creating it is a separate action." : "Meeting proposal updated.");
-        await load();
-        if (d.draft)
-            selectDraft(d.draft);
-    }
-    catch (e) {
-        setError(e instanceof Error ? e.message : "Meeting action failed.");
-        await load();
-    }
-    finally {
-        setBusy(false);
-    } }
-    return _jsxs("main", { className: "min-h-screen bg-[#f7f8f5] text-[#18211f]", children: [_jsxs("div", { className: "mx-auto max-w-7xl px-5 py-8 sm:px-8", children: [_jsxs("div", { className: "mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#176b52]", children: [_jsx(CalendarDays, { size: 14 }), " Calendar & meeting operations"] }), _jsxs("div", { className: "mb-8 flex flex-wrap items-end justify-between gap-4", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-semibold tracking-tight", children: "Make every meeting intentional." }), _jsx("p", { className: "mt-2 max-w-2xl text-sm leading-6 text-[#76817c]", children: "Review your next 30 days, prepare an agenda, and create meetings only after explicit approval and confirmation." })] }), _jsxs("button", { onClick: () => void load(), disabled: loading || busy, className: "inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium disabled:opacity-50", children: [_jsx(RefreshCw, { size: 15, className: loading ? "animate-spin" : "" }), " Refresh"] })] }), error && _jsx("div", { role: "alert", className: "mb-4 rounded-xl border border-[#f0d6cc] bg-[#fff5f0] px-4 py-3 text-sm text-[#994b36]", children: error }), notice && _jsx("div", { role: "status", className: "mb-4 rounded-xl border border-[#d8e9dd] bg-[#eef7f0] px-4 py-3 text-sm text-[#24543f]", children: notice }), data && !data.calendarConnected && _jsx("div", { className: "mb-5 rounded-xl border border-[#eadfc8] bg-[#fffaf0] p-4 text-sm text-[#76551e]", children: "Connect Google Workspace to view and create calendar events. You can still prepare a meeting proposal here." }), data?.calendarConnected && !data.canCreateEvents && _jsxs("div", { className: "mb-5 rounded-xl border border-[#eadfc8] bg-[#fffaf0] p-4 text-sm text-[#76551e]", children: ["Calendar is connected in read-only mode. Reconnect Google from ", _jsx("a", { className: "font-semibold underline", href: "/integrations", children: "Connections" }), " and grant Calendar event access to enable creation."] }), data?.calendarError && _jsxs("div", { className: "mb-5 rounded-xl border border-[#f0d6cc] bg-[#fff5f0] p-4 text-sm text-[#994b36]", children: ["Google Calendar could not be refreshed: ", data.calendarError] }), _jsxs("div", { className: "mb-5 grid gap-3 sm:grid-cols-3", children: [_jsx(Stat, { label: "Upcoming events", value: data?.events.length || 0 }), _jsx(Stat, { label: "Meeting proposals", value: data?.drafts.filter(d => !["CANCELLED", "CREATED"].includes(d.status)).length || 0 }), _jsx(Stat, { label: "Created by assistant", value: data?.drafts.filter(d => d.status === "CREATED").length || 0 })] }), _jsxs("div", { className: "grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]", children: [_jsxs("section", { className: "rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6", children: [_jsxs("div", { className: "mb-4 flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-semibold", children: "Upcoming calendar" }), _jsx("p", { className: "mt-1 text-xs text-[#76817c]", children: "Next 30 days \u00B7 primary Google Calendar" })] }), _jsx(CalendarDays, { size: 18, className: "text-[#176b52]" })] }), loading ? _jsx(Loading, {}) : data?.events.length ? _jsx("div", { className: "space-y-2", children: data.events.map(e => _jsxs("article", { className: "rounded-xl bg-[#f8faf7] p-3.5", children: [_jsx("div", { className: "text-sm font-semibold", children: e.title }), _jsxs("div", { className: "mt-1 flex items-center gap-2 text-xs text-[#68756d]", children: [_jsx(Clock3, { size: 13 }), format(e.startAt)] }), e.location && _jsx("div", { className: "mt-1 text-xs text-[#87918b]", children: e.location }), e.attendees.length > 0 && _jsxs("div", { className: "mt-2 flex items-center gap-1 text-xs text-[#68756d]", children: [_jsx(Users, { size: 13 }), e.attendees.length, " attendees"] }), e.link && _jsxs("a", { className: "mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#176b52]", href: e.link, target: "_blank", rel: "noreferrer", children: ["Open event ", _jsx(ExternalLink, { size: 12 })] })] }, e.id)) }) : _jsx(Empty, { text: "No upcoming events found. Create a proposal for your next meeting." })] }), _jsxs("section", { className: "rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6", children: [_jsxs("div", { className: "mb-5 flex flex-wrap items-center justify-between gap-3", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-semibold", children: "Meeting proposal" }), _jsx("p", { className: "mt-1 text-xs text-[#76817c]", children: "Save \u2192 approve \u2192 separately confirm creation" })] }), _jsxs("button", { onClick: fresh, type: "button", className: "inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold", children: [_jsx(Plus, { size: 15 }), " New"] })] }), _jsxs("form", { onSubmit: save, className: "space-y-4", children: [_jsx(Field, { label: "Meeting title", children: _jsx("input", { required: true, maxLength: 250, disabled: !editable || busy, value: form.title, onChange: e => set("title", e.target.value), placeholder: "Weekly product review", className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) }), _jsx(Field, { label: "Agenda / description", children: _jsx("textarea", { rows: 3, maxLength: 10000, disabled: !editable || busy, value: form.description, onChange: e => set("description", e.target.value), placeholder: "Goals, topics, decisions needed\u2026", className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4] resize-y" }) }), _jsx(Field, { label: "Location or video link (optional)", children: _jsx("input", { maxLength: 500, disabled: !editable || busy, value: form.location, onChange: e => set("location", e.target.value), placeholder: "Room, address, or video meeting link", className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2", children: [_jsx(Field, { label: "Start", children: _jsx("input", { type: "datetime-local", required: true, disabled: !editable || busy, value: form.startAt, onChange: e => set("startAt", e.target.value), className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) }), _jsx(Field, { label: "End", children: _jsx("input", { type: "datetime-local", required: true, disabled: !editable || busy, value: form.endAt, onChange: e => set("endAt", e.target.value), className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) })] }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2", children: [_jsx(Field, { label: "Timezone (IANA)", children: _jsx("input", { required: true, maxLength: 100, disabled: !editable || busy, value: form.timezone, onChange: e => set("timezone", e.target.value), placeholder: "Asia/Karachi", className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) }), _jsx(Field, { label: "Attendee emails (comma-separated)", children: _jsx("input", { disabled: !editable || busy, value: form.attendees, onChange: e => set("attendees", e.target.value), placeholder: "team@example.com", className: "w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]" }) })] }), editable && _jsxs("button", { type: "submit", disabled: busy, className: "inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50", children: [_jsx(Save, { size: 15 }), busy ? "Saving…" : "Save proposal"] })] }), chosen && _jsxs("div", { className: "mt-5 border-t border-[#edf0ec] pt-5", children: [_jsxs("div", { className: "mb-3 flex items-center justify-between", children: [_jsx("div", { className: "text-sm font-semibold", children: "Proposal status" }), _jsx("span", { className: "rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold", children: labels[chosen.status] })] }), chosen.lastError && _jsx("p", { className: "mb-3 rounded-lg bg-[#fff5f0] p-3 text-xs leading-5 text-[#994b36]", children: chosen.lastError }), chosen.createdEventLink && _jsxs("a", { className: "mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#176b52]", href: chosen.createdEventLink, target: "_blank", rel: "noreferrer", children: ["Open created event ", _jsx(ExternalLink, { size: 13 })] }), _jsxs("div", { className: "flex flex-wrap gap-2", children: [chosen.status === "DRAFT" && _jsxs("button", { disabled: busy, onClick: () => void act("APPROVE"), className: "inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50", children: [_jsx(ShieldCheck, { size: 15 }), " Approve exact proposal"] }), chosen.status === "APPROVED" && _jsxs("button", { disabled: busy || !data?.canCreateEvents, onClick: () => void act("CREATE"), className: "inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50", children: [_jsx(CheckCircle2, { size: 15 }), " Confirm & create event"] }), chosen.status === "CREATE_UNCERTAIN" && _jsxs(_Fragment, { children: [_jsx("button", { disabled: busy, onClick: () => void act("CONFIRM_CREATED"), className: "rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold", children: "I found it in Calendar" }), _jsx("button", { disabled: busy, onClick: () => void act("CONFIRM_NOT_CREATED"), className: "rounded-xl bg-[#176b52] px-3 py-2 text-sm font-semibold text-white", children: "Verified absent \u2014 unlock retry" })] }), ["DRAFT", "APPROVED", "FAILED"].includes(chosen.status) && _jsx("button", { disabled: busy, onClick: () => void act("CANCEL"), className: "rounded-xl border border-[#e2e8e0] px-3 py-2 text-sm font-medium", children: "Cancel proposal" })] })] })] })] }), _jsxs("section", { className: "mt-5 rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6", children: [_jsx("h2", { className: "font-semibold", children: "Saved proposals" }), _jsx("p", { className: "mt-1 text-xs text-[#76817c]", children: "Select any editable proposal to revise it. Creation outcomes are retained for traceability." }), loading ? _jsx(Loading, {}) : data?.drafts.length ? _jsx("div", { className: "mt-4 divide-y divide-[#edf0ec]", children: data.drafts.map(d => _jsxs("button", { onClick: () => selectDraft(d), className: `flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#176b52]" : ""}`, children: [_jsxs("span", { children: [_jsx("span", { className: "block text-sm font-semibold", children: d.title }), _jsxs("span", { className: "mt-1 block text-xs text-[#76817c]", children: [format(d.startAt), " \u00B7 ", d.attendees.length, " attendees"] })] }), _jsx("span", { className: "rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold", children: labels[d.status] })] }, d.id)) }) : _jsx(Empty, { text: "Your saved meeting proposals will appear here." })] }), _jsx("p", { className: "mt-5 text-xs leading-5 text-[#87918b]", children: "Creating an event can send invitations to attendees. This is never automatic: the exact proposal must be approved and event creation separately confirmed. If the result is uncertain, check Google Calendar before unlocking a retry." })] })] });
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  ExternalLink,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+const blank = {
+  title: "",
+  description: "",
+  location: "",
+  startAt: "",
+  endAt: "",
+  timezone: "Asia/Karachi",
+  attendees: "",
+};
+const labels = {
+  DRAFT: "Draft",
+  APPROVED: "Approved",
+  CREATING: "Creating…",
+  CREATED: "Created",
+  FAILED: "Failed",
+  CREATE_UNCERTAIN: "Check Calendar",
+  CANCELLED: "Cancelled",
+};
+function toLocal(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function Field({ label, children }) { return _jsxs("label", { className: "block", children: [_jsx("span", { className: "mb-2 block text-xs font-semibold text-[#46544b]", children: label }), children] }); }
-function Stat({ label, value }) { return _jsxs("div", { className: "rounded-2xl border border-[#e2e8e0] bg-white p-4", children: [_jsx("p", { className: "text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b]", children: label }), _jsx("p", { className: "mt-2 text-2xl font-semibold", children: value })] }); }
-function Loading() { return _jsxs("div", { className: "flex items-center gap-2 py-8 text-sm text-[#76817c]", children: [_jsx(LoaderCircle, { size: 16, className: "animate-spin" }), " Loading meetings\u2026"] }); }
-function Empty({ text }) { return _jsx("p", { className: "py-8 text-sm text-[#76817c]", children: text }); }
+function format(value) {
+  if (!value) return "Time not set";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? value
+    : d.toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+}
+function fromForm(f) {
+  return {
+    title: f.title,
+    description: f.description,
+    location: f.location,
+    startAt: new Date(f.startAt).toISOString(),
+    endAt: new Date(f.endAt).toISOString(),
+    timezone: f.timezone,
+    attendees: f.attendees
+      .split(/[;,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+  };
+}
+export default function CalendarClient() {
+  const [data, setData] = useState(null),
+    [loading, setLoading] = useState(true),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState(""),
+    [form, setForm] = useState(blank);
+  const load = useCallback(async () => {
+    setError("");
+    try {
+      const r = await fetch("/api/meeting-drafts", {
+        cache: "no-store",
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Could not load meetings.");
+      setData(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load meetings.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const chosen = data?.drafts.find((d) => d.id === selected);
+  const editable = !chosen || chosen.status === "DRAFT" || chosen.status === "FAILED";
+  function selectDraft(d) {
+    setSelected(d.id);
+    setForm({
+      title: d.title,
+      description: d.description,
+      location: d.location || "",
+      startAt: toLocal(d.startAt),
+      endAt: toLocal(d.endAt),
+      timezone: d.timezone,
+      attendees: d.attendees.join(", "),
+    });
+    setError("");
+    setNotice("");
+  }
+  function fresh() {
+    setSelected("");
+    setForm({
+      ...blank,
+      timezone: data?.drafts[0]?.timezone || "Asia/Karachi",
+    });
+    setError("");
+    setNotice("");
+  }
+  function set(key, value) {
+    setForm((f) => ({
+      ...f,
+      [key]: value,
+    }));
+  }
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const payload = fromForm(form);
+      const r = await fetch(selected ? "/api/meeting-drafts/" + selected : "/api/meeting-drafts", {
+        method: selected ? "PATCH" : "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Could not save meeting.");
+      setNotice("Meeting proposal saved. Review it before approving.");
+      await load();
+      selectDraft(d.draft);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save meeting.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function act(action) {
+    if (!chosen) return;
+    if (
+      action === "CREATE" &&
+      !window.confirm(
+        "Create this approved meeting in your primary Google Calendar and send invitations to listed attendees?",
+      )
+    )
+      return;
+    if (
+      action === "CONFIRM_NOT_CREATED" &&
+      !window.confirm(
+        "Only unlock retry after checking Google Calendar and confirming the event is absent.",
+      )
+    )
+      return;
+    if (
+      action === "CONFIRM_CREATED" &&
+      !window.confirm("Confirm that you found this event in Google Calendar?")
+    )
+      return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const r = await fetch("/api/meeting-drafts/" + chosen.id, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Meeting action failed.");
+      setNotice(
+        action === "CREATE"
+          ? "Meeting created in Google Calendar."
+          : action === "APPROVE"
+            ? "Proposal approved. Creating it is a separate action."
+            : "Meeting proposal updated.",
+      );
+      await load();
+      if (d.draft) selectDraft(d.draft);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Meeting action failed.");
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="min-h-screen bg-[#f7f8f5] text-[#18211f]">
+      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#176b52]">
+          <CalendarDays size={14} />
+          {" Calendar & meeting operations"}
+        </div>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Make every meeting intentional.
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#76817c]">
+              Review your next 30 days, prepare an agenda, and create meetings only after explicit
+              approval and confirmation.
+            </p>
+          </div>
+          <button
+            onClick={() => void load()}
+            disabled={loading || busy}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
+        </div>
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-[#f0d6cc] bg-[#fff5f0] px-4 py-3 text-sm text-[#994b36]"
+          >
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div
+            role="status"
+            className="mb-4 rounded-xl border border-[#d8e9dd] bg-[#eef7f0] px-4 py-3 text-sm text-[#24543f]"
+          >
+            {notice}
+          </div>
+        )}
+        {data && !data.calendarConnected && (
+          <div className="mb-5 rounded-xl border border-[#eadfc8] bg-[#fffaf0] p-4 text-sm text-[#76551e]">
+            Connect Google Workspace to view and create calendar events. You can still prepare a
+            meeting proposal here.
+          </div>
+        )}
+        {data?.calendarConnected && !data.canCreateEvents && (
+          <div className="mb-5 rounded-xl border border-[#eadfc8] bg-[#fffaf0] p-4 text-sm text-[#76551e]">
+            Calendar is connected in read-only mode. Reconnect Google from{" "}
+            <a className="font-semibold underline" href="/integrations">
+              Connections
+            </a>{" "}
+            and grant Calendar event access to enable creation.
+          </div>
+        )}
+        {data?.calendarError && (
+          <div className="mb-5 rounded-xl border border-[#f0d6cc] bg-[#fff5f0] p-4 text-sm text-[#994b36]">
+            Google Calendar could not be refreshed: {data.calendarError}
+          </div>
+        )}
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <Stat label="Upcoming events" value={data?.events.length || 0} />
+          <Stat
+            label="Meeting proposals"
+            value={
+              data?.drafts.filter((d) => !["CANCELLED", "CREATED"].includes(d.status)).length || 0
+            }
+          />
+          <Stat
+            label="Created by assistant"
+            value={data?.drafts.filter((d) => d.status === "CREATED").length || 0}
+          />
+        </div>
+        <div className="grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
+          <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Upcoming calendar</h2>
+                <p className="mt-1 text-xs text-[#76817c]">
+                  Next 30 days · primary Google Calendar
+                </p>
+              </div>
+              <CalendarDays size={18} className="text-[#176b52]" />
+            </div>
+            {loading ? (
+              <Loading />
+            ) : data?.events.length ? (
+              <div className="space-y-2">
+                {data.events.map((e) => (
+                  <article key={e.id} className="rounded-xl bg-[#f8faf7] p-3.5">
+                    <div className="text-sm font-semibold">{e.title}</div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-[#68756d]">
+                      <Clock3 size={13} />
+                      {format(e.startAt)}
+                    </div>
+                    {e.location && <div className="mt-1 text-xs text-[#87918b]">{e.location}</div>}
+                    {e.attendees.length > 0 && (
+                      <div className="mt-2 flex items-center gap-1 text-xs text-[#68756d]">
+                        <Users size={13} />
+                        {e.attendees.length} attendees
+                      </div>
+                    )}
+                    {e.link && (
+                      <a
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#176b52]"
+                        href={e.link}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open event <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <Empty text="No upcoming events found. Create a proposal for your next meeting." />
+            )}
+          </section>
+          <section className="rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Meeting proposal</h2>
+                <p className="mt-1 text-xs text-[#76817c]">
+                  Save → approve → separately confirm creation
+                </p>
+              </div>
+              <button
+                onClick={fresh}
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
+              >
+                <Plus size={15} /> New
+              </button>
+            </div>
+            <form onSubmit={save} className="space-y-4">
+              <Field label="Meeting title">
+                <input
+                  required
+                  maxLength={250}
+                  disabled={!editable || busy}
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                  placeholder="Weekly product review"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                />
+              </Field>
+              <Field label="Agenda / description">
+                <textarea
+                  rows={3}
+                  maxLength={10000}
+                  disabled={!editable || busy}
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  placeholder="Goals, topics, decisions needed…"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4] resize-y"
+                />
+              </Field>
+              <Field label="Location or video link (optional)">
+                <input
+                  maxLength={500}
+                  disabled={!editable || busy}
+                  value={form.location}
+                  onChange={(e) => set("location", e.target.value)}
+                  placeholder="Room, address, or video meeting link"
+                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                />
+              </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Start">
+                  <input
+                    type="datetime-local"
+                    required
+                    disabled={!editable || busy}
+                    value={form.startAt}
+                    onChange={(e) => set("startAt", e.target.value)}
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  />
+                </Field>
+                <Field label="End">
+                  <input
+                    type="datetime-local"
+                    required
+                    disabled={!editable || busy}
+                    value={form.endAt}
+                    onChange={(e) => set("endAt", e.target.value)}
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Timezone (IANA)">
+                  <input
+                    required
+                    maxLength={100}
+                    disabled={!editable || busy}
+                    value={form.timezone}
+                    onChange={(e) => set("timezone", e.target.value)}
+                    placeholder="Asia/Karachi"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  />
+                </Field>
+                <Field label="Attendee emails (comma-separated)">
+                  <input
+                    disabled={!editable || busy}
+                    value={form.attendees}
+                    onChange={(e) => set("attendees", e.target.value)}
+                    placeholder="team@example.com"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#f5f7f4]"
+                  />
+                </Field>
+              </div>
+              {editable && (
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                >
+                  <Save size={15} />
+                  {busy ? "Saving…" : "Save proposal"}
+                </button>
+              )}
+            </form>
+            {chosen && (
+              <div className="mt-5 border-t border-[#edf0ec] pt-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-sm font-semibold">Proposal status</div>
+                  <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold">
+                    {labels[chosen.status]}
+                  </span>
+                </div>
+                {chosen.lastError && (
+                  <p className="mb-3 rounded-lg bg-[#fff5f0] p-3 text-xs leading-5 text-[#994b36]">
+                    {chosen.lastError}
+                  </p>
+                )}
+                {chosen.createdEventLink && (
+                  <a
+                    className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#176b52]"
+                    href={chosen.createdEventLink}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open created event <ExternalLink size={13} />
+                  </a>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {chosen.status === "DRAFT" && (
+                    <button
+                      disabled={busy}
+                      onClick={() => void act("APPROVE")}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      <ShieldCheck size={15} /> Approve exact proposal
+                    </button>
+                  )}
+                  {chosen.status === "APPROVED" && (
+                    <button
+                      disabled={busy || !data?.canCreateEvents}
+                      onClick={() => void act("CREATE")}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#176b52] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={15} />
+                      {" Confirm & create event"}
+                    </button>
+                  )}
+                  {chosen.status === "CREATE_UNCERTAIN" && (
+                    <>
+                      <button
+                        disabled={busy}
+                        onClick={() => void act("CONFIRM_CREATED")}
+                        className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
+                      >
+                        I found it in Calendar
+                      </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => void act("CONFIRM_NOT_CREATED")}
+                        className="rounded-xl bg-[#176b52] px-3 py-2 text-sm font-semibold text-white"
+                      >
+                        Verified absent — unlock retry
+                      </button>
+                    </>
+                  )}
+                  {["DRAFT", "APPROVED", "FAILED"].includes(chosen.status) && (
+                    <button
+                      disabled={busy}
+                      onClick={() => void act("CANCEL")}
+                      className="rounded-xl border border-[#e2e8e0] px-3 py-2 text-sm font-medium"
+                    >
+                      Cancel proposal
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+        <section className="mt-5 rounded-2xl border border-[#e2e8e0] bg-white p-5 sm:p-6">
+          <h2 className="font-semibold">Saved proposals</h2>
+          <p className="mt-1 text-xs text-[#76817c]">
+            Select any editable proposal to revise it. Creation outcomes are retained for
+            traceability.
+          </p>
+          {loading ? (
+            <Loading />
+          ) : data?.drafts.length ? (
+            <div className="mt-4 divide-y divide-[#edf0ec]">
+              {data.drafts.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => selectDraft(d)}
+                  className={`flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#176b52]" : ""}`}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold">{d.title}</span>
+                    <span className="mt-1 block text-xs text-[#76817c]">
+                      {format(d.startAt)} · {d.attendees.length} attendees
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold">
+                    {labels[d.status]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty text="Your saved meeting proposals will appear here." />
+          )}
+        </section>
+        <p className="mt-5 text-xs leading-5 text-[#87918b]">
+          Creating an event can send invitations to attendees. This is never automatic: the exact
+          proposal must be approved and event creation separately confirmed. If the result is
+          uncertain, check Google Calendar before unlocking a retry.
+        </p>
+      </div>
+    </main>
+  );
+}
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold text-[#46544b]">{label}</span>
+      {children}
+    </label>
+  );
+}
+function Stat({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-[#e2e8e0] bg-white p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-[#87918b]">{label}</p>
+      <p className="mt-2 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+function Loading() {
+  return (
+    <div className="flex items-center gap-2 py-8 text-sm text-[#76817c]">
+      <LoaderCircle size={16} className="animate-spin" /> Loading meetings…
+    </div>
+  );
+}
+function Empty({ text }) {
+  return <p className="py-8 text-sm text-[#76817c]">{text}</p>;
+}

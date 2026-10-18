@@ -34,19 +34,19 @@ The app requests identity scopes for sign-in/sign-up and the additional `gmail.r
 
 Add these in the hosting provider's **Production** environment. Use unique random values for secrets; never reuse CI examples.
 
-| Variable | Required | Value |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Production PostgreSQL connection string |
-| `APP_URL` | Yes | Canonical deployed origin, e.g. `https://your-real-domain.example` (no trailing slash preferred) |
-| `AUTH_SECRET` | Yes | Random secret, at least 32 characters; generate with `openssl rand -base64 48` |
-| `GOOGLE_CLIENT_ID` | Optional | OAuth web-client ID from Google Cloud, only if enabling Google sign-in/Workspace |
-| `GOOGLE_CLIENT_SECRET` | Optional | OAuth web-client secret from Google Cloud, only if enabling Google sign-in/Workspace |
-| `GOOGLE_REDIRECT_URI` | Optional | Exact production callback URL from section 2, only if enabling Google sign-in/Workspace |
-| `OPENAI_API_KEY` | Yes for live AI chat | API key from the selected OpenAI account/project |
-| `OPENAI_MODEL` | Yes for live AI chat | Model available to that API project; default is `gpt-4o-mini` |
-| `OPENAI_BASE_URL` | Yes for live AI chat | `https://api.openai.com/v1`, or the compatible provider's API base URL |
-| `CRON_SECRET` | Yes for scheduled briefings | Separate random secret, at least 32 characters |
-| `AI_PROVIDER` | Optional | `openai` (current default) |
+| Variable               | Required                    | Value                                                                                            |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`         | Yes                         | Production PostgreSQL connection string                                                          |
+| `APP_URL`              | Yes                         | Canonical deployed origin, e.g. `https://your-real-domain.example` (no trailing slash preferred) |
+| `AUTH_SECRET`          | Yes                         | Random secret, at least 32 characters; generate with `openssl rand -base64 48`                   |
+| `GOOGLE_CLIENT_ID`     | Optional                    | OAuth web-client ID from Google Cloud, only if enabling Google sign-in/Workspace                 |
+| `GOOGLE_CLIENT_SECRET` | Optional                    | OAuth web-client secret from Google Cloud, only if enabling Google sign-in/Workspace             |
+| `GOOGLE_REDIRECT_URI`  | Optional                    | Exact production callback URL from section 2, only if enabling Google sign-in/Workspace          |
+| `OPENAI_API_KEY`       | Yes for live AI chat        | API key from the selected OpenAI account/project                                                 |
+| `OPENAI_MODEL`         | Yes for live AI chat        | Model available to that API project; default is `gpt-4o-mini`                                    |
+| `OPENAI_BASE_URL`      | Yes for live AI chat        | `https://api.openai.com/v1`, or the compatible provider's API base URL                           |
+| `CRON_SECRET`          | Yes for scheduled briefings | Separate random secret, at least 32 characters                                                   |
+| `AI_PROVIDER`          | Optional                    | `openai` (current default)                                                                       |
 
 Use `openssl rand -base64 48` separately for `AUTH_SECRET` and `CRON_SECRET`. Never use the same value for both. Keep secrets server-side; do not prefix them with `NEXT_PUBLIC_`.
 
