@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CheckCircle2, Clock3, LoaderCircle, Plus, ShieldCheck, X } from "lucide-react";
 const statusLabels = {
@@ -236,7 +236,7 @@ export default function ActionsClient() {
             <form onSubmit={propose} className="space-y-4">
               <label className="block text-xs font-semibold text-[#526159]">
                 Task title
-                <input
+                <Input
                   required
                   maxLength={200}
                   value={title}
@@ -247,7 +247,7 @@ export default function ActionsClient() {
               </label>
               <label className="block text-xs font-semibold text-[#526159]">
                 Details <span className="font-normal text-[#89938d]">(optional)</span>
-                <textarea
+                <Input.TextArea
                   maxLength={5000}
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
