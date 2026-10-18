@@ -1,4 +1,4 @@
-import IntegrationsClient from "./ui";
+import IntegrationsClient from "../../components/client/ui";
 
 export const metadata = {
   title: "Integrations — Assistant",

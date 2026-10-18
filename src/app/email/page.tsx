@@ -1,4 +1,4 @@
-import EmailClient from "./email-client";
+import EmailClient from "../../components/client/email-client";
 
 export const metadata = { title: "Email & outreach — Assistant", description: "Draft, review, approve, and send outreach emails with explicit user control." };
 

@@ -1,4 +1,4 @@
-import CalendarClient from "./calendar-client";
+import CalendarClient from "../../components/client/calendar-client";
 
 export const metadata = {
   title: "Calendar & meetings — Assistant",

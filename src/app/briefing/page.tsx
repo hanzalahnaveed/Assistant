@@ -1,8 +1,8 @@
-import BriefingClient from "./briefing-client";
+import BriefingClient from "../../components/client/briefing-client";
 
 export const metadata = {
-  title: "Daily briefing — Assistant",
-  description: "Your live workday briefing, priorities, upcoming meetings, and inbox follow-up recommendations."
+  title: "Overview — Assistant",
+  description: "A concise overview of your tasks, calendar, and inbox."
 };
 
 export default function BriefingPage() {
