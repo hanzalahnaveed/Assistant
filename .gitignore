@@ -11,3 +11,4 @@ coverage
 .vercel
 prisma/*.db
 prisma/*.db-journal
+*.tsbuildinfo
