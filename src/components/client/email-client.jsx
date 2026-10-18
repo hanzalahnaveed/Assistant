@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button } from "antd";
+import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -304,7 +304,7 @@ export default function EmailClient() {
             <form onSubmit={(e) => void save(e)} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Recipient email">
-                  <input
+                  <Input
                     type="email"
                     required
                     disabled={!editable || busy}
@@ -315,7 +315,7 @@ export default function EmailClient() {
                   />
                 </Field>
                 <Field label="CC (optional)">
-                  <input
+                  <Input
                     type="email"
                     disabled={!editable || busy}
                     value={form.ccEmail}
@@ -326,7 +326,7 @@ export default function EmailClient() {
                 </Field>
               </div>
               <Field label="Outreach goal">
-                <textarea
+                <Input.TextArea
                   rows={2}
                   maxLength={4000}
                   disabled={!editable || busy}
@@ -337,7 +337,7 @@ export default function EmailClient() {
                 />
               </Field>
               <Field label="Subject">
-                <input
+                <Input
                   required
                   maxLength={250}
                   disabled={!editable || busy}
@@ -348,7 +348,7 @@ export default function EmailClient() {
                 />
               </Field>
               <Field label="Message">
-                <textarea
+                <Input.TextArea
                   required
                   rows={10}
                   maxLength={30000}
