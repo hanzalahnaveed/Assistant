@@ -1,0 +1,6 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import EmailClient from "../../components/client/email-client";
+export const metadata = { title: "Email & outreach — Assistant", description: "Draft, review, approve, and send outreach emails with explicit user control." };
+export default function EmailPage() {
+    return _jsx(EmailClient, {});
+}
