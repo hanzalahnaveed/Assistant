@@ -1,34 +1,66 @@
 "use client";
+
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
+
 export default function AuthGate({ children }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [checkedPath, setCheckedPath] = useState(null);
+    const [sessionState, setSessionState] = useState("unknown");
+
     useEffect(() => {
         if (pathname === "/auth") {
-            setCheckedPath(pathname);
+            setSessionState("auth-page");
             return;
         }
+
+        // Keep the authenticated workspace mounted across route changes.
+        // Only verify again when entering the workspace from the public auth page
+        // or on a fresh page load; APIs independently enforce authentication.
+        if (sessionState === "authenticated") return;
+
         let cancelled = false;
-        setCheckedPath(null);
         fetch("/api/auth/session", { cache: "no-store" })
-            .then(response => response.json())
+            .then(async response => {
+                if (!response.ok) throw new Error("Session check failed");
+                return response.json();
+            })
             .then(data => {
-            if (cancelled)
-                return;
-            if (!data.user)
-                router.replace("/auth");
-            else
-                setCheckedPath(pathname);
-        })
-            .catch(() => { if (!cancelled)
-            router.replace("/auth"); });
-        return () => { cancelled = true; };
-    }, [pathname, router]);
-    if (pathname === "/auth" || checkedPath === pathname)
-        return _jsx(_Fragment, { children: children });
-    return _jsxs("main", { className: "auth-loading", children: [_jsx("span", { className: "auth-loading-mark", children: _jsx(Sparkles, { size: 21 }) }), _jsx(LoaderCircle, { size: 19, className: "animate-spin" }), _jsx("p", { children: "Securing your workspace\u2026" })] });
+                if (cancelled) return;
+                if (!data.user) {
+                    setSessionState("unauthenticated");
+                    router.replace("/auth");
+                } else {
+                    setSessionState("authenticated");
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setSessionState("unauthenticated");
+                    router.replace("/auth");
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [pathname, router, sessionState]);
+
+    if (pathname === "/auth" || sessionState === "authenticated") {
+        return _jsx(_Fragment, { children });
+    }
+
+    return _jsxs("main", {
+        className: "auth-loading",
+        children: [
+            _jsx("span", {
+                className: "auth-loading-mark",
+                children: _jsx(Sparkles, { size: 21 })
+            }),
+            _jsx(LoaderCircle, { size: 19, className: "animate-spin" }),
+            _jsx("p", { children: "Securing your workspace…" })
+        ]
+    });
 }
