@@ -79,7 +79,7 @@ export default function WorkspaceHeader() {
   }
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-40 flex w-[58px] flex-col items-center gap-7 bg-[#7ba05b] px-[5px] pt-[18px] pb-3 text-white min-[421px]:w-[72px] min-[421px]:px-2 min-[761px]:w-[252px] min-[761px]:items-stretch min-[761px]:gap-[34px] min-[761px]:px-4 min-[761px]:pt-[27px] min-[761px]:pb-[18px]"
+      className="fixed inset-y-0 left-0 z-40 flex w-[58px] flex-col items-center gap-7 bg-[#233044] px-[5px] pt-[18px] pb-3 text-white min-[421px]:w-[72px] min-[421px]:px-2 min-[761px]:w-[252px] min-[761px]:items-stretch min-[761px]:gap-[34px] min-[761px]:px-4 min-[761px]:pt-[27px] min-[761px]:pb-[18px]"
       aria-label="Workspace sidebar"
     >
       <Link
@@ -90,12 +90,12 @@ export default function WorkspaceHeader() {
         <span className="grid h-[38px] w-[38px] place-items-center rounded-[13px] bg-white/18 text-white min-[421px]:h-[42px] min-[421px]:w-[42px] min-[761px]:h-[39px] min-[761px]:w-[39px]">
           <Sparkles size={19} strokeWidth={2.2} />
         </span>
-        <span className="hidden min-[761px]:block">
-          assistant<span className="text-[#dce9d1]">.</span>
+        <span className="font-pacifico hidden min-[761px]:block">
+          assistant<span className="text-[#FA8500]">.</span>
         </span>
       </Link>
       <nav
-        className="flex w-full flex-col items-center gap-2 min-[761px]:items-stretch min-[761px]:gap-[5px]"
+        className="font-roboto flex w-full flex-col items-center gap-2 min-[761px]:items-stretch min-[761px]:gap-[5px]"
         aria-label="Main navigation"
       >
         {items.map(({ href, label, icon: Icon }) => {
@@ -107,7 +107,7 @@ export default function WorkspaceHeader() {
             <Link
               key={href}
               href={href}
-              className={`flex min-h-[44px] w-[42px] items-center justify-center gap-3 rounded-[11px] p-0 text-[13px] font-semibold min-[421px]:min-h-12 min-[421px]:w-12 min-[761px]:min-h-[44px] min-[761px]:w-auto min-[761px]:justify-start min-[761px]:px-3 min-[761px]:py-2.5 ${active ? "bg-white text-[#5d7d43]" : "text-white/86 hover:bg-white/12 hover:text-white"}`}
+              className={`flex min-h-[44px] w-[42px] items-center justify-center gap-3 rounded-[11px] p-0 text-[13px] font-semibold min-[421px]:min-h-12 min-[421px]:w-12 min-[761px]:min-h-[44px] min-[761px]:w-auto min-[761px]:justify-start min-[761px]:px-3 min-[761px]:py-2.5 ${active ? "bg-[#FA8500] text-white shadow-sm" : "text-white/90 hover:bg-[#FA8500] hover:text-white"}`}
               aria-current={active ? "page" : undefined}
               aria-label={label}
               title={label}
