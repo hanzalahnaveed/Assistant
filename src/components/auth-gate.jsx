@@ -4,6 +4,7 @@ import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-run
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 
 export default function AuthGate({ children }) {
     const pathname = usePathname();
@@ -16,9 +17,8 @@ export default function AuthGate({ children }) {
             return;
         }
 
-        // Keep the authenticated workspace mounted across route changes.
-        // Only verify again when entering the workspace from the public auth page
-        // or on a fresh page load; APIs independently enforce authentication.
+        // The workspace stays mounted while navigating between app routes.
+        // Verify on initial entry and when returning from the public auth page.
         if (sessionState === "authenticated") return;
 
         let cancelled = false;
@@ -48,8 +48,17 @@ export default function AuthGate({ children }) {
         };
     }, [pathname, router, sessionState]);
 
-    if (pathname === "/auth" || sessionState === "authenticated") {
+    if (pathname === "/auth") {
         return _jsx(_Fragment, { children });
+    }
+
+    if (sessionState === "authenticated") {
+        return _jsxs(_Fragment, {
+            children: [
+                _jsx(WorkspaceHeader, {}),
+                children
+            ]
+        });
     }
 
     return _jsxs("main", {
