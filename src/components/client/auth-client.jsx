@@ -119,60 +119,7 @@ export default function AuthPage() {
     window.location.assign("/api/auth/google/start?intent=" + mode);
   }
   return (
-    <main className="auth-page">
-      <section className="auth-visual" aria-label="Assistant workspace introduction">
-        <a href="/auth" className="auth-brand">
-          <span className="auth-brand-mark">
-            <Sparkles size={20} />
-          </span>
-          <span>
-            assistant<span className="workspace-brand-dot">.</span>
-          </span>
-        </a>
-        <div className="auth-visual-copy">
-          <span className="auth-eyebrow">
-            <span className="status-dot" /> YOUR WORKDAY, IN FOCUS
-          </span>
-          <h1>Make room for the work that matters.</h1>
-          <p>
-            One calm workspace for your priorities, meetings, follow-ups, and next best actions.
-          </p>
-          <div className="auth-feature-list">
-            <div>
-              <span>
-                <CheckCircle2 size={17} />
-              </span>
-              <div>
-                <strong>Know what needs attention</strong>
-                <small>Start with a prioritized daily briefing.</small>
-              </div>
-            </div>
-            <div>
-              <span>
-                <CalendarDays size={17} />
-              </span>
-              <div>
-                <strong>Bring your day together</strong>
-                <small>See tasks and calendar context in one place.</small>
-              </div>
-            </div>
-            <div>
-              <span>
-                <ShieldCheck size={17} />
-              </span>
-              <div>
-                <strong>You stay in control</strong>
-                <small>Review proposed actions before they run.</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="auth-visual-footer">
-          <span>PERSONAL EXECUTIVE WORKSPACE</span>
-          <span>Thoughtful by design.</span>
-        </div>
-      </section>
-      <section className="auth-panel">
+    <main className="flex flex-col items-center justify-center">
         <div className="auth-mobile-brand">
           <span className="auth-brand-mark">
             <Sparkles size={19} />
@@ -182,12 +129,6 @@ export default function AuthPage() {
           </strong>
         </div>
         <div className="auth-card">
-          <div className="auth-card-kicker">
-            <span className="auth-card-icon">
-              <ShieldCheck size={16} />
-            </span>{" "}
-            SECURE ACCESS
-          </div>
           <h2>{mode === "signin" ? "Welcome back" : "Create your account"}</h2>
           <p className="auth-subtitle">
             {mode === "signin"
@@ -348,10 +289,10 @@ export default function AuthPage() {
           </span>
           <span>Privacy-first access</span>
         </div>
-      </section>
     </main>
   );
 }
+
 function GoogleMark() {
   return (
     <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
