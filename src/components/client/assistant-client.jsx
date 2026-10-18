@@ -1,5 +1,7 @@
 "use client";
 
+
+import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
 export default function AssistantClient() {
@@ -108,12 +110,12 @@ export default function AssistantClient() {
           <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#5d7d43]">
             <Sparkles size={14} /> Your conversations
           </div>
-          <button
+          <Button
             onClick={newConversation}
             className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-sm font-semibold text-white"
           >
             <Plus size={15} /> New conversation
-          </button>
+          </Button>
           <h2 className="mb-2 text-[11px] font-semibold uppercase text-[#87918b] tracking-[-0.025em]">
             Recent conversations
           </h2>
@@ -122,14 +124,14 @@ export default function AssistantClient() {
           ) : conversations.length ? (
             <div className="space-y-1">
               {conversations.map((item) => (
-                <button
+                <Button
                   key={item.id}
                   onClick={() => void openConversation(item.id)}
                   className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#5d7d43]" : "text-[#59665e] hover:bg-[#f7f8f5]"}`}
                 >
                   <MessageCircle size={14} className="mt-0.5 shrink-0" />
                   <span className="line-clamp-2">{item.title || "New conversation"}</span>
-                </button>
+                </Button>
               ))}
             </div>
           ) : (
@@ -184,13 +186,13 @@ export default function AssistantClient() {
                     "Plan a productive day",
                     "Draft a concise follow-up",
                   ].map((suggestion) => (
-                    <button
+                    <Button
                       key={suggestion}
                       onClick={() => setInput(suggestion)}
                       className="rounded-full border border-[#dfe6dd] px-3 py-2 text-xs text-[#59665e] hover:border-[#a9c8b4] tracking-[0.01em]"
                     >
                       {suggestion}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -237,14 +239,14 @@ export default function AssistantClient() {
               placeholder="Ask your assistant anything…"
               className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-[#a1aaa4]"
             />
-            <button
+            <Button
               aria-label="Send message"
-              type="submit"
+              htmlType="submit"
               disabled={!input.trim() || sending}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ba05b] shadow-[0_4px_10px_rgb(93_125_67/18%)] text-white disabled:opacity-40"
             >
               <Send size={15} />
-            </button>
+            </Button>
           </form>
           <p className="px-5 pb-4 text-center text-[10px] text-[#929c95] text-pretty">
             Chat can plan and draft; it does not send emails or modify your calendar.
