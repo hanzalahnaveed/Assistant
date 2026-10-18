@@ -181,7 +181,7 @@ export default function AuthPage() {
             <label className="flex flex-col text-[11px] font-bold text-[#46564b]">
               <span>Your name</span>
               <Input
-                className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+                className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
                 autoComplete="name"
                 name="name"
                 type="text"
@@ -195,7 +195,7 @@ export default function AuthPage() {
           <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
             <span>Email address</span>
             <Input
-              className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+              className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
               autoComplete="email"
               name="email"
               type="email"
@@ -209,7 +209,7 @@ export default function AuthPage() {
           <label className="flex flex-col  text-[11px] font-bold text-[#46564b]">
             <span>Password</span>
             <Input
-              className="h-12 w-full rounded-[11px] border border-[#dce4dc] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
+              className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               name="password"
               type="password"
@@ -228,7 +228,7 @@ export default function AuthPage() {
           )}
           <Button
             htmlType="submit"
-            className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#7ba05b] bg-[#7ba05b] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#5d7d43] enabled:hover:bg-[#5d7d43]"
+            className="flex h-min-[51px] w-full items-center justify-center gap-3 rounded-xl border py-3 text-xs! font-[680]! shadow-[0_2px_5px_rgb(22_43_30/3%)] enabled:hover:shadow-[0_5px_14px_rgb(22_43_30/6%)] border-[#FA8500] bg-[#FA8500] text-white disabled:bg-[#f8faf8] disabled:text-[#839087] enabled:hover:border-[#FA8500] enabled:hover:bg-[#FA8500]"
             disabled={busy || checking}
           >
             {busy || checking ? (
@@ -280,7 +280,7 @@ export default function AuthPage() {
           {mode === "signin" ? "New to Assistant?" : "Already have an account?"}{" "}
           <Button
             htmlType="button"
-            className="ml-1 border-0 bg-transparent p-0.5 text-[length:inherit] font-[750]! text-[#7ba05b] hover:underline"
+            className="ml-1 border-0 bg-transparent p-0.5 text-[length:inherit] font-[750]! text-[#FA8500] hover:underline"
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
