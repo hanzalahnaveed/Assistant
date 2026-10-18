@@ -221,7 +221,7 @@ export default function ActionsClient() {
           </div>
         )}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-5 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#FA8500]">
                 <Plus size={18} />
@@ -282,7 +282,7 @@ export default function ActionsClient() {
               </div>
               <Button
                 disabled={saving || !title.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#FA8500] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#001d3d] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? (
                   <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
@@ -298,7 +298,7 @@ export default function ActionsClient() {
               </p>
             </form>
           </section>
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="font-semibold tracking-[-0.025em]">Awaiting your decision</h2>
@@ -358,7 +358,7 @@ export default function ActionsClient() {
                       <Button
                         disabled={busyId === action.id}
                         onClick={() => void decide(action.id, "APPROVE")}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         {busyId === action.id ? (
                           <LoaderCircle size={14} className="animate-[spin_0.9s_linear_infinite]" />
@@ -381,7 +381,7 @@ export default function ActionsClient() {
             )}
           </section>
         </div>
-        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
             <ShieldCheck size={17} className="text-[#FA8500]" />
             <div>
@@ -406,7 +406,7 @@ export default function ActionsClient() {
             </label>
             <Button
               disabled={savingRule}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(93_125_67/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {savingRule ? (
                 <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
@@ -438,7 +438,7 @@ export default function ActionsClient() {
             )}
           </div>
         </section>
-        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(25_48_36/2%),0_12px_34px_rgb(25_48_36/3%)] bg-white">
+        <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="mb-4 flex items-center gap-2">
             <Clock3 size={17} className="text-[#FA8500]" />
             <div>
