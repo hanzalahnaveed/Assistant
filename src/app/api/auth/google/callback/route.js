@@ -34,6 +34,7 @@ export async function GET(request) {
 <<<<<<< HEAD
 =======
   }
+<<<<<<< HEAD
   if (!isAuthentication && !isConnection) {
     return redirectError("/integrations", "invalid_oauth_intent");
 >>>>>>> d271763 (fix: link Google Workspace to the active user account)
@@ -47,6 +48,14 @@ export async function GET(request) {
   }
 =======
 >>>>>>> d271763 (fix: link Google Workspace to the active user account)
+=======
+  if (!state || !expectedState || state !== expectedState || !code) {
+    return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
+  }
+  if (!isAuthentication && !isConnection) {
+    return redirectError("/integrations", "invalid_oauth_intent");
+  }
+>>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
 
   try {
     const tokens = await exchangeGoogleCode(code);
@@ -74,14 +83,20 @@ export async function GET(request) {
         email,
         accessTokenEnc: encryptSecret(tokens.accessToken),
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
         ...(tokens.refreshToken
           ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) }
           : existingIntegration?.providerAccountId === profile.id
             ? {}
             : { refreshTokenEnc: null }),
+<<<<<<< HEAD
 =======
         ...(tokens.refreshToken ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) } : {}),
 >>>>>>> d271763 (fix: link Google Workspace to the active user account)
+=======
+>>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
         tokenExpiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
         scopes: tokens.scope,
         status: "CONNECTED",
