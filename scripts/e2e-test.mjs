@@ -426,6 +426,50 @@ try {
   );
   check(true, "global automation pause blocks task approval, email sends, and calendar creation until resumed");
 
+  const commitmentKey = "commitment:e2e-email-source-" + Date.now();
+  const commitmentInput = {
+    title: "Follow up on client proposal",
+    description: "Source email evidence for commitment workflow test.",
+    priority: "HIGH",
+    source: "EMAIL",
+    sourceRef: "e2e-email-source-" + Date.now(),
+  };
+  const commitmentProposalResponse = await expectStatus("/api/actions", 201, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: commitmentKey,
+      input: commitmentInput,
+    }),
+  }, token);
+  const commitmentProposal = await commitmentProposalResponse.json();
+  assert.equal(commitmentProposal.action.status, "PENDING");
+  assert.equal(commitmentProposal.action.requiresApproval, true);
+  const repeatedCommitmentResponse = await expectStatus("/api/actions", 200, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: commitmentKey,
+      input: commitmentInput,
+    }),
+  }, token);
+  assert.equal((await repeatedCommitmentResponse.json()).reused, true);
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: commitmentInput.sourceRef } }),
+    0,
+  );
+  const approvedCommitmentResponse = await expectStatus("/api/actions/" + commitmentProposal.action.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "APPROVE" }),
+  }, token);
+  assert.equal((await approvedCommitmentResponse.json()).action.status, "SUCCEEDED");
+  const linkedCommitmentTask = await prisma.task.findUnique({
+    where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: commitmentInput.sourceRef } },
+  });
+  assert.equal(linkedCommitmentTask.title, commitmentInput.title);
+  assert.equal(linkedCommitmentTask.priority, "HIGH");
+  check(true, "commitment task proposals require approval, are idempotent, and retain their source email");
+
   const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, {
     method: "POST",
   });

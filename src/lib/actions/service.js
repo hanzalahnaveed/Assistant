@@ -1,5 +1,17 @@
 import { prisma } from "@/lib/prisma";
 export async function createTaskActionProposal(userId, idempotencyKey, input) {
+  if (input.source && input.sourceRef) {
+    const existingTask = await prisma.task.findUnique({
+      where: {
+        userId_source_sourceRef: {
+          userId,
+          source: input.source,
+          sourceRef: input.sourceRef,
+        },
+      },
+    });
+    if (existingTask) return { task: existingTask, created: false, alreadyExists: true };
+  }
   const existing = await prisma.actionRecord.findUnique({
     where: { userId_idempotencyKey: { userId, idempotencyKey } },
   });
@@ -50,16 +62,26 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
         });
         return record;
       }
-      const task = await tx.task.create({
-        data: {
+      const taskSource = input.source ?? "ASSISTANT";
+      const taskSourceRef = input.sourceRef || record.id;
+      const task = await tx.task.upsert({
+        where: {
+          userId_source_sourceRef: {
+            userId,
+            source: taskSource,
+            sourceRef: taskSourceRef,
+          },
+        },
+        create: {
           userId,
           title: input.title,
           description: input.description || null,
           priority: input.priority,
           dueAt: input.dueAt ? new Date(input.dueAt) : null,
-          source: "ASSISTANT",
-          sourceRef: record.id,
+          source: taskSource,
+          sourceRef: taskSourceRef,
         },
+        update: {},
       });
       const completed = await tx.actionRecord.update({
         where: { id: record.id },

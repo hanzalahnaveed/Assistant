@@ -86,21 +86,35 @@ export default function BriefingClient() {
     setError("");
     setNotice("");
     try {
-      const response = await fetch("/api/tasks", {
+      const response = await fetch("/api/actions", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          title: item.title,
-          description: item.description,
-          priority: item.priority,
-          dueAt: item.dueAt,
-          source: item.sourceType,
-          sourceRef: item.id,
+          actionType: "CREATE_TASK",
+          idempotencyKey: `commitment:${item.id}`,
+          input: {
+            title: item.title,
+            description: item.description,
+            priority: item.priority,
+            dueAt: item.dueAt,
+            source: item.sourceType,
+            sourceRef: item.sourceId,
+          },
         }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not create this task.");
-      setNotice(body.created === false ? "This commitment is already in your task list." : "Task created and linked to its source.");
+      if (!response.ok) throw new Error(body.error || "Could not propose this task.");
+      if (body.alreadyExists) {
+        setNotice("This commitment is already in your task list.");
+      } else if (body.action?.status === "SUCCEEDED") {
+        setNotice("Task created under your automation policy and linked to its source.");
+      } else if (body.action?.status === "PENDING" || body.action?.status === "APPROVED") {
+        setNotice("Proposal added to the Action Center for review.");
+      } else if (body.action?.status === "CANCELLED") {
+        setNotice("This proposal was previously rejected. Review the Action Center before trying again.");
+      } else {
+        setNotice("Commitment processed under your automation policy.");
+      }
       await load(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create this task.");

@@ -76,6 +76,8 @@ export async function PATCH(request, context) {
       description: z.string().trim().max(5000).optional().nullable(),
       priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
       dueAt: z.string().datetime().optional().nullable(),
+      source: z.enum(["EMAIL", "MEETING"]).optional(),
+      sourceRef: z.string().trim().min(1).max(300).optional().nullable(),
     })
     .safeParse(existing.input);
   if (!input.success) {
@@ -98,16 +100,24 @@ export async function PATCH(request, context) {
       where: { id },
       data: { status: "RUNNING", approvedAt: new Date(), startedAt: new Date(), errorCode: null },
     });
+    const taskSource = input.data.source ?? "ASSISTANT";
+    const taskSourceRef = input.data.sourceRef || id;
     const task = await tx.task.upsert({
-      where: { userId_source_sourceRef: { userId: user.id, source: "ASSISTANT", sourceRef: id } },
+      where: {
+        userId_source_sourceRef: {
+          userId: user.id,
+          source: taskSource,
+          sourceRef: taskSourceRef,
+        },
+      },
       create: {
         userId: user.id,
         title: input.data.title,
         description: input.data.description || null,
         priority: input.data.priority,
         dueAt: input.data.dueAt ? new Date(input.data.dueAt) : null,
-        source: "ASSISTANT",
-        sourceRef: id,
+        source: taskSource,
+        sourceRef: taskSourceRef,
       },
       update: {},
     });

@@ -13,6 +13,8 @@ const proposalSchema = z.object({
     description: z.string().trim().max(5000).optional().nullable(),
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
     dueAt: z.string().datetime().optional().nullable(),
+    source: z.enum(["EMAIL", "MEETING"]).optional(),
+    sourceRef: z.string().trim().min(1).max(300).optional().nullable(),
   }),
 });
 export async function GET() {
