@@ -18,7 +18,7 @@ const exists = async (relativePath) => {
 const routes = [
   {
     href: "/briefing",
-    label: "Overview",
+    label: "Briefing",
     page: "src/app/briefing/page.jsx",
     client: "src/components/client/briefing-client.jsx",
     endpoints: ["/api/workspace/briefing"],
@@ -26,7 +26,7 @@ const routes = [
   },
   {
     href: "/tasks",
-    label: "My tasks",
+    label: "Tasks",
     page: "src/app/tasks/page.jsx",
     client: "src/components/client/tasks-client.jsx",
     endpoints: ["/api/tasks"],
@@ -42,7 +42,7 @@ const routes = [
   },
   {
     href: "/calendar",
-    label: "Calendar & meetings",
+    label: "Calendar & Schedule",
     page: "src/app/calendar/page.jsx",
     client: "src/components/client/calendar-client.jsx",
     endpoints: ["/api/meeting-drafts"],
@@ -66,7 +66,7 @@ const routes = [
   },
   {
     href: "/integrations",
-    label: "Connections",
+    label: "Integrations",
     page: "src/app/integrations/page.jsx",
     client: "src/components/client/ui.jsx",
     endpoints: [
