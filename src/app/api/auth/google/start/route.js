@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/session";
 import { createOAuthState, googleAuthorizationUrl } from "@/lib/google/oauth";
+
 export const runtime = "nodejs";
+
 const IDENTITY_SCOPES = ["openid", "email", "profile"];
+
 export async function GET(request) {
   const intent = request.nextUrl.searchParams.get("intent");
   const isAuthentication = intent === "signin" || intent === "signup";
+
+  if (!isAuthentication) {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.redirect(new URL("/auth?error=sign_in_required", request.url));
+    }
+  }
+
   try {
     const state = createOAuthState();
     const response = NextResponse.redirect(
@@ -17,17 +29,13 @@ export async function GET(request) {
       path: "/",
       maxAge: 600,
     });
-    if (isAuthentication) {
-      response.cookies.set("google_auth_intent", intent, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 600,
-      });
-    } else {
-      response.cookies.set("google_auth_intent", "", { path: "/", maxAge: 0 });
-    }
+    response.cookies.set("google_auth_intent", isAuthentication ? intent : "connect", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 600,
+    });
     return response;
   } catch {
     const destination = isAuthentication
