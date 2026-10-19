@@ -134,6 +134,24 @@ export default function AuthPage() {
             {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
           </Button>
         </form>
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-[#e3e8ee]" />
+          <span className="text-xs text-[#8793a1]">or</span>
+          <span className="h-px flex-1 bg-[#e3e8ee]" />
+        </div>
+        <Button
+          htmlType="button"
+          size="large"
+          block
+          disabled={busy}
+          onClick={() => {
+            setError("");
+            window.location.assign(`/api/auth/google/start?intent=${mode}`);
+          }}
+          className="h-12 rounded-xl border-[#d8e0e8] font-semibold text-[#273444]"
+        >
+          Continue with Google
+        </Button>
         <p className="text-center text-xs leading-5 text-[#7b8795]">Your account is protected with secure password hashing and a private session.</p>
       </section>
     </main>
