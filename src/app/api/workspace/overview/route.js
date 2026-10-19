@@ -52,11 +52,19 @@ export async function GET() {
     calendarUrl.searchParams.set("singleEvents", "true");
     calendarUrl.searchParams.set("orderBy", "startTime");
     calendarUrl.searchParams.set("maxResults", "10");
-    const [gmail, calendar] = await Promise.all([
+    // Gmail and Calendar are independent capabilities. Keep whichever side
+    // succeeds so a missing scope or temporary provider failure does not blank
+    // the entire integrations workspace.
+    const [gmailResult, calendarResult] = await Promise.allSettled([
       googleApiGet(token.accessToken, gmailUrl.toString()),
       googleApiGet(token.accessToken, calendarUrl.toString()),
     ]);
-    const details = await Promise.all(
+    const gmail = gmailResult.status === "fulfilled" ? gmailResult.value : { messages: [], resultSizeEstimate: 0 };
+    const calendar = calendarResult.status === "fulfilled" ? calendarResult.value : { items: [] };
+    const workspaceWarnings = [];
+    if (gmailResult.status === "rejected") workspaceWarnings.push("Gmail could not be loaded.");
+    if (calendarResult.status === "rejected") workspaceWarnings.push("Google Calendar could not be loaded.");
+    const detailResults = await Promise.allSettled(
       (gmail.messages ?? []).slice(0, 25).map(async (message) => {
         const url = new URL(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(message.id)}`,
@@ -89,6 +97,12 @@ export async function GET() {
         };
       }),
     );
+    const details = detailResults
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (detailResults.some((result) => result.status === "rejected")) {
+      workspaceWarnings.push("Some inbox messages could not be loaded.");
+    }
     details.sort(
       (a, b) => b.priorityScore - a.priorityScore || b.internalDate - a.internalDate,
     );
@@ -99,6 +113,7 @@ export async function GET() {
     return NextResponse.json(
       {
         connected: true,
+        workspaceError: workspaceWarnings.length ? workspaceWarnings.join(" ") : null,
         user,
         integration: {
           email: token.email,
