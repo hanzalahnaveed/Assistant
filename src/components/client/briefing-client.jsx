@@ -49,6 +49,7 @@ export default function BriefingClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [creatingCommitment, setCreatingCommitment] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -83,6 +84,7 @@ export default function BriefingClient() {
   async function createCommitmentTask(item) {
     setCreatingCommitment(item.id);
     setError("");
+    setNotice("");
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -98,6 +100,7 @@ export default function BriefingClient() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not create this task.");
+      setNotice(body.created === false ? "This commitment is already in your task list." : "Task created and linked to its source.");
       await load(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create this task.");
@@ -135,6 +138,15 @@ export default function BriefingClient() {
             Refresh
           </button>
         </div>
+
+        {notice && (
+          <div
+            role="status"
+            className="mb-5 rounded-xl border border-[#dce9df] bg-[#f2f8f2] px-4 py-3 text-sm text-[#176b52]"
+          >
+            {notice}
+          </div>
+        )}
 
         {error && (
           <div
