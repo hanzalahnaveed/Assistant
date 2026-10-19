@@ -582,11 +582,12 @@ try {
     },
   };
   const concurrentResponses = await Promise.all(
-    [201, 200].map(() => expectStatus("/api/actions", [200, 201], {
+    [0, 1].map(() => request("/api/actions", {
       method: "POST",
       body: JSON.stringify(concurrentInput),
     }, token)),
   );
+  assert.ok(concurrentResponses.every((response) => [200, 201].includes(response.status)));
   const concurrentPayloads = await Promise.all(concurrentResponses.map((response) => response.json()));
   assert.equal(
     await prisma.actionRecord.count({ where: { userId: user.id, idempotencyKey: concurrentKey } }),
