@@ -306,6 +306,58 @@ try {
   assert.equal(updatedPreferences.briefingHour, 9);
   check(true, "briefing preferences persist across API requests");
 
+  await expectStatus(
+    "/api/preferences",
+    200,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ defaultApprovalMode: "AUTO", automationPaused: true }),
+    },
+    token,
+  );
+  const pausedProposalResponse = await expectStatus("/api/actions", 201, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: "pause-test-" + Date.now(),
+      input: {
+        title: "Paused automation test task",
+        description: "Must not be created while global pause is active.",
+        priority: "MEDIUM",
+      },
+    }),
+  }, token);
+  const pausedProposal = await pausedProposalResponse.json();
+  assert.equal(pausedProposal.action.status, "PENDING");
+  assert.equal(pausedProposal.action.requiresApproval, true);
+  await expectStatus("/api/actions/" + pausedProposal.action.id, 409, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "APPROVE" }),
+  }, token);
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    0,
+  );
+  await expectStatus(
+    "/api/preferences",
+    200,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ automationPaused: false, defaultApprovalMode: "CONFIRM" }),
+    },
+    token,
+  );
+  const resumedApproval = await expectStatus("/api/actions/" + pausedProposal.action.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "APPROVE" }),
+  }, token);
+  assert.equal((await resumedApproval.json()).action.status, "SUCCEEDED");
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    1,
+  );
+  check(true, "global automation pause blocks AUTO execution and manual approval until resumed");
+
   const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, {
     method: "POST",
   });
