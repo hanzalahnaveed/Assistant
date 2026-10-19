@@ -17,7 +17,7 @@ const updateTaskSchema = z
 export async function PATCH(request, context) {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Connect Google Workspace to sign in." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const { id } = await context.params;
   const parsed = updateTaskSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
@@ -50,7 +50,7 @@ export async function PATCH(request, context) {
 export async function DELETE(_request, context) {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Connect Google Workspace to sign in." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const { id } = await context.params;
   const existing = await prisma.task.findFirst({ where: { id, userId: user.id } });
   if (!existing) return NextResponse.json({ error: "Task not found." }, { status: 404 });
