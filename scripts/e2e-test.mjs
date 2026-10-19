@@ -338,6 +338,33 @@ try {
     await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
     0,
   );
+  const pausedEmailDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "recipient@example.test",
+      subject: "Pause safety test",
+      body: "This message must not be sent while automation is paused.",
+      status: "APPROVED",
+    },
+  });
+  await expectStatus("/api/email-drafts/" + pausedEmailDraft.id, 409, {
+    method: "POST",
+    body: JSON.stringify({ action: "SEND" }),
+  }, token);
+  const pausedMeetingDraft = await prisma.meetingDraft.create({
+    data: {
+      userId: user.id,
+      title: "Pause safety test",
+      description: "This event must not be created while automation is paused.",
+      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      endAt: new Date(Date.now() + 25 * 60 * 60 * 1000),
+      status: "APPROVED",
+    },
+  });
+  await expectStatus("/api/meeting-drafts/" + pausedMeetingDraft.id, 409, {
+    method: "POST",
+    body: JSON.stringify({ action: "CREATE" }),
+  }, token);
   await expectStatus(
     "/api/preferences",
     200,
@@ -356,7 +383,7 @@ try {
     await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
     1,
   );
-  check(true, "global automation pause blocks AUTO execution and manual approval until resumed");
+  check(true, "global automation pause blocks task approval, email sends, and calendar creation until resumed");
 
   const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, {
     method: "POST",
