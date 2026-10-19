@@ -4,6 +4,8 @@ This inventory is the route-by-route baseline for completing the app's user-faci
 
 ## Routes and current workflow wiring
 
+Google integration verification is available from Connections; its live checks are read-only and do not send mail or create events.
+
 | Sidebar route | Page/client | Current user workflow | Main API dependencies |
 | --- | --- | --- | --- |
 | Overview (`/briefing`) | `src/app/briefing/page.jsx` → `briefing-client.jsx` | Review the daily briefing, tasks, calendar context, email follow-ups, and commitments; mark eligible tasks complete and manage follow-ups. | `/api/workspace/briefing`, task and follow-up endpoints |
