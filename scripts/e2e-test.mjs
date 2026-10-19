@@ -658,7 +658,7 @@ try {
     200,
     {
       method: "PATCH",
-      body: JSON.stringify({ dailyBriefingEnabled: true, briefingHour: schedulingHour }),
+      body: JSON.stringify({ dailyBriefingEnabled: true, briefingHour: schedulingHour, timezone: "UTC" }),
     },
     token,
   );
@@ -671,7 +671,8 @@ try {
   const cronBody = await cronResponse.json();
   assert.ok(
     cronBody.generated >= 1,
-    "scheduler should generate a briefing for the eligible test user",
+    "scheduler should generate a briefing for the eligible test user; response: " +
+      JSON.stringify(cronBody),
   );
   check(true, "scheduled worker creates briefings for users whose local delivery hour is due");
 
