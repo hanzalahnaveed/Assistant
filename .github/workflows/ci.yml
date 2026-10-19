@@ -57,6 +57,8 @@ jobs:
         run: npm run verify:javascript
       - name: Verify sidebar route workflows
         run: npm run test:sidebar-routes
+      - name: Test calendar timezone conversion
+        run: npm run test:calendar-timezone
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client
