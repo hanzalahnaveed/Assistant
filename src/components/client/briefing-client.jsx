@@ -392,6 +392,19 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No open potential commitments. Dismissed suggestions stay hidden unless restored.</p>
               )}
+              {data.completedCommitments?.length > 0 && (
+                <div className="mt-5 border-t border-[#edf1ed] pt-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[#176b52]">Completed</h3>
+                  <ul className="mt-2 divide-y divide-[#edf1ed]">
+                    {data.completedCommitments.slice(0, 5).map((item) => (
+                      <li key={item.followUpId} className="py-3">
+                        <div className="text-sm font-medium">{item.title}</div>
+                        <p className="mt-1 text-xs text-[#76817c]">The linked task is marked complete.</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {data.dismissedCommitments?.length > 0 && (
                 <div className="mt-5 border-t border-[#edf1ed] pt-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-[#76817c]">Dismissed suggestions</h3>
