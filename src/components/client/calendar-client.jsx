@@ -67,6 +67,27 @@ function fromForm(f) {
       .filter(Boolean),
   };
 }
+
+function validateMeetingForm(f) {
+  if (!f.title.trim()) return "Add a meeting title before saving.";
+  const start = new Date(f.startAt);
+  const end = new Date(f.endAt);
+  if (!f.startAt || !f.endAt || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "Choose a valid meeting start and end time.";
+  }
+  if (end <= start) return "Meeting end must be after its start.";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: f.timezone }).format(start);
+  } catch {
+    return "Enter a valid IANA timezone, such as Asia/Karachi or America/New_York.";
+  }
+  const attendees = f.attendees.split(/[;,\\n]/).map((email) => email.trim()).filter(Boolean);
+  if (attendees.length > 50) return "A meeting can have at most 50 attendee emails.";
+  if (attendees.some((email) => !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))) {
+    return "Check attendee emails. Use comma- or semicolon-separated email addresses.";
+  }
+  return "";
+}
 export default function CalendarClient() {
   const [data, setData] = useState(null),
     [loading, setLoading] = useState(true),
@@ -165,9 +186,14 @@ export default function CalendarClient() {
   }
   async function save(e) {
     e.preventDefault();
-    setBusy(true);
     setError("");
     setNotice("");
+    const validationError = validateMeetingForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setBusy(true);
     try {
       const payload = fromForm(form);
       const r = await fetch(selected ? "/api/meeting-drafts/" + selected : "/api/meeting-drafts", {
