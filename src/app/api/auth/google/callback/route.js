@@ -32,11 +32,11 @@ export async function GET(request) {
   if (providerError) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "google_consent_cancelled");
   }
-  if (!isAuthentication && !isConnection) {
-    return redirectError("/integrations", "invalid_oauth_intent");
-  }
   if (!state || !expectedState || state !== expectedState || !code) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
+  }
+  if (!isAuthentication && !isConnection) {
+    return redirectError("/integrations", "invalid_oauth_intent");
   }
 
   try {
@@ -64,7 +64,11 @@ export async function GET(request) {
         providerAccountId: profile.id,
         email,
         accessTokenEnc: encryptSecret(tokens.accessToken),
-        ...(tokens.refreshToken ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) } : {}),
+        ...(tokens.refreshToken
+          ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) }
+          : existingIntegration?.providerAccountId === profile.id
+            ? {}
+            : { refreshTokenEnc: null }),
         tokenExpiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
         scopes: tokens.scope,
         status: "CONNECTED",
