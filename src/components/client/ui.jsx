@@ -294,7 +294,7 @@ export default function IntegrationsClient() {
                   <ShieldCheck size={15} /> {verifying ? "Verifying…" : "Verify access"}
                 </Button>
                 <Button
-                  onClick={() => void disconnect()
+                  onClick={() => void disconnect()}
                   disabled={busy || loggingOut}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-3.5 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
                 >
