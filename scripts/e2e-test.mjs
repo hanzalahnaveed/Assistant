@@ -470,6 +470,79 @@ try {
   assert.equal(linkedCommitmentTask.priority, "HIGH");
   check(true, "commitment task proposals require approval, are idempotent, and retain their source email");
 
+  await expectStatus("/api/preferences", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ defaultApprovalMode: "BLOCK", automationPaused: false }),
+  }, token);
+  await expectStatus("/api/actions", 403, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: "blocked-commitment-" + Date.now(),
+      input: {
+        title: "Blocked commitment must not become a task",
+        priority: "MEDIUM",
+        source: "MEETING",
+        sourceRef: "blocked-meeting-" + Date.now(),
+      },
+    }),
+  }, token);
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Blocked commitment must not become a task" } }),
+    0,
+  );
+
+  await expectStatus("/api/preferences", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ defaultApprovalMode: "AUTO", automationPaused: false }),
+  }, token);
+  const automaticSourceRef = "auto-email-source-" + Date.now();
+  const automaticKey = "commitment:auto-" + Date.now();
+  const automaticProposalResponse = await expectStatus("/api/actions", 201, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: automaticKey,
+      input: {
+        title: "Automatically create approved commitment",
+        description: "Auto policy should preserve the email source.",
+        priority: "MEDIUM",
+        source: "EMAIL",
+        sourceRef: automaticSourceRef,
+      },
+    }),
+  }, token);
+  const automaticProposal = await automaticProposalResponse.json();
+  assert.equal(automaticProposal.action.status, "SUCCEEDED");
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
+    1,
+  );
+  const automaticRetry = await expectStatus("/api/actions", 200, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: automaticKey,
+      input: {
+        title: "Automatically create approved commitment",
+        description: "Auto policy should preserve the email source.",
+        priority: "MEDIUM",
+        source: "EMAIL",
+        sourceRef: automaticSourceRef,
+      },
+    }),
+  }, token);
+  assert.equal((await automaticRetry.json()).reused, true);
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
+    1,
+  );
+  await expectStatus("/api/preferences", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ defaultApprovalMode: "CONFIRM", automationPaused: false }),
+  }, token);
+  check(true, "BLOCK prevents commitment tasks, AUTO creates them with source links, and retries remain idempotent");
+
   const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, {
     method: "POST",
   });

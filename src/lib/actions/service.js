@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 export async function createTaskActionProposal(userId, idempotencyKey, input) {
+  const existing = await prisma.actionRecord.findUnique({
+    where: { userId_idempotencyKey: { userId, idempotencyKey } },
+  });
+  if (existing) return { action: existing, reused: true };
   if (input.source && input.sourceRef) {
     const existingTask = await prisma.task.findUnique({
       where: {
@@ -12,10 +16,6 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
     });
     if (existingTask) return { task: existingTask, created: false, alreadyExists: true };
   }
-  const existing = await prisma.actionRecord.findUnique({
-    where: { userId_idempotencyKey: { userId, idempotencyKey } },
-  });
-  if (existing) return { action: existing, reused: true };
   const [preferences, rule] = await Promise.all([
     prisma.userPreference.upsert({
       where: { userId },
@@ -62,8 +62,8 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
         });
         return record;
       }
-      const taskSource = input.source ?? "ASSISTANT";
-      const taskSourceRef = input.sourceRef || record.id;
+      const taskSource = input.source && input.sourceRef ? input.source : "ASSISTANT";
+      const taskSourceRef = input.source && input.sourceRef ? input.sourceRef : record.id;
       const task = await tx.task.upsert({
         where: {
           userId_source_sourceRef: {
