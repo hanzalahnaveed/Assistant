@@ -31,6 +31,7 @@ export default function ActionsClient() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const loadActions = useCallback(async () => {
+    setError("");
     try {
       const [response, rulesResponse] = await Promise.all([
         fetch("/api/actions", {
