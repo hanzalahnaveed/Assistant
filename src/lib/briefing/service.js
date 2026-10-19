@@ -256,6 +256,10 @@ export async function generateBriefingData(user, now = new Date()) {
         });
       }
     } catch (error) {
+      if (error instanceof Error && error.code === "GOOGLE_REAUTH_REQUIRED") {
+        connected = false;
+        if (integration) integration.status = "REAUTH_REQUIRED";
+      }
       workspaceError =
         error instanceof Error ? error.message : "Google Workspace data could not be loaded.";
     }
