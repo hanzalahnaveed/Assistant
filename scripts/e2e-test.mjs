@@ -610,6 +610,12 @@ try {
   assert.equal(readNotifications.unreadCount, 0);
   check(true, "users can mark scheduled briefing notifications as read");
 
+  await expectStatus("/api/tasks", 400, {
+    method: "POST",
+    body: JSON.stringify({ title: "   " }),
+  }, token);
+  check(true, "task API rejects blank titles");
+
   const createResponse = await expectStatus(
     "/api/tasks",
     201,
@@ -633,12 +639,47 @@ try {
   assert.ok(listed.some((task) => task.id === created.id));
   check(true, "task list returns the saved task");
 
+  await expectStatus("/api/tasks/" + created.id, 400, {
+    method: "PATCH",
+    body: JSON.stringify({}),
+  }, token);
+  await expectStatus("/api/tasks/" + created.id, 400, {
+    method: "PATCH",
+    body: JSON.stringify({ priority: "P0" }),
+  }, token);
+  check(true, "task API rejects empty updates and unsupported priority values");
+
+  const dueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+  const progressResponse = await expectStatus(
+    "/api/tasks/" + created.id,
+    200,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "E2E updated task title",
+        description: "Updated task notes",
+        status: "IN_PROGRESS",
+        priority: "URGENT",
+        dueAt,
+      }),
+    },
+    token,
+  );
+  const inProgress = (await progressResponse.json()).task;
+  assert.equal(inProgress.title, "E2E updated task title");
+  assert.equal(inProgress.description, "Updated task notes");
+  assert.equal(inProgress.status, "IN_PROGRESS");
+  assert.equal(inProgress.priority, "URGENT");
+  assert.equal(new Date(inProgress.dueAt).toISOString(), dueAt);
+  assert.equal(inProgress.completedAt, null);
+  check(true, "task title, notes, due date, priority, and in-progress status persist");
+
   const patchResponse = await expectStatus(
     "/api/tasks/" + created.id,
     200,
     {
       method: "PATCH",
-      body: JSON.stringify({ status: "DONE", priority: "URGENT" }),
+      body: JSON.stringify({ status: "DONE" }),
     },
     token,
   );
@@ -646,9 +687,9 @@ try {
   assert.equal(updated.status, "DONE");
   assert.equal(updated.priority, "URGENT");
   assert.ok(updated.completedAt);
-  check(true, "task completion and priority updates persist");
+  check(true, "task completion records a completion timestamp");
 
-  await expectStatus(
+  const reopenedResponse = await expectStatus(
     "/api/tasks/" + created.id,
     200,
     {
@@ -657,7 +698,10 @@ try {
     },
     token,
   );
-  check(true, "completed task can be reopened");
+  const reopened = (await reopenedResponse.json()).task;
+  assert.equal(reopened.status, "TODO");
+  assert.equal(reopened.completedAt, null);
+  check(true, "reopening a task clears its completion timestamp");
 
   await expectStatus("/api/tasks/" + created.id, 200, { method: "DELETE" }, token);
   const afterDelete = (await (await expectStatus("/api/tasks", 200, {}, token)).json()).tasks;
