@@ -12,7 +12,6 @@ export async function GET(request) {
   const intent = jar.get("google_auth_intent")?.value;
   const isAuthentication = intent === "signin" || intent === "signup";
   const isConnection = intent === "connect";
-  const url = new URL(isAuthentication ? "/auth" : "/integrations", request.url);
   const expectedState = jar.get("google_oauth_state")?.value;
   const state = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
@@ -23,6 +22,7 @@ export async function GET(request) {
     response.cookies.set("google_auth_intent", "", { path: "/", maxAge: 0 });
     return response;
   };
+
   const redirectError = (destination, error) => {
     const target = new URL(destination, request.url);
     target.searchParams.set("error", error);
@@ -31,31 +31,15 @@ export async function GET(request) {
 
   if (providerError) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "google_consent_cancelled");
-<<<<<<< HEAD
-=======
   }
-<<<<<<< HEAD
-  if (!isAuthentication && !isConnection) {
-    return redirectError("/integrations", "invalid_oauth_intent");
->>>>>>> d271763 (fix: link Google Workspace to the active user account)
-  }
+
   if (!state || !expectedState || state !== expectedState || !code) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
   }
-<<<<<<< HEAD
+
   if (!isAuthentication && !isConnection) {
     return redirectError("/integrations", "invalid_oauth_intent");
   }
-=======
->>>>>>> d271763 (fix: link Google Workspace to the active user account)
-=======
-  if (!state || !expectedState || state !== expectedState || !code) {
-    return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
-  }
-  if (!isAuthentication && !isConnection) {
-    return redirectError("/integrations", "invalid_oauth_intent");
-  }
->>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
 
   try {
     const tokens = await exchangeGoogleCode(code);
@@ -82,25 +66,16 @@ export async function GET(request) {
         providerAccountId: profile.id,
         email,
         accessTokenEnc: encryptSecret(tokens.accessToken),
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
         ...(tokens.refreshToken
           ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) }
           : existingIntegration?.providerAccountId === profile.id
             ? {}
             : { refreshTokenEnc: null }),
-<<<<<<< HEAD
-=======
-        ...(tokens.refreshToken ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) } : {}),
->>>>>>> d271763 (fix: link Google Workspace to the active user account)
-=======
->>>>>>> 0caa0c0 (fix: preserve refresh tokens only for the same Google account)
         tokenExpiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
         scopes: tokens.scope,
         status: "CONNECTED",
       };
+
       if (existingIntegration) {
         await prisma.integration.update({
           where: { id: existingIntegration.id },
@@ -111,6 +86,7 @@ export async function GET(request) {
           data: { userId: user.id, ...integrationData },
         });
       }
+
       await prisma.auditEvent.create({
         data: {
           userId: user.id,
@@ -119,8 +95,9 @@ export async function GET(request) {
           metadata: { email, scopes: tokens.scope },
         },
       });
-      url.searchParams.set("connected", "google");
-      return clearState(NextResponse.redirect(url));
+
+      const response = NextResponse.redirect(new URL("/integrations?connected=google", request.url));
+      return clearState(response);
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -148,9 +125,14 @@ export async function GET(request) {
         metadata: { provider: "GOOGLE" },
       },
     });
+
     await createSession(user);
-    return clearState(NextResponse.redirect(new URL("/", request.url)));
-  } catch {
+    return clearState(NextResponse.redirect(new URL("/briefing", request.url)));
+  } catch (error) {
+    console.error(
+      "[auth/google/callback] Google OAuth callback failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     return redirectError(isAuthentication ? "/auth" : "/integrations", "google_connection_failed");
   }
 }
