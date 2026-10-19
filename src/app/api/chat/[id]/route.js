@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export async function GET(_request, context) {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Connect Google Workspace to sign in." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const { id } = await context.params;
   const conversation = await prisma.conversation.findFirst({
     where: { id, userId: user.id },
