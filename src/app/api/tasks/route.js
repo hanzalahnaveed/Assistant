@@ -68,5 +68,8 @@ export async function POST(request) {
       },
     });
   }
-  return NextResponse.json({ task }, { status: 201, headers: { "cache-control": "no-store" } });
+  return NextResponse.json(
+    { task, created: !existingSourceTask },
+    { status: existingSourceTask ? 200 : 201, headers: { "cache-control": "no-store" } },
+  );
 }
