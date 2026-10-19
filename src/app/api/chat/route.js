@@ -178,7 +178,7 @@ async function generateReply(userId, timezone, message, history, idempotencyKey)
 export async function GET() {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Connect Google Workspace to sign in." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const conversations = await prisma.conversation.findMany({
     where: { userId: user.id },
     orderBy: { updatedAt: "desc" },
@@ -190,7 +190,7 @@ export async function GET() {
 export async function POST(request) {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Connect Google Workspace to sign in." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return NextResponse.json(
