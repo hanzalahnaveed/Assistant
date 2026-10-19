@@ -40,17 +40,30 @@ export default function ActionsClient() {
           cache: "no-store",
         }),
       ]);
-      const [body, rulesBody] = await Promise.all([response.json(), rulesResponse.json()]);
-      if (!response.ok) throw new Error(body.error || "Could not load action history.");
-      if (!rulesResponse.ok) throw new Error(rulesBody.error || "Could not load automation rules.");
-      setActions(body.actions);
-      setRules(rulesBody.rules);
-      setDefaultApprovalMode(rulesBody.defaultApprovalMode);
-      setAutomationPaused(Boolean(rulesBody.automationPaused));
-      const activeRule = rulesBody.rules.find(
-        (rule) => rule.actionType === "CREATE_TASK" && rule.enabled,
-      );
-      setRuleMode(activeRule?.mode ?? rulesBody.defaultApprovalMode);
+      const [body, rulesBody] = await Promise.all([
+        response.json().catch(() => ({})),
+        rulesResponse.json().catch(() => ({})),
+      ]);
+      // Action history and automation settings are separate resources. Preserve
+      // whichever one loaded successfully rather than hiding both on one failure.
+      const failures = [];
+      if (response.ok && Array.isArray(body.actions)) {
+        setActions(body.actions);
+      } else {
+        failures.push(body.error || "Could not load action history.");
+      }
+      if (rulesResponse.ok && Array.isArray(rulesBody.rules)) {
+        setRules(rulesBody.rules);
+        setDefaultApprovalMode(rulesBody.defaultApprovalMode);
+        setAutomationPaused(Boolean(rulesBody.automationPaused));
+        const activeRule = rulesBody.rules.find(
+          (rule) => rule.actionType === "CREATE_TASK" && rule.enabled,
+        );
+        setRuleMode(activeRule?.mode ?? rulesBody.defaultApprovalMode);
+      } else {
+        failures.push(rulesBody.error || "Could not load automation rules.");
+      }
+      if (failures.length) throw new Error(failures.join(" "));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load action history.");
     } finally {
