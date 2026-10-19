@@ -46,6 +46,7 @@ export async function PATCH(request) {
       dailyBriefingEnabled: true,
       briefingHour: true,
       defaultApprovalMode: true,
+      automationPaused: true,
       updatedAt: true,
     },
   });
