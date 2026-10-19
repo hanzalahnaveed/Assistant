@@ -149,10 +149,15 @@ export async function POST() {
       : capability("failed", calendarResult.reason instanceof Error ? calendarResult.reason.message : "Calendar API verification failed. Retry or reconnect.");
   }
 
-  await prisma.integration.updateMany({
-    where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
-    data: { lastSyncedAt: new Date() },
-  });
+  if (
+    (hasGmailRead && gmailResult.status === "fulfilled") ||
+    (hasCalendarRead && calendarResult.status === "fulfilled")
+  ) {
+    await prisma.integration.updateMany({
+      where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
+      data: { lastSyncedAt: new Date() },
+    });
+  }
 
   return NextResponse.json({
     connected: true,
