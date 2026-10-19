@@ -662,6 +662,13 @@ try {
     },
     token,
   );
+  // The workspace briefing read above is intentionally non-persistent, but keep the
+  // scheduler assertion isolated even if a prior test added today's briefing.
+  await prisma.notification.deleteMany({
+    where: { userId: user.id, type: "DAILY_BRIEFING" },
+  });
+  await prisma.dailyBriefing.deleteMany({ where: { userId: user.id } });
+
   const cronSecret = process.env.CRON_SECRET;
   assert.ok(cronSecret && cronSecret.length >= 32, "CI must configure a strong CRON_SECRET");
   const cronResponse = await expectStatus("/api/cron/daily-briefings", 200, {
