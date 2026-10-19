@@ -81,9 +81,9 @@ function validateMeetingForm(f) {
   } catch {
     return "Enter a valid IANA timezone, such as Asia/Karachi or America/New_York.";
   }
-  const attendees = f.attendees.split(/[;,\\n]/).map((email) => email.trim()).filter(Boolean);
+  const attendees = f.attendees.split(/[;,\n]/).map((email) => email.trim()).filter(Boolean);
   if (attendees.length > 50) return "A meeting can have at most 50 attendee emails.";
-  if (attendees.some((email) => !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))) {
+  if (attendees.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     return "Check attendee emails. Use comma- or semicolon-separated email addresses.";
   }
   return "";
