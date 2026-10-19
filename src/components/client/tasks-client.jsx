@@ -3,7 +3,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Check, Circle, LoaderCircle, Plus, Search, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, Circle, LoaderCircle, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import WorkspaceHeader from "@/components/workspace-header";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const priorityStyle = {
@@ -95,8 +95,11 @@ export default function TasksClient() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not update task.");
       setTasks((current) => current.map((item) => (item.id === task.id ? body.task : item)));
+      setNotice("Task updated.");
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update task.");
+      return false;
     }
   }
   async function removeTask(task) {
@@ -380,7 +383,85 @@ export default function TasksClient() {
     </main>
   );
 }
+function toLocalDateTimeInput(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
 function TaskRow({ task, updateTask, removeTask }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description ?? "");
+  const [priority, setPriority] = useState(task.priority);
+  const [dueAt, setDueAt] = useState(toLocalDateTimeInput(task.dueAt));
+  useEffect(() => {
+    if (!editing) {
+      setTitle(task.title);
+      setDescription(task.description ?? "");
+      setPriority(task.priority);
+      setDueAt(toLocalDateTimeInput(task.dueAt));
+    }
+  }, [task, editing]);
+  async function saveChanges(event) {
+    event.preventDefault();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    const ok = await updateTask(task, {
+      title: title.trim(),
+      description: description.trim() || null,
+      priority,
+      dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+    });
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+  if (editing) {
+    return (
+      <form onSubmit={saveChanges} className="space-y-3 border-b border-[#edf1ed] py-4">
+        <Input
+          aria-label="Task title"
+          required
+          maxLength={200}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Task title"
+          className="w-full rounded-xl border border-[#dfe6dd] px-3 py-2.5 text-sm"
+        />
+        <Input.TextArea
+          aria-label="Task notes"
+          maxLength={5000}
+          rows={3}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Notes (optional)"
+          className="w-full rounded-xl border border-[#dfe6dd] px-3 py-2.5 text-sm"
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-medium text-[#6B7280]">
+            Priority
+            <select value={priority} onChange={(event) => setPriority(event.target.value)} className="mt-1.5 block w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2.5 text-sm">
+              {priorities.map((item) => <option key={item} value={item}>{item[0] + item.slice(1).toLowerCase()}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-medium text-[#6B7280]">
+            Due date and time
+            <input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className="mt-1.5 block w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2.5 text-sm" />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button htmlType="submit" disabled={saving || !title.trim()} className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            <Save size={14} /> {saving ? "Saving…" : "Save changes"}
+          </Button>
+          <Button htmlType="button" disabled={saving} onClick={() => setEditing(false)} className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3.5 py-2 text-xs font-medium">
+            <X size={14} /> Cancel
+          </Button>
+        </div>
+      </form>
+    );
+  }
   return (
     <article className="flex flex-wrap items-start gap-3 py-4 min-w-0">
       <Button
@@ -433,13 +514,25 @@ function TaskRow({ task, updateTask, removeTask }) {
           </option>
         ))}
       </select>
-      <Button
-        aria-label="Archive task"
-        onClick={() => void removeTask(task)}
-        className="rounded-lg p-1.5 text-[#9b6a60] hover:bg-rose-50"
-      >
-        <Trash2 size={15} />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          htmlType="button"
+          aria-label="Edit task"
+          title="Edit task"
+          onClick={() => setEditing(true)}
+          className="rounded-lg p-1.5 text-[#64746a] hover:bg-[#f0f4ef]"
+        >
+          <Pencil size={15} />
+        </Button>
+        <Button
+          htmlType="button"
+          aria-label="Archive task"
+          onClick={() => void removeTask(task)}
+          className="rounded-lg p-1.5 text-[#9b6a60] hover:bg-rose-50"
+        >
+          <Trash2 size={15} />
+        </Button>
+      </div>
     </article>
   );
 }
