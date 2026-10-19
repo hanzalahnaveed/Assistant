@@ -4,6 +4,7 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import WorkspaceHeader from "@/components/workspace-header";
+import { localDateTimeToIso, toLocalDateTime } from "@/lib/calendar-timezone";
 import {
   CalendarDays,
   CheckCircle2,
@@ -34,50 +35,6 @@ const labels = {
   CREATE_UNCERTAIN: "Check Calendar",
   CANCELLED: "Cancelled",
 };
-function partsInTimezone(value, timezone) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(value);
-  return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-}
-function toLocal(value, timezone) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  try {
-    const p = partsInTimezone(d, timezone);
-    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
-  } catch {
-    return "";
-  }
-}
-function localDateTimeToIso(value, timezone) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value || "");
-  if (!match) return null;
-  const [, year, month, day, hour, minute] = match;
-  const target = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
-  let candidate = target;
-  try {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const p = partsInTimezone(new Date(candidate), timezone);
-      const represented = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
-      const delta = target - represented;
-      if (delta === 0) break;
-      candidate += delta;
-    }
-    const verified = partsInTimezone(new Date(candidate), timezone);
-    if (verified.year !== year || verified.month !== month || verified.day !== day ||
-        verified.hour !== hour || verified.minute !== minute) return null;
-    return new Date(candidate).toISOString();
-  } catch {
-    return null;
-  }
-}
 function format(value) {
   if (!value) return "Time not set";
   const d = new Date(value);
@@ -201,8 +158,8 @@ export default function CalendarClient() {
       title: d.title,
       description: d.description,
       location: d.location || "",
-      startAt: toLocal(d.startAt, d.timezone),
-      endAt: toLocal(d.endAt, d.timezone),
+      startAt: toLocalDateTime(d.startAt, d.timezone),
+      endAt: toLocalDateTime(d.endAt, d.timezone),
       timezone: d.timezone,
       attendees: d.attendees.join(", "),
     });
