@@ -23,6 +23,7 @@ export async function GET() {
     return NextResponse.json(
       {
         connected: false,
+        reauthRequired: integration?.status === "REAUTH_REQUIRED",
         user,
         integration: integration ? { ...integration, scopes: integration.scopes } : null,
         emails: [],
@@ -107,6 +108,24 @@ export async function GET() {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to load Google Workspace data.";
+    const currentIntegration = await prisma.integration.findFirst({
+      where: { userId: user.id, provider: "GOOGLE" },
+      orderBy: { updatedAt: "desc" },
+      select: { status: true, email: true, scopes: true, lastSyncedAt: true },
+    });
+    if (currentIntegration?.status === "REAUTH_REQUIRED") {
+      return NextResponse.json(
+        {
+          connected: false,
+          reauthRequired: true,
+          user,
+          integration: currentIntegration,
+          emails: [],
+          events: [],
+        },
+        { headers: { "cache-control": "no-store" } },
+      );
+    }
     return NextResponse.json(
       { connected: true, error: message, user, emails: [], events: [] },
       { status: 502 },
