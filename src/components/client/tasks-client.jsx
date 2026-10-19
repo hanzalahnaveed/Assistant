@@ -235,6 +235,7 @@ export default function TasksClient() {
             </p>
           </div>
           <Button
+            type="primary"
             htmlType="button"
             onClick={() => setShowComposer((value) => !value)}
             className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
@@ -291,6 +292,7 @@ export default function TasksClient() {
               </label>
             </div>
             <Button
+              type="primary"
               htmlType="submit"
               disabled={busy || !title.trim()}
               className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
