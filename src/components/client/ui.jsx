@@ -250,6 +250,14 @@ export default function IntegrationsClient() {
             {notice}
           </div>
         )}
+        {data?.workspaceError && (
+          <div
+            role="status"
+            className="mb-5 rounded-[13px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            {data.workspaceError} Other available Google Workspace data is still shown. Use “Run integration checks” to inspect permissions.
+          </div>
+        )}
         <section className="mb-6 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-start gap-4">
