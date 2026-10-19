@@ -892,6 +892,19 @@ try {
   await expectStatus("/api/automation-rules/" + crossAccountRule.id, 404, {
     method: "DELETE",
   }, otherToken);
+  assert.equal(
+    (await prisma.actionRecord.findUnique({ where: { id: pausedProposal.action.id } })).status,
+    "PENDING",
+  );
+  assert.equal(
+    (await prisma.emailDraft.findUnique({ where: { id: crossAccountEmailDraft.id } })).status,
+    "DRAFT",
+  );
+  assert.equal(
+    (await prisma.automationRule.findUnique({ where: { id: crossAccountRule.id } })).mode,
+    "CONFIRM",
+  );
+  check(true, "cross-account mutation attempts leave the owner’s action, draft, and automation rule unchanged");
   await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 409, {
     method: "PATCH",
     body: JSON.stringify(meetingInput),
