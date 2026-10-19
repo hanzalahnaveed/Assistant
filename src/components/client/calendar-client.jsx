@@ -34,11 +34,49 @@ const labels = {
   CREATE_UNCERTAIN: "Check Calendar",
   CANCELLED: "Cancelled",
 };
-function toLocal(value) {
+function partsInTimezone(value, timezone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+}
+function toLocal(value, timezone) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  try {
+    const p = partsInTimezone(d, timezone);
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  } catch {
+    return "";
+  }
+}
+function localDateTimeToIso(value, timezone) {
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value || "");
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match.map((part, index) => index === 0 ? part : part);
+  const target = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  let candidate = target;
+  try {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const p = partsInTimezone(new Date(candidate), timezone);
+      const represented = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
+      const delta = target - represented;
+      if (delta === 0) break;
+      candidate += delta;
+    }
+    const verified = partsInTimezone(new Date(candidate), timezone);
+    if (verified.year !== year || verified.month !== month || verified.day !== day ||
+        verified.hour !== hour || verified.minute !== minute) return null;
+    return new Date(candidate).toISOString();
+  } catch {
+    return null;
+  }
 }
 function format(value) {
   if (!value) return "Time not set";
@@ -58,8 +96,8 @@ function fromForm(f) {
     title: f.title,
     description: f.description,
     location: f.location,
-    startAt: new Date(f.startAt).toISOString(),
-    endAt: new Date(f.endAt).toISOString(),
+    startAt: localDateTimeToIso(f.startAt, f.timezone),
+    endAt: localDateTimeToIso(f.endAt, f.timezone),
     timezone: f.timezone,
     attendees: f.attendees
       .split(/[;,\n]/)
@@ -70,17 +108,19 @@ function fromForm(f) {
 
 function validateMeetingForm(f) {
   if (!f.title.trim()) return "Add a meeting title before saving.";
-  const start = new Date(f.startAt);
-  const end = new Date(f.endAt);
-  if (!f.startAt || !f.endAt || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return "Choose a valid meeting start and end time.";
-  }
-  if (end <= start) return "Meeting end must be after its start.";
+  let startIso;
+  let endIso;
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: f.timezone }).format(start);
+    new Intl.DateTimeFormat("en-US", { timeZone: f.timezone }).format(new Date());
+    startIso = localDateTimeToIso(f.startAt, f.timezone);
+    endIso = localDateTimeToIso(f.endAt, f.timezone);
   } catch {
     return "Enter a valid IANA timezone, such as Asia/Karachi or America/New_York.";
   }
+  if (!startIso || !endIso) {
+    return "Choose valid start and end times in the selected timezone. Times skipped by daylight-saving changes are not valid.";
+  }
+  if (new Date(endIso) <= new Date(startIso)) return "Meeting end must be after its start.";
   const attendees = f.attendees.split(/[;,\n]/).map((email) => email.trim()).filter(Boolean);
   if (attendees.length > 50) return "A meeting can have at most 50 attendee emails.";
   if (attendees.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
@@ -161,8 +201,8 @@ export default function CalendarClient() {
       title: d.title,
       description: d.description,
       location: d.location || "",
-      startAt: toLocal(d.startAt),
-      endAt: toLocal(d.endAt),
+      startAt: toLocal(d.startAt, d.timezone),
+      endAt: toLocal(d.endAt, d.timezone),
       timezone: d.timezone,
       attendees: d.attendees.join(", "),
     });
