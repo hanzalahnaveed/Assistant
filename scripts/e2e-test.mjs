@@ -223,6 +223,22 @@ try {
   });
   const token = makeSession(user);
 
+  const exportUnauthenticated = await expectStatus("/api/account/export", 401);
+  check(exportUnauthenticated.status === 401, "account export rejects unauthenticated requests");
+  const exportResponse = await expectStatus("/api/account/export", 200, {}, token);
+  assert.match(
+    exportResponse.headers.get("content-disposition") || "",
+    /attachment; filename="assistant-data-export-\\d{4}-\\d{2}-\\d{2}\\.json"/,
+  );
+  const exportBody = await exportResponse.json();
+  assert.equal(exportBody.formatVersion, 1);
+  assert.equal(exportBody.account.id, user.id);
+  const exportJson = JSON.stringify(exportBody);
+  assert.equal(exportJson.includes("passwordHash"), false);
+  assert.equal(exportJson.includes("accessTokenEnc"), false);
+  assert.equal(exportJson.includes("refreshTokenEnc"), false);
+  check(true, "account export contains only the authenticated user's data and excludes credentials");
+
   const authenticatedIntegrationStart = await expectStatus(
     "/api/auth/google/start",
     307,
