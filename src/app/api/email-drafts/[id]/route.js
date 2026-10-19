@@ -73,6 +73,18 @@ export async function POST(request, context) {
     return NextResponse.json({ error: "Choose approve, send, or cancel." }, { status: 400 });
   const draft = await prisma.emailDraft.findFirst({ where: { id, userId: user.id } });
   if (!draft) return NextResponse.json({ error: "Email draft not found." }, { status: 404 });
+  if (parsed.data.action === "SEND") {
+    const preferences = await prisma.userPreference.findUnique({
+      where: { userId: user.id },
+      select: { automationPaused: true },
+    });
+    if (preferences?.automationPaused) {
+      return NextResponse.json(
+        { error: "Automation is paused. Resume it before sending email." },
+        { status: 409 },
+      );
+    }
+  }
   if (parsed.data.action === "CONFIRM_SENT" || parsed.data.action === "CONFIRM_NOT_SENT") {
     if (draft.status !== "SEND_UNCERTAIN")
       return NextResponse.json(
