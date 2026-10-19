@@ -122,9 +122,6 @@ export default function TasksClient() {
     }
   }
   const open = tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
-  const selectableVisibleTasks = visibleTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
-  const selectedOpenTasks = tasks.filter((task) => selectedTaskIds.includes(task.id) && task.status !== "DONE" && task.status !== "CANCELLED");
-  const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
   function toggleTaskSelection(taskId, checked) {
     setSelectedTaskIds((current) => checked ? [...new Set([...current, taskId])] : current.filter((id) => id !== taskId));
   }
@@ -188,6 +185,9 @@ export default function TasksClient() {
     return (a.dueAt ? new Date(a.dueAt).getTime() : Infinity) -
       (b.dueAt ? new Date(b.dueAt).getTime() : Infinity);
   });
+  const selectableVisibleTasks = visibleTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
+  const selectedOpenTasks = tasks.filter((task) => selectedTaskIds.includes(task.id) && task.status !== "DONE" && task.status !== "CANCELLED");
+  const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
