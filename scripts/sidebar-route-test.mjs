@@ -105,6 +105,12 @@ for (const route of routes) {
     assert.ok(client.includes(endpoint), `${route.href} must call ${endpoint}`);
   }
 
+  if (route.href === "/tasks") {
+    assert.match(client, /completeSelectedTasks/, "task workflow must support completing selected tasks");
+    assert.match(client, /Select all visible active tasks/, "task workflow must support selecting visible tasks");
+    assert.match(client, /retry the remaining selection/i, "bulk completion must report partial failures");
+  }
+
   console.log(`PASS ${route.href}: ${route.label} page, client workflow, and API coverage`);
 }
 
