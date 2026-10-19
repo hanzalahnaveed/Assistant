@@ -34,7 +34,7 @@ function localMidnightUtc(year, month, day, timeZone) {
   }
   return new Date(guess);
 }
-function localDayBounds(now, timeZone) {
+export function localDayBounds(now, timeZone) {
   const parts = dateParts(now, timeZone);
   const year = Number(parts.year),
     month = Number(parts.month),

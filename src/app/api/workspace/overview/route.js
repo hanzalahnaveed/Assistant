@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
+import { localDayBounds } from "@/lib/briefing/service";
 import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,14 +42,13 @@ export async function GET() {
       );
     }
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: dayStart, end: dayEnd } = localDayBounds(now, user.timezone || "Asia/Karachi");
     const gmailUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-    gmailUrl.searchParams.set("maxResults", "6");
+    gmailUrl.searchParams.set("maxResults", "25");
     gmailUrl.searchParams.set("q", "in:inbox newer_than:14d -category:promotions");
     const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-    calendarUrl.searchParams.set("timeMin", now.toISOString());
-    calendarUrl.searchParams.set("timeMax", tomorrow.toISOString());
+    calendarUrl.searchParams.set("timeMin", dayStart.toISOString());
+    calendarUrl.searchParams.set("timeMax", dayEnd.toISOString());
     calendarUrl.searchParams.set("singleEvents", "true");
     calendarUrl.searchParams.set("orderBy", "startTime");
     calendarUrl.searchParams.set("maxResults", "10");
@@ -57,7 +57,7 @@ export async function GET() {
       googleApiGet(token.accessToken, calendarUrl.toString()),
     ]);
     const details = await Promise.all(
-      (gmail.messages ?? []).slice(0, 6).map(async (message) => {
+      (gmail.messages ?? []).slice(0, 25).map(async (message) => {
         const url = new URL(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(message.id)}`,
         );
@@ -105,7 +105,7 @@ export async function GET() {
           status: "CONNECTED",
           lastSyncedAt: new Date().toISOString(),
         },
-        emails: details,
+        emails: details.slice(0, 6),
         emailCountEstimate: gmail.resultSizeEstimate ?? details.length,
         events: (calendar.items ?? [])
           .filter((event) => event.status !== "cancelled")
