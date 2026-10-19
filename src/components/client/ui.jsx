@@ -98,6 +98,7 @@ export default function IntegrationsClient() {
           dailyBriefingEnabled: preferences.dailyBriefingEnabled,
           briefingHour: Number(preferences.briefingHour),
           defaultApprovalMode: preferences.defaultApprovalMode,
+          timezone: preferences.timezone,
         }),
       });
       const body = await response.json();
@@ -433,7 +434,20 @@ export default function IntegrationsClient() {
                       <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>
                     ))}
                   </select>
-                  <span className="mt-1 block font-normal text-[#89938d]">Uses your saved account timezone.</span>
+                  <span className="mt-1 block font-normal text-[#89938d]">Choose the timezone used for briefing time and calendar context.</span>
+                </label>
+                <label className="block text-xs font-semibold text-[#526159]">
+                  Account timezone (IANA)
+                  <input
+                    type="text"
+                    value={preferences.timezone || "Asia/Karachi"}
+                    onChange={(event) => setPreferences((current) => ({ ...current, timezone: event.target.value }))}
+                    maxLength={100}
+                    required
+                    placeholder="Asia/Karachi"
+                    className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3 py-3 text-sm font-normal"
+                  />
+                  <span className="mt-1 block font-normal text-[#89938d]">Example: Asia/Karachi, Europe/London, or America/New_York.</span>
                 </label>
               </div>
               <div className="space-y-4">

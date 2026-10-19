@@ -10,6 +10,14 @@ const updateSchema = z
     briefingHour: z.number().int().min(0).max(23).optional(),
     defaultApprovalMode: z.enum(["AUTO", "CONFIRM", "BLOCK"]).optional(),
     automationPaused: z.boolean().optional(),
+    timezone: z.string().trim().min(1).max(100).refine((value) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Enter a valid IANA timezone.").optional(),
   })
   .refine((value) => Object.keys(value).length > 0, "Provide at least one preference.");
 export async function GET() {
@@ -27,7 +35,10 @@ export async function GET() {
       updatedAt: true,
     },
   });
-  return NextResponse.json({ preferences }, { headers: { "cache-control": "no-store" } });
+  return NextResponse.json(
+    { preferences: { ...preferences, timezone: user.timezone } },
+    { headers: { "cache-control": "no-store" } },
+  );
 }
 export async function PATCH(request) {
   const user = await getSessionUser();
@@ -38,10 +49,11 @@ export async function PATCH(request) {
       { error: "Invalid preference values.", details: parsed.error.flatten() },
       { status: 400 },
     );
+  const { timezone, ...preferenceData } = parsed.data;
   const preferences = await prisma.userPreference.upsert({
     where: { userId: user.id },
-    create: { userId: user.id, ...parsed.data },
-    update: parsed.data,
+    create: { userId: user.id, ...preferenceData },
+    update: preferenceData,
     select: {
       dailyBriefingEnabled: true,
       briefingHour: true,
@@ -50,6 +62,9 @@ export async function PATCH(request) {
       updatedAt: true,
     },
   });
+  const updatedUser = timezone
+    ? await prisma.user.update({ where: { id: user.id }, data: { timezone }, select: { timezone: true } })
+    : { timezone: user.timezone };
   await prisma.auditEvent.create({
     data: {
       userId: user.id,
@@ -58,5 +73,8 @@ export async function PATCH(request) {
       metadata: parsed.data,
     },
   });
-  return NextResponse.json({ preferences }, { headers: { "cache-control": "no-store" } });
+  return NextResponse.json(
+    { preferences: { ...preferences, timezone: updatedUser.timezone } },
+    { headers: { "cache-control": "no-store" } },
+  );
 }
