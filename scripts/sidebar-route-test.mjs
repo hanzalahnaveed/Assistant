@@ -119,6 +119,10 @@ for (const route of routes) {
     assert.match(client, /Meeting end must be after its start/, "meeting workflow must reject invalid time ranges");
     assert.match(client, /valid IANA timezone/, "meeting workflow must validate the selected timezone");
     assert.match(client, /Check attendee emails/, "meeting workflow must validate attendee email addresses");
+    assert.match(client, /localDateTimeToIso/, "meeting workflow must interpret form times in the selected timezone");
+    assert.match(client, /toLocalDateTime/, "meeting edits must restore wall-clock values in the selected timezone");
+    const timezoneUtility = await read("src/lib/calendar-timezone.mjs");
+    assert.match(timezoneUtility, /daylight-saving|verified/, "timezone conversion must reject nonexistent local times");
     const createApi = await read("src/app/api/meeting-drafts/route.js");
     const detailApi = await read("src/app/api/meeting-drafts/[id]/route.js");
     for (const [api, label] of [[createApi, "meeting proposal creation API"], [detailApi, "meeting proposal detail API"]]) {
