@@ -274,6 +274,12 @@ try {
   assert.deepEqual(workspaceBody.emails, []);
   assert.deepEqual(workspaceBody.events, []);
   check(true, "workspace API handles an authenticated account without a Google connection");
+  const verificationResponse = await expectStatus("/api/integrations/google/verify", 200, { method: "POST" }, token);
+  const verificationBody = await verificationResponse.json();
+  assert.equal(verificationBody.connected, false);
+  assert.equal(verificationBody.checks.gmailRead.status, "not_connected");
+  assert.equal(verificationBody.checks.calendarRead.status, "not_connected");
+  check(true, "Google integration verification reports a safe not-connected state without external API calls");
 
   await expectStatus("/api/meeting-drafts", 401);
   await expectStatus("/api/meeting-drafts", 200, {}, token);
