@@ -17,12 +17,12 @@ import { useEffect, useState } from "react";
 const items = [
   {
     href: "/briefing",
-    label: "Overview",
+    label: "Briefing",
     icon: LayoutDashboard,
   },
   {
     href: "/tasks",
-    label: "My tasks",
+    label: "Tasks",
     icon: CheckSquare,
   },
   {
@@ -32,7 +32,7 @@ const items = [
   },
   {
     href: "/calendar",
-    label: "Calendar & meetings",
+    label: "Calendar & Schedule",
     icon: CalendarDays,
   },
   {
@@ -47,7 +47,7 @@ const items = [
   },
   {
     href: "/integrations",
-    label: "Connections",
+    label: "Integrations",
     icon: Settings2,
   },
 ];
@@ -72,10 +72,10 @@ export default function WorkspaceHeader() {
         className="inline-flex items-center gap-[11px] px-0 text-[19px] font-[760] tracking-[-0.7px] text-white min-[761px]:px-[9px]"
         aria-label="Assistant home"
       >
-        <span className="grid h-[38px] w-[38px] place-items-center rounded-[13px] bg-white/18 text-white min-[421px]:h-[42px] min-[421px]:w-[42px] min-[761px]:h-[39px] min-[761px]:w-[39px]">
+        {/* <span className="grid h-[38px] w-[38px] place-items-center rounded-[13px] bg-white/18 text-white min-[421px]:h-[42px] min-[421px]:w-[42px] min-[761px]:h-[39px] min-[761px]:w-[39px]">
           <Sparkles size={19} strokeWidth={2.2} />
-        </span>
-        <span className="font-pacifico hidden min-[761px]:block">
+        </span> */}
+        <span className="hidden min-[761px]:block">
           assistant<span className="text-[#FA8500]">.</span>
         </span>
       </Link>

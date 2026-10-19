@@ -220,10 +220,7 @@ export default function ActionsClient() {
       <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#FA8500] text-pretty">
-              Controlled autonomy
-            </p>
-            <h1 className="mt-2 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+            <h1 className="text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
               Action center
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69756e] text-pretty">

@@ -192,14 +192,9 @@ export default function TasksClient() {
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
       <div className="mx-auto max-w-5xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
-          <Check size={14} /> Execution center
-        </div>
         <div className="mb-7">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[#FA8500] text-pretty">
-            Your execution space
-          </p>
-          <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+          <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+            <Check size={40} /> 
             My tasks
           </h1>
           <p className="mt-2 text-sm text-[#6B7280] text-pretty">

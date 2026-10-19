@@ -194,10 +194,8 @@ export default function EmailClient() {
       <div className="mx-auto max-w-7xl px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-[#FA8500]">
-              <MailPlus size={15} /> Outreach workspace
-            </div>
-            <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+            <h1 className="flex items-center gap-2 text-[clamp(1.8rem,3vw,2.5rem)] text-[#233044] font-semibold tracking-[-0.045em] leading-[1.13]">
+              <MailPlus size={40}/>
               {"Email & cold outreach"}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B7280] text-pretty">
