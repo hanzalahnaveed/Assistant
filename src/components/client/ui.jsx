@@ -31,6 +31,7 @@ export default function IntegrationsClient() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [oauthError, setOauthError] = useState("");
@@ -95,6 +96,32 @@ export default function IntegrationsClient() {
       setBusy(false);
     }
   }
+  async function logout() {
+    if (!window.confirm("Log out of your Assistant account?"))
+      return;
+    setLoggingOut(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        let message = "Logout failed. Please retry.";
+        try {
+          const body = await response.json();
+          if (body.message) message = body.message;
+        } catch {
+          // Keep the explicit fallback when the server response is not JSON.
+        }
+        throw new Error(message);
+      }
+      window.location.replace("/auth");
+    } catch (logoutError) {
+      setError(logoutError instanceof Error ? logoutError.message : "Logout failed. Please retry.");
+      setLoggingOut(false);
+    }
+  }
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
@@ -117,7 +144,7 @@ export default function IntegrationsClient() {
           </div>
           <Button
             onClick={() => void load()}
-            disabled={loading || busy}
+            disabled={loading || busy || loggingOut}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? "animate-[spin_0.9s_linear_infinite]" : ""} />{" "}
@@ -180,7 +207,7 @@ export default function IntegrationsClient() {
               <div className="flex gap-2">
                 <Button
                   onClick={() => void disconnect()}
-                  disabled={busy}
+                  disabled={busy || loggingOut}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-3.5 py-2.5 text-sm font-medium hover:bg-[#fafbf9] disabled:opacity-50"
                 >
                   <Unplug size={15} /> Disconnect
@@ -324,17 +351,27 @@ export default function IntegrationsClient() {
         {data?.user && (
           <section className="mt-6 flex flex-col gap-4 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
-              <h2 className="font-semibold tracking-[-0.025em]">Your data</h2>
+              <h2 className="font-semibold tracking-[-0.025em]">Your account</h2>
               <p className="mt-1 max-w-2xl text-xs leading-5 text-[#6B7280] text-pretty">
-                Export your Assistant tasks, conversations, preferences, briefings, drafts, and activity history as JSON. OAuth access and refresh tokens are never included.
+                Export your Assistant data or securely log out of this account.
               </p>
             </div>
-            <a
-              href="/api/account/export"
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-semibold text-[#526159] hover:bg-[#fafbf9]"
-            >
-              Download data export <ExternalLink size={14} />
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/api/account/export"
+                className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-semibold text-[#526159] hover:bg-[#fafbf9]"
+              >
+                Download data export <ExternalLink size={14} />
+              </a>
+              <Button
+                onClick={() => void logout()}
+                loading={loggingOut}
+                disabled={loggingOut || busy}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-semibold hover:bg-[#fafbf9]"
+              >
+                Log out
+              </Button>
+            </div>
           </section>
         )}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#87918b]">
