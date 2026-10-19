@@ -203,7 +203,7 @@ export async function generateBriefingData(user, now = new Date()) {
         const calendarUrl = new URL(
           "https://www.googleapis.com/calendar/v3/calendars/primary/events",
         );
-        calendarUrl.searchParams.set("timeMin", now.toISOString());
+        calendarUrl.searchParams.set("timeMin", dayStart.toISOString());
         calendarUrl.searchParams.set("timeMax", dayEnd.toISOString());
         calendarUrl.searchParams.set("singleEvents", "true");
         calendarUrl.searchParams.set("orderBy", "startTime");
