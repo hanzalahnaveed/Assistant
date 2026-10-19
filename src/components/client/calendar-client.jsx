@@ -59,7 +59,7 @@ function toLocal(value, timezone) {
 function localDateTimeToIso(value, timezone) {
   const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value || "");
   if (!match) return null;
-  const [, year, month, day, hour, minute] = match.map((part, index) => index === 0 ? part : part);
+  const [, year, month, day, hour, minute] = match;
   const target = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
   let candidate = target;
   try {
