@@ -48,6 +48,7 @@ export default function BriefingClient() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [creatingCommitment, setCreatingCommitment] = useState("");
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -78,6 +79,32 @@ export default function BriefingClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function createCommitmentTask(item) {
+    setCreatingCommitment(item.id);
+    setError("");
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: item.title,
+          description: item.description,
+          priority: item.priority,
+          dueAt: item.dueAt,
+          source: item.sourceType,
+          sourceRef: item.id,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not create this task.");
+      await load(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create this task.");
+    } finally {
+      setCreatingCommitment("");
+    }
+  }
 
   const metrics = data?.metrics;
 
@@ -246,6 +273,36 @@ export default function BriefingClient() {
                 <p className="mt-4 text-sm text-[#76817c]">No more calendar events scheduled for today.</p>
               )}
               <a href="/calendar" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar tools ↗</a>
+            </section>
+
+            <section aria-labelledby="briefing-commitments" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+              <h2 id="briefing-commitments" className="font-semibold tracking-tight">Potential commitments</h2>
+              <p className="mt-1 text-xs text-[#76817c]">Suggestions inferred from visible email text and upcoming meetings. Review before turning them into tasks.</p>
+              {data.commitments?.length ? (
+                <ul className="mt-4 divide-y divide-[#edf1ed]">
+                  {data.commitments.slice(0, 8).map((item) => (
+                    <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium">{item.title}</div>
+                          <p className="mt-1 text-xs leading-5 text-[#76817c]">{item.rationale}</p>
+                          {item.evidence && <p className="mt-1 text-xs leading-5 text-[#5d6961]">{item.evidence}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void createCommitmentTask(item)}
+                          disabled={creatingCommitment === item.id}
+                          className="shrink-0 rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50"
+                        >
+                          {creatingCommitment === item.id ? "Adding…" : "Create task"}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[#76817c]">No potential commitments found in the current briefing.</p>
+              )}
             </section>
 
             <section aria-labelledby="briefing-followups" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
