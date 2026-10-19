@@ -41,7 +41,7 @@ export async function syncFollowUpCandidates(userId, candidates) {
     const task = taskBySource.get(`${item.sourceType}:${item.sourceId}`);
     return {
       id: `${item.sourceType === "EMAIL" ? "email" : "meeting"}:${item.sourceId}`,
-      followUpId: item.id, sourceType: item.sourceType, sourceId: item.sourceId,
+      followUpId: item.id, status: item.status, sourceType: item.sourceType, sourceId: item.sourceId,
       title: item.title, description: item.description, evidence: item.evidence,
       rationale: item.rationale, priority: item.priority,
       dueAt: item.dueAt?.toISOString() ?? null,
@@ -50,8 +50,10 @@ export async function syncFollowUpCandidates(userId, candidates) {
       firstSeenAt: item.firstSeenAt.toISOString(), lastSeenAt: item.lastSeenAt.toISOString(),
     };
   };
+  const serialized = saved.map(serialize);
   return {
-    open: saved.filter((item) => item.status === "OPEN").map(serialize),
-    dismissed: saved.filter((item) => item.status === "DISMISSED").map(serialize),
+    open: serialized.filter((item) => item.status === "OPEN" && item.lifecycleStatus !== "TASK_COMPLETED"),
+    completed: serialized.filter((item) => item.status === "OPEN" && item.lifecycleStatus === "TASK_COMPLETED"),
+    dismissed: serialized.filter((item) => item.status === "DISMISSED"),
   };
 }

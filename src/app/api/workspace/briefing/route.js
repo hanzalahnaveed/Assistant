@@ -15,7 +15,7 @@ export async function GET() {
     const briefing = await generateBriefingData(user);
     const followUpState = await syncFollowUpCandidates(user.id, briefing.commitments ?? []);
     return NextResponse.json(
-      { ...briefing, commitments: followUpState.open, dismissedCommitments: followUpState.dismissed },
+      { ...briefing, commitments: followUpState.open, completedCommitments: followUpState.completed, dismissedCommitments: followUpState.dismissed },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
