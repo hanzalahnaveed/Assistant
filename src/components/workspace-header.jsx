@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "antd";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   CheckSquare,
   ClipboardCheck,
   LayoutDashboard,
-  LoaderCircle,
-  LogOut,
   MailPlus,
   MessageSquareText,
   Settings2,
@@ -19,7 +16,7 @@ import {
 import { useEffect, useState } from "react";
 const items = [
   {
-    href: "/",
+    href: "/briefing",
     label: "Overview",
     icon: LayoutDashboard,
   },
@@ -56,9 +53,7 @@ const items = [
 ];
 export default function WorkspaceHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const [user, setUser] = useState(null);
-  const [signingOut, setSigningOut] = useState(false);
   useEffect(() => {
     fetch("/api/auth/session", {
       cache: "no-store",
@@ -67,24 +62,13 @@ export default function WorkspaceHeader() {
       .then((data) => setUser(data.user ?? null))
       .catch(() => setUser(null));
   }, []);
-  async function signOut() {
-    setSigningOut(true);
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-    } finally {
-      router.replace("/auth?loggedOut=1");
-      router.refresh();
-    }
-  }
   return (
     <aside
       className="fixed inset-y-0 left-0 z-40 flex w-[58px] flex-col items-center gap-7 bg-[#233044] px-[5px] pt-[18px] pb-3 text-white min-[421px]:w-[72px] min-[421px]:px-2 min-[761px]:w-[252px] min-[761px]:items-stretch min-[761px]:gap-[34px] min-[761px]:px-4 min-[761px]:pt-[27px] min-[761px]:pb-[18px]"
       aria-label="Workspace sidebar"
     >
       <Link
-        href="/"
+        href="/briefing"
         className="inline-flex items-center gap-[11px] px-0 text-[19px] font-[760] tracking-[-0.7px] text-white min-[761px]:px-[9px]"
         aria-label="Assistant home"
       >
@@ -101,9 +85,7 @@ export default function WorkspaceHeader() {
       >
         {items.map(({ href, label, icon: Icon }) => {
           const active =
-            href === "/"
-              ? pathname === "/" || pathname === "/briefing"
-              : pathname === href || pathname.startsWith(href + "/");
+            pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
@@ -139,24 +121,6 @@ export default function WorkspaceHeader() {
             </strong>
           </span>
         </div>
-        <Button
-          type="text"
-          htmlType="button"
-          className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-white/28 bg-transparent p-[9px] text-[11px]! font-semibold! whitespace-nowrap text-white enabled:hover:border-white/55 enabled:hover:bg-white/12 disabled:opacity-65 min-[761px]:p-2.5"
-          onClick={() => void signOut()}
-          disabled={signingOut}
-          aria-label="Sign out"
-          title="Sign out"
-        >
-          {signingOut ? (
-            <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
-          ) : (
-            <LogOut size={16} />
-          )}
-          <span className="hidden min-[761px]:inline">
-            {signingOut ? "Signing out" : "Sign out"}
-          </span>
-        </Button>
       </div>
     </aside>
   );

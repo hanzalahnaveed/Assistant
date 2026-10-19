@@ -82,7 +82,7 @@ export default function BriefingClient() {
   const metrics = data?.metrics;
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] text-[#18211f]">
+    <main className="min-h-screen bg-[#f8faf7] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">

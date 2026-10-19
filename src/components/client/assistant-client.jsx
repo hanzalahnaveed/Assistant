@@ -4,6 +4,7 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 export default function AssistantClient() {
   const [conversations, setConversations] = useState([]);
   const [conversationId, setConversationId] = useState("");
@@ -105,6 +106,7 @@ export default function AssistantClient() {
   }
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <WorkspaceHeader />
       <div className="mx-auto grid max-w-7xl gap-5 px-4 sm:px-7 lg:grid-cols-[260px_minmax(0,1fr)] pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#FA8500]">

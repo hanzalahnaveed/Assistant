@@ -4,6 +4,7 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CheckCircle2, Clock3, LoaderCircle, Plus, ShieldCheck, X } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 const statusLabels = {
   PENDING: "Needs your approval",
   APPROVED: "Approved",
@@ -215,6 +216,7 @@ export default function ActionsClient() {
   const history = actions.filter((action) => action.status !== "PENDING");
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <WorkspaceHeader />
       <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

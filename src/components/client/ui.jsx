@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Inbox,
   LoaderCircle,
-  LogOut,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -95,13 +94,6 @@ export default function IntegrationsClient() {
     } finally {
       setBusy(false);
     }
-  }
-  async function logout() {
-    setBusy(true);
-    await fetch("/api/auth/logout", {
-      method: "POST",
-    }).catch(() => undefined);
-    window.location.assign("/");
   }
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
@@ -347,15 +339,6 @@ export default function IntegrationsClient() {
         )}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#87918b]">
           <span>OAuth credentials stay server-side and stored tokens are encrypted at rest.</span>
-          {data?.user && (
-            <Button
-              onClick={() => void logout()}
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white"
-            >
-              <LogOut size={14} /> Sign out {data.user.email}
-            </Button>
-          )}
         </div>
       </div>
     </main>

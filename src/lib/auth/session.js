@@ -71,16 +71,6 @@ export async function createSession(user) {
     maxAge: SESSION_SECONDS,
   });
 }
-export async function clearSession() {
-  const jar = await cookies();
-  jar.set(COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
-}
 export async function getSessionUser() {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;

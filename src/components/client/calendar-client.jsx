@@ -3,6 +3,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
+import WorkspaceHeader from "@/components/workspace-header";
 import {
   CalendarDays,
   CheckCircle2,
@@ -202,6 +203,7 @@ export default function CalendarClient() {
   }
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <WorkspaceHeader />
       <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
           <CalendarDays size={14} />

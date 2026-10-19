@@ -4,6 +4,7 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, Check, Circle, LoaderCircle, Plus, Search, Trash2, X } from "lucide-react";
+import WorkspaceHeader from "@/components/workspace-header";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const priorityStyle = {
   LOW: "bg-slate-100 text-slate-600",
@@ -131,6 +132,7 @@ export default function TasksClient() {
   });
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <WorkspaceHeader />
       <div className="mx-auto max-w-5xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-[#FA8500]">
           <Check size={14} /> Execution center

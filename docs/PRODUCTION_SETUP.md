@@ -81,7 +81,7 @@ Use credentials-based sign-up/sign-in for the core authentication checks. If Goo
 
 - [ ] `/api/health` responds successfully.
 - [ ] `/auth` loads and Google sign-up creates the first account.
-- [ ] Sign out, then sign in with the existing account; signing in with an unregistered account should not create one.
+- [ ] Sign in with the existing account; signing in with an unregistered account should not create one.
 - [ ] Create, update, complete, and archive a task; refresh and verify persistence.
 - [ ] Open Assistant and send a message; confirm the configured AI provider returns a response and the conversation persists.
 - [ ] Connect Google Workspace separately; confirm Gmail messages and primary-calendar events load.
@@ -89,7 +89,7 @@ Use credentials-based sign-up/sign-in for the core authentication checks. If Goo
 - [ ] Confirm outreach requires approval and a separate send confirmation; test sending only with a designated test recipient.
 - [ ] Open the briefing page; check task metrics and connected Workspace context.
 - [ ] Set the briefing preference to a suitable hour, manually run the scheduler, and confirm the briefing/notification is persisted. Re-running it for the same local date should not create duplicates.
-- [ ] Verify sign-out protects all workspace routes and clears the session.
+- [ ] Verify the authenticated session protects all workspace routes.
 - [ ] Review deployment logs for OAuth, database, or AI-provider errors.
 
 ## 7. What this repository cannot configure on your behalf

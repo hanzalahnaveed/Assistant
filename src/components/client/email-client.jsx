@@ -3,6 +3,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
+import WorkspaceHeader from "@/components/workspace-header";
 import {
   AlertCircle,
   CheckCircle2,
@@ -181,6 +182,7 @@ export default function EmailClient() {
     pending = drafts.filter((d) => d.status === "DRAFT" || d.status === "APPROVED").length;
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
+      <WorkspaceHeader />
       <div className="mx-auto max-w-7xl px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
