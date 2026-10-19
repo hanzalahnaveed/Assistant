@@ -711,6 +711,33 @@ try {
     { method: "PATCH", body: JSON.stringify({ notificationId }) },
     otherToken,
   );
+  const followUp = await prisma.followUp.create({
+    data: {
+      userId: user.id,
+      sourceType: "EMAIL",
+      sourceId: "e2e-follow-up-" + Date.now(),
+      title: "Review client commitment",
+      description: "Test follow-up description",
+      evidence: "Please send the proposal by Friday.",
+      rationale: "The message includes a next-step request.",
+      priority: "HIGH",
+    },
+  });
+  const dismissedFollowUpResponse = await expectStatus("/api/follow-ups/" + followUp.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "DISMISSED" }),
+  }, token);
+  assert.equal((await dismissedFollowUpResponse.json()).followUp.status, "DISMISSED");
+  const restoredFollowUpResponse = await expectStatus("/api/follow-ups/" + followUp.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "OPEN" }),
+  }, token);
+  assert.equal((await restoredFollowUpResponse.json()).followUp.status, "OPEN");
+  await expectStatus("/api/follow-ups/" + followUp.id, 404, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "DISMISSED" }),
+  }, otherToken);
+  check(true, "follow-up suggestions persist, can be dismissed and restored, and enforce account ownership");
   check(true, "task, conversation, and notification ownership prevents cross-account access");
   await prisma.user.delete({ where: { id: otherUser.id } });
 
