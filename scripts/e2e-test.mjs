@@ -594,7 +594,27 @@ try {
     1,
   );
   assert.equal(concurrentPayloads.filter((payload) => payload.reused).length, 1);
+  const concurrentActionId = concurrentPayloads.find((payload) => payload.action)?.action.id;
+  assert.ok(concurrentActionId);
   check(true, "simultaneous duplicate action requests resolve to one persisted proposal");
+  const concurrentApprovals = await Promise.all(
+    [0, 1].map(() => request("/api/actions/" + concurrentActionId, {
+      method: "PATCH",
+      body: JSON.stringify({ decision: "APPROVE" }),
+    }, token)),
+  );
+  assert.ok(concurrentApprovals.every((response) => [200, 409].includes(response.status)));
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Concurrent idempotency regression task" } }),
+    1,
+  );
+  assert.equal(
+    await prisma.auditEvent.count({
+      where: { userId: user.id, resourceId: concurrentActionId, eventType: "ACTION_APPROVED_AND_EXECUTED" },
+    }),
+    1,
+  );
+  check(true, "simultaneous approvals execute a task and record execution exactly once");
 
   await expectStatus("/api/preferences", 200, {
     method: "PATCH",
