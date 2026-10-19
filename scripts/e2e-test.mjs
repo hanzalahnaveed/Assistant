@@ -845,6 +845,23 @@ try {
   assert.ok(conversations.some((conversation) => conversation.id === chat.conversationId));
   check(true, "conversation list returns the saved conversation");
 
+  const crossAccountEmailDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "recipient@example.test",
+      subject: "Ownership isolation test",
+      body: "This draft must remain private to its owner.",
+      status: "DRAFT",
+    },
+  });
+  const crossAccountRule = await prisma.automationRule.create({
+    data: {
+      userId: user.id,
+      name: "E2E ownership isolation",
+      actionType: "CREATE_TASK",
+      mode: "CONFIRM",
+    },
+  });
   const otherUser = await prisma.user.create({
     data: { email: "e2e-other-" + Date.now() + "@example.test", name: "Other Test User" },
   });
@@ -860,6 +877,21 @@ try {
     otherToken,
   );
   await expectStatus("/api/chat/" + chat.conversationId, 404, {}, otherToken);
+  await expectStatus("/api/actions/" + pausedProposal.action.id, 404, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "REJECT" }),
+  }, otherToken);
+  await expectStatus("/api/email-drafts/" + crossAccountEmailDraft.id, 404, {
+    method: "POST",
+    body: JSON.stringify({ action: "CANCEL" }),
+  }, otherToken);
+  await expectStatus("/api/automation-rules/" + crossAccountRule.id, 404, {
+    method: "PATCH",
+    body: JSON.stringify({ mode: "AUTO" }),
+  }, otherToken);
+  await expectStatus("/api/automation-rules/" + crossAccountRule.id, 404, {
+    method: "DELETE",
+  }, otherToken);
   await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 409, {
     method: "PATCH",
     body: JSON.stringify(meetingInput),
@@ -901,7 +933,7 @@ try {
     body: JSON.stringify({ status: "DISMISSED" }),
   }, otherToken);
   check(true, "follow-up suggestions persist, can be dismissed and restored, and enforce account ownership");
-  check(true, "task, conversation, and notification ownership prevents cross-account access");
+  check(true, "task, conversation, action, email draft, automation rule, meeting, follow-up, and notification ownership prevents cross-account access");
   await prisma.user.delete({ where: { id: otherUser.id } });
 
   const disconnectResponse = await expectStatus(
