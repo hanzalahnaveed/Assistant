@@ -143,21 +143,16 @@ try {
   assert.ok(signUpStart.headers.get("set-cookie")?.includes("google_auth_intent=signup"));
   check(true, "account creation flow requests only identity scopes");
 
-  const oauthStart = await expectStatus("/api/auth/google/start", 307);
-  const authorizationUrl = new URL(oauthStart.headers.get("location"));
-  assert.equal(authorizationUrl.origin, "https://accounts.google.com");
-  assert.ok(
-    authorizationUrl.searchParams
-      .get("scope")
-      .includes("https://www.googleapis.com/auth/gmail.readonly"),
+  const unauthenticatedIntegrationStart = await expectStatus("/api/auth/google/start", 307);
+  assert.equal(
+    new URL(unauthenticatedIntegrationStart.headers.get("location")).pathname,
+    "/auth",
   );
-  assert.ok(
-    authorizationUrl.searchParams
-      .get("scope")
-      .includes("https://www.googleapis.com/auth/calendar.readonly"),
+  assert.equal(
+    new URL(unauthenticatedIntegrationStart.headers.get("location")).searchParams.get("error"),
+    "sign_in_required",
   );
-  assert.ok(oauthStart.headers.get("set-cookie")?.includes("google_oauth_state="));
-  check(true, "Google OAuth start redirects with state and read-only Gmail/Calendar scopes");
+  check(true, "Google Workspace connection requires an authenticated account");
 
   const invalidCallback = await expectStatus(
     "/api/auth/google/callback?state=attacker&code=invalid",
