@@ -263,6 +263,36 @@ try {
   assert.deepEqual(workspaceBody.events, []);
   check(true, "workspace API handles an authenticated account without a Google connection");
 
+  const reauthUser = await prisma.user.create({
+    data: {
+      email: "reauth-" + Date.now() + "@example.test",
+      name: "Reauthentication E2E",
+      timezone: "UTC",
+    },
+  });
+  await prisma.integration.create({
+    data: {
+      userId: reauthUser.id,
+      provider: "GOOGLE",
+      providerAccountId: "reauth-e2e-" + reauthUser.id,
+      email: reauthUser.email,
+      status: "REAUTH_REQUIRED",
+      scopes: [],
+    },
+  });
+  const reauthResponse = await expectStatus(
+    "/api/workspace/overview",
+    200,
+    {},
+    makeSession(reauthUser),
+  );
+  const reauthBody = await reauthResponse.json();
+  assert.equal(reauthBody.connected, false);
+  assert.equal(reauthBody.reauthRequired, true);
+  assert.equal(reauthBody.integration.status, "REAUTH_REQUIRED");
+  await prisma.user.delete({ where: { id: reauthUser.id } });
+  check(true, "Workspace settings clearly expose a revoked Google connection that needs reauthorization");
+
   await prisma.task.create({
     data: {
       userId: user.id,
