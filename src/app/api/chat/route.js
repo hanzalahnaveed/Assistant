@@ -262,6 +262,7 @@ export async function POST(request) {
           id: assistantMessage.id,
           role: "assistant",
           content: assistantMessage.content,
+          metadata: assistantMessage.metadata,
         },
         ...(reply.action ? { action: reply.action } : {}),
       },

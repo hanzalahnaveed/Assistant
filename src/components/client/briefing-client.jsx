@@ -5,6 +5,7 @@ import WorkspaceHeader from "@/components/workspace-header";
 import {
   AlertCircle,
   CalendarDays,
+  CheckCircle2,
   Clock3,
   Inbox,
   ListTodo,
@@ -84,6 +85,7 @@ export default function BriefingClient() {
   const [error, setError] = useState("");
   const [creatingCommitment, setCreatingCommitment] = useState("");
   const [updatingFollowUp, setUpdatingFollowUp] = useState("");
+  const [updatingTask, setUpdatingTask] = useState("");
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async (refresh = false) => {
@@ -155,6 +157,27 @@ export default function BriefingClient() {
       setError(cause instanceof Error ? cause.message : "Could not create this task.");
     } finally {
       setCreatingCommitment("");
+    }
+  }
+
+  async function completeTask(task) {
+    setUpdatingTask(task.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "DONE" }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not complete this task.");
+      setNotice(`Completed task: ${task.title}`);
+      await load(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not complete this task.");
+    } finally {
+      setUpdatingTask("");
     }
   }
 
@@ -302,6 +325,21 @@ export default function BriefingClient() {
                         <span className="rounded-full bg-[#fff3e5] px-2 py-0.5 text-[10px] font-semibold text-[#995500]">{item.priority}</span>
                       </div>
                       <p className="mt-1 text-xs text-[#76817c]">{item.detail}</p>
+                      {item.type === "task" && data.tasks?.some((task) => task.id === item.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => void completeTask(data.tasks.find((task) => task.id === item.id))}
+                          disabled={updatingTask === item.id}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[#dfe6dd] px-2.5 py-1.5 text-[11px] font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50"
+                        >
+                          <CheckCircle2 size={13} />
+                          {updatingTask === item.id ? "Updating…" : "Mark complete"}
+                        </button>
+                      ) : item.type === "email" ? (
+                        <a href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.id)}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-semibold text-[#176b52] hover:underline">
+                          Open email ↗
+                        </a>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -325,6 +363,15 @@ export default function BriefingClient() {
                         {task.reasons?.join(" · ") || task.status.replaceAll("_", " ").toLowerCase()}
                         {task.dueAt ? " · Due " + formatDateTime(task.dueAt, data.timezone) : ""}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => void completeTask(task)}
+                        disabled={updatingTask === task.id}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[#dfe6dd] px-2.5 py-1.5 text-[11px] font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={13} />
+                        {updatingTask === task.id ? "Updating…" : "Mark complete"}
+                      </button>
                     </li>
                   ))}
                 </ul>

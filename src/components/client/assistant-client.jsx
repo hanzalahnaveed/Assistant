@@ -3,7 +3,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { LoaderCircle, MessageCircle, Plus, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock3, LoaderCircle, MessageCircle, Plus, Search, Send, Sparkles } from "lucide-react";
 import WorkspaceHeader from "@/components/workspace-header";
 export default function AssistantClient() {
   const [conversations, setConversations] = useState([]);
@@ -13,6 +13,7 @@ export default function AssistantClient() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [conversationSearch, setConversationSearch] = useState("");
   const loadConversations = useCallback(async () => {
     try {
       const response = await fetch("/api/chat", {
@@ -50,6 +51,9 @@ export default function AssistantClient() {
     setInput("");
     setError("");
   }
+  const visibleConversations = conversations.filter((item) =>
+    (item.title || "New conversation").toLowerCase().includes(conversationSearch.trim().toLowerCase()),
+  );
   async function sendMessage(event) {
     event.preventDefault();
     const message = input.trim();
@@ -121,11 +125,21 @@ export default function AssistantClient() {
           <h2 className="mb-2 text-[11px] font-semibold uppercase text-[#87918b] tracking-[-0.025em]">
             Recent conversations
           </h2>
+          <label className="mb-3 flex items-center gap-2 rounded-lg border border-[#e3e7ed] px-2.5 py-2 text-[#87918b]">
+            <Search size={14} />
+            <input
+              aria-label="Search conversations"
+              value={conversationSearch}
+              onChange={(event) => setConversationSearch(event.target.value)}
+              placeholder="Search chats…"
+              className="min-w-0 w-full bg-transparent text-xs text-[#47534c] outline-none placeholder:text-[#a1aaa4]"
+            />
+          </label>
           {loading ? (
             <p className="py-4 text-xs text-[#87918b] text-pretty">Loading…</p>
-          ) : conversations.length ? (
+          ) : visibleConversations.length ? (
             <div className="space-y-1">
-              {conversations.map((item) => (
+              {visibleConversations.map((item) => (
                 <Button
                   key={item.id}
                   onClick={() => void openConversation(item.id)}
@@ -138,7 +152,7 @@ export default function AssistantClient() {
             </div>
           ) : (
             <p className="py-3 text-xs leading-5 text-[#87918b] text-pretty">
-              Your saved chats will appear here.
+              {conversationSearch ? "No conversations match that search." : "Your saved chats will appear here."}
             </p>
           )}
         </aside>
@@ -209,10 +223,29 @@ export default function AssistantClient() {
                     <Sparkles size={15} />
                   </div>
                 )}
-                <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
-                >
-                  {item.content}
+                <div className="max-w-[85%]">
+                  <div
+                    className={`whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
+                  >
+                    {item.content}
+                  </div>
+                  {item.role === "assistant" && item.metadata?.actionType === "CREATE_TASK" && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs">
+                      {item.metadata.actionStatus === "SUCCEEDED" ? (
+                        <CheckCircle2 size={15} className="text-[#176b52]" />
+                      ) : (
+                        <Clock3 size={15} className="text-[#9a6a2c]" />
+                      )}
+                      <span className="text-[#526159]">
+                        {item.metadata.actionStatus === "SUCCEEDED"
+                          ? "Task created"
+                          : `Task proposal: ${item.metadata.actionStatus?.toLowerCase() || "review"}`}
+                      </span>
+                      <a href="/actions" className="ml-auto font-semibold text-[#176b52] hover:underline">
+                        {item.metadata.actionStatus === "SUCCEEDED" ? "Open Action Center" : "Review action ↗"}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
