@@ -12,6 +12,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "test:e2e": "node scripts/e2e-test.mjs",
+    "test:sidebar-routes": "node scripts/sidebar-route-test.mjs",
     "verify:javascript": "node scripts/verify-javascript.mjs",
     "format": "npx --yes prettier@3 --write .",
     "format:check": "npx --yes prettier@3 --check ."
