@@ -114,7 +114,12 @@ export async function GET(request) {
           data: { name: profile.name, imageUrl: profile.imageUrl },
         })
       : await prisma.user.create({
-          data: { email, name: profile.name, imageUrl: profile.imageUrl },
+          data: {
+            email,
+            name: profile.name,
+            imageUrl: profile.imageUrl,
+            preferences: { create: {} },
+          },
         });
 
     await prisma.auditEvent.create({
