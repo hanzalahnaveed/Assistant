@@ -274,6 +274,100 @@ try {
   assert.deepEqual(workspaceBody.events, []);
   check(true, "workspace API handles an authenticated account without a Google connection");
 
+  await expectStatus("/api/meeting-drafts", 401);
+  await expectStatus("/api/meeting-drafts", 200, {}, token);
+  await expectStatus("/api/meeting-drafts", 400, {
+    method: "POST",
+    body: JSON.stringify({
+      title: "Invalid timezone meeting",
+      startAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+      timezone: "Not/A_Real_Timezone",
+      attendees: [],
+    }),
+  }, token);
+  await expectStatus("/api/meeting-drafts", 400, {
+    method: "POST",
+    body: JSON.stringify({
+      title: "Backwards meeting",
+      startAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      timezone: "UTC",
+      attendees: [],
+    }),
+  }, token);
+  await expectStatus("/api/meeting-drafts", 400, {
+    method: "POST",
+    body: JSON.stringify({
+      title: "Bad attendee meeting",
+      startAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+      timezone: "UTC",
+      attendees: ["not-an-email"],
+    }),
+  }, token);
+  check(true, "meeting proposal API rejects invalid timezone, reversed time range, and malformed attendee emails");
+
+  const meetingStartAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  const meetingEndAt = new Date(meetingStartAt.getTime() + 30 * 60 * 1000);
+  const meetingInput = {
+    title: "E2E meeting proposal",
+    description: "Proposal lifecycle verification",
+    location: "Video call",
+    startAt: meetingStartAt.toISOString(),
+    endAt: meetingEndAt.toISOString(),
+    timezone: "UTC",
+    attendees: ["Guest@example.test", "guest@example.test"],
+  };
+  const meetingCreateResponse = await expectStatus("/api/meeting-drafts", 201, {
+    method: "POST",
+    body: JSON.stringify(meetingInput),
+  }, token);
+  let meetingDraft = (await meetingCreateResponse.json()).draft;
+  assert.equal(meetingDraft.title, meetingInput.title);
+  assert.deepEqual(meetingDraft.attendees, ["guest@example.test"]);
+  assert.equal(meetingDraft.status, "DRAFT");
+  const meetingList = await (await expectStatus("/api/meeting-drafts", 200, {}, token)).json();
+  assert.ok(meetingList.drafts.some((draft) => draft.id === meetingDraft.id));
+  check(true, "meeting proposals can be created, normalize duplicate attendee emails, and appear in the calendar list");
+
+  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 400, {
+    method: "PATCH",
+    body: JSON.stringify({ ...meetingInput, timezone: "Mars/Olympus_Mons" }),
+  }, token);
+  const updatedMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({
+      ...meetingInput,
+      title: "E2E updated meeting proposal",
+      description: "Edited agenda",
+      attendees: ["guest@example.test"],
+    }),
+  }, token);
+  meetingDraft = (await updatedMeetingResponse.json()).draft;
+  assert.equal(meetingDraft.title, "E2E updated meeting proposal");
+  assert.equal(meetingDraft.description, "Edited agenda");
+  assert.equal(meetingDraft.status, "DRAFT");
+  check(true, "meeting proposal edits persist and invalid timezone edits are rejected");
+
+  const approveMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  }, token);
+  meetingDraft = (await approveMeetingResponse.json()).draft;
+  assert.equal(meetingDraft.status, "APPROVED");
+  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 403, {
+    method: "POST",
+    body: JSON.stringify({ action: "CREATE" }),
+  }, token);
+  const cancelledMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "CANCEL" }),
+  }, token);
+  assert.equal((await cancelledMeetingResponse.json()).draft.status, "CANCELLED");
+  check(true, "meeting proposals require approval before creation, deny creation without Google event scope, and support cancellation");
+
+
   const reauthUser = await prisma.user.create({
     data: {
       email: "reauth-" + Date.now() + "@example.test",
@@ -751,6 +845,14 @@ try {
     otherToken,
   );
   await expectStatus("/api/chat/" + chat.conversationId, 404, {}, otherToken);
+  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 409, {
+    method: "PATCH",
+    body: JSON.stringify(meetingInput),
+  }, otherToken);
+  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 404, {
+    method: "POST",
+    body: JSON.stringify({ action: "CANCEL" }),
+  }, otherToken);
   await expectStatus(
     "/api/notifications",
     404,
