@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { generateBriefingData } from "@/lib/briefing/service";
+import { syncFollowUpCandidates } from "@/lib/follow-ups/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
@@ -12,7 +13,11 @@ export async function GET() {
     );
   try {
     const briefing = await generateBriefingData(user);
-    return NextResponse.json(briefing, { headers: { "cache-control": "no-store" } });
+    const followUpState = await syncFollowUpCandidates(user.id, briefing.commitments ?? []);
+    return NextResponse.json(
+      { ...briefing, commitments: followUpState.open, dismissedCommitments: followUpState.dismissed },
+      { headers: { "cache-control": "no-store" } },
+    );
   } catch (error) {
     console.error("Failed to generate daily briefing", error);
     return NextResponse.json(
