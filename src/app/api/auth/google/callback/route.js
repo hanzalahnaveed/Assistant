@@ -31,13 +31,22 @@ export async function GET(request) {
 
   if (providerError) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "google_consent_cancelled");
+<<<<<<< HEAD
+=======
+  }
+  if (!isAuthentication && !isConnection) {
+    return redirectError("/integrations", "invalid_oauth_intent");
+>>>>>>> d271763 (fix: link Google Workspace to the active user account)
   }
   if (!state || !expectedState || state !== expectedState || !code) {
     return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
   }
+<<<<<<< HEAD
   if (!isAuthentication && !isConnection) {
     return redirectError("/integrations", "invalid_oauth_intent");
   }
+=======
+>>>>>>> d271763 (fix: link Google Workspace to the active user account)
 
   try {
     const tokens = await exchangeGoogleCode(code);
@@ -64,11 +73,15 @@ export async function GET(request) {
         providerAccountId: profile.id,
         email,
         accessTokenEnc: encryptSecret(tokens.accessToken),
+<<<<<<< HEAD
         ...(tokens.refreshToken
           ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) }
           : existingIntegration?.providerAccountId === profile.id
             ? {}
             : { refreshTokenEnc: null }),
+=======
+        ...(tokens.refreshToken ? { refreshTokenEnc: encryptSecret(tokens.refreshToken) } : {}),
+>>>>>>> d271763 (fix: link Google Workspace to the active user account)
         tokenExpiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
         scopes: tokens.scope,
         status: "CONNECTED",
