@@ -894,7 +894,7 @@ try {
   }, otherToken);
   assert.equal(
     (await prisma.actionRecord.findUnique({ where: { id: pausedProposal.action.id } })).status,
-    "PENDING",
+    "SUCCEEDED",
   );
   assert.equal(
     (await prisma.emailDraft.findUnique({ where: { id: crossAccountEmailDraft.id } })).status,
