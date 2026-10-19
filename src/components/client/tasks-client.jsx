@@ -28,6 +28,8 @@ export default function TasksClient() {
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [dueFilter, setDueFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DUE_ASC");
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -120,6 +122,36 @@ export default function TasksClient() {
     }
   }
   const open = tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
+  const selectableVisibleTasks = visibleTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
+  const selectedOpenTasks = tasks.filter((task) => selectedTaskIds.includes(task.id) && task.status !== "DONE" && task.status !== "CANCELLED");
+  const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
+  function toggleTaskSelection(taskId, checked) {
+    setSelectedTaskIds((current) => checked ? [...new Set([...current, taskId])] : current.filter((id) => id !== taskId));
+  }
+  function toggleVisibleSelection(checked) {
+    setSelectedTaskIds((current) => {
+      const visibleIds = new Set(selectableVisibleTasks.map((task) => task.id));
+      const retained = current.filter((id) => !visibleIds.has(id));
+      return checked ? [...retained, ...selectableVisibleTasks.map((task) => task.id)] : retained;
+    });
+  }
+  async function completeSelectedTasks() {
+    if (!selectedOpenTasks.length || bulkBusy) return;
+    setBulkBusy(true);
+    setError("");
+    let completedCount = 0;
+    const failedIds = [];
+    for (const task of selectedOpenTasks) {
+      const success = await updateTask(task, { status: "DONE" });
+      if (success) completedCount += 1;
+      else failedIds.push(task.id);
+    }
+    setSelectedTaskIds(failedIds);
+    setNotice(failedIds.length
+      ? `Completed ${completedCount} of ${selectedOpenTasks.length} selected tasks. Retry the remaining selection.`
+      : `Completed ${completedCount} selected task${completedCount === 1 ? "" : "s"}.`);
+    setBulkBusy(false);
+  }
   const done = tasks.filter((task) => task.status === "DONE");
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -358,6 +390,33 @@ export default function TasksClient() {
                 <option value="NEWEST">Recently created</option>
               </select>
             </div>
+            {selectableVisibleTasks.length > 0 && view !== "completed" && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e3e7ed] bg-[#f8faf8] px-3.5 py-3">
+                <label className="flex items-center gap-2 text-xs font-medium text-[#526159]">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible active tasks"
+                    checked={allVisibleSelected}
+                    onChange={(event) => toggleVisibleSelection(event.target.checked)}
+                    className="h-4 w-4 accent-[#FA8500]"
+                  />
+                  Select visible active tasks ({selectableVisibleTasks.length})
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {selectedOpenTasks.length > 0 && (
+                    <span className="text-xs text-[#6B7280]">{selectedOpenTasks.length} selected</span>
+                  )}
+                  <Button
+                    htmlType="button"
+                    disabled={!selectedOpenTasks.length || bulkBusy}
+                    onClick={() => void completeSelectedTasks()}
+                    className="rounded-xl bg-[#FA8500] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {bulkBusy ? "Completing…" : `Complete selected (${selectedOpenTasks.length})`}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2" role="group" aria-label="Task status filter">
               {[
                 {
@@ -401,6 +460,8 @@ export default function TasksClient() {
                   task={task}
                   updateTask={updateTask}
                   removeTask={removeTask}
+                  selected={selectedTaskIds.includes(task.id)}
+                  onSelect={toggleTaskSelection}
                 />
               ))}
             </div>
@@ -444,7 +505,7 @@ function toLocalDateTimeInput(value) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
 }
-function TaskRow({ task, updateTask, removeTask }) {
+function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -518,6 +579,15 @@ function TaskRow({ task, updateTask, removeTask }) {
   }
   return (
     <article className="flex flex-wrap items-start gap-3 py-4 min-w-0">
+      {task.status !== "DONE" && task.status !== "CANCELLED" && (
+        <input
+          type="checkbox"
+          aria-label={`Select task: ${task.title}`}
+          checked={selected}
+          onChange={(event) => onSelect(task.id, event.target.checked)}
+          className="mt-2 h-4 w-4 shrink-0 accent-[#FA8500]"
+        />
+      )}
       <Button
         aria-label={task.status === "DONE" ? "Reopen task" : "Complete task"}
         onClick={() =>
