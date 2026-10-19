@@ -16,6 +16,8 @@ export default function ActionsClient() {
   const [actions, setActions] = useState([]);
   const [rules, setRules] = useState([]);
   const [defaultApprovalMode, setDefaultApprovalMode] = useState("CONFIRM");
+  const [automationPaused, setAutomationPaused] = useState(false);
+  const [savingPause, setSavingPause] = useState(false);
   const [ruleMode, setRuleMode] = useState("CONFIRM");
   const [savingRule, setSavingRule] = useState(false);
   const [title, setTitle] = useState("");
@@ -43,6 +45,7 @@ export default function ActionsClient() {
       setActions(body.actions);
       setRules(rulesBody.rules);
       setDefaultApprovalMode(rulesBody.defaultApprovalMode);
+      setAutomationPaused(Boolean(rulesBody.automationPaused));
       const activeRule = rulesBody.rules.find(
         (rule) => rule.actionType === "CREATE_TASK" && rule.enabled,
       );
@@ -56,6 +59,32 @@ export default function ActionsClient() {
   useEffect(() => {
     void loadActions();
   }, [loadActions]);
+  async function toggleAutomationPause() {
+    setSavingPause(true);
+    setError("");
+    setNotice("");
+    try {
+      const nextPaused = !automationPaused;
+      const response = await fetch("/api/preferences", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ automationPaused: nextPaused }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not update automation pause.");
+      setAutomationPaused(body.preferences.automationPaused);
+      setNotice(
+        nextPaused
+          ? "Automation paused. New AUTO proposals will wait for approval, and execution is blocked."
+          : "Automation resumed. New actions will follow your saved rules.",
+      );
+      await loadActions();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update automation pause.");
+    } finally {
+      setSavingPause(false);
+    }
+  }
   async function propose(event) {
     event.preventDefault();
     if (!title.trim() || saving) return;
@@ -200,8 +229,22 @@ export default function ActionsClient() {
               happened.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs text-[#526159]">
-            <ShieldCheck size={16} className="text-[#FA8500]" /> Your approval settings apply
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs text-[#526159]">
+              <ShieldCheck size={16} className={automationPaused ? "text-rose-600" : "text-[#FA8500]"} />
+              {automationPaused ? "Global automation pause is active" : "Your approval settings apply"}
+            </div>
+            <Button
+              htmlType="button"
+              disabled={savingPause}
+              onClick={() => void toggleAutomationPause()}
+              className={automationPaused
+                ? "flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 disabled:opacity-60"
+                : "flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs font-semibold text-[#526159] disabled:opacity-60"}
+            >
+              {savingPause ? <LoaderCircle size={14} className="animate-[spin_0.9s_linear_infinite]" /> : <ShieldCheck size={14} />}
+              {automationPaused ? "Resume automation" : "Pause automation"}
+            </Button>
           </div>
         </div>
         {error && (

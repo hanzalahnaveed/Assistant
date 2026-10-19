@@ -88,6 +88,7 @@ model UserPreference {
   dailyBriefingEnabled  Boolean  @default(true)
   briefingHour          Int      @default(8)
   defaultApprovalMode   ApprovalMode @default(CONFIRM)
+  automationPaused      Boolean  @default(false)
   preferencesJson       Json     @default("{}")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

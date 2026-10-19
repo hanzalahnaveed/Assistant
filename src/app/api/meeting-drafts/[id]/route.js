@@ -82,6 +82,18 @@ export async function POST(request, context) {
   const draft = await prisma.meetingDraft.findFirst({ where: { id, userId: user.id } });
   if (!draft) return NextResponse.json({ error: "Meeting proposal not found." }, { status: 404 });
   const action = parsed.data.action;
+  if (action === "CREATE") {
+    const preferences = await prisma.userPreference.findUnique({
+      where: { userId: user.id },
+      select: { automationPaused: true },
+    });
+    if (preferences?.automationPaused) {
+      return NextResponse.json(
+        { error: "Automation is paused. Resume it before creating calendar events." },
+        { status: 409 },
+      );
+    }
+  }
   if (action === "CANCEL") {
     const changed = await prisma.meetingDraft.updateMany({
       where: { id, userId: user.id, status: { in: ["DRAFT", "APPROVED", "FAILED"] } },

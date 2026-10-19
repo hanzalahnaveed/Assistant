@@ -306,6 +306,85 @@ try {
   assert.equal(updatedPreferences.briefingHour, 9);
   check(true, "briefing preferences persist across API requests");
 
+  await expectStatus(
+    "/api/preferences",
+    200,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ defaultApprovalMode: "AUTO", automationPaused: true }),
+    },
+    token,
+  );
+  const pausedProposalResponse = await expectStatus("/api/actions", 201, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: "pause-test-" + Date.now(),
+      input: {
+        title: "Paused automation test task",
+        description: "Must not be created while global pause is active.",
+        priority: "MEDIUM",
+      },
+    }),
+  }, token);
+  const pausedProposal = await pausedProposalResponse.json();
+  assert.equal(pausedProposal.action.status, "PENDING");
+  assert.equal(pausedProposal.action.requiresApproval, true);
+  await expectStatus("/api/actions/" + pausedProposal.action.id, 409, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "APPROVE" }),
+  }, token);
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    0,
+  );
+  const pausedEmailDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "recipient@example.test",
+      subject: "Pause safety test",
+      body: "This message must not be sent while automation is paused.",
+      status: "APPROVED",
+    },
+  });
+  await expectStatus("/api/email-drafts/" + pausedEmailDraft.id, 409, {
+    method: "POST",
+    body: JSON.stringify({ action: "SEND" }),
+  }, token);
+  const pausedMeetingDraft = await prisma.meetingDraft.create({
+    data: {
+      userId: user.id,
+      title: "Pause safety test",
+      description: "This event must not be created while automation is paused.",
+      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      endAt: new Date(Date.now() + 25 * 60 * 60 * 1000),
+      status: "APPROVED",
+    },
+  });
+  await expectStatus("/api/meeting-drafts/" + pausedMeetingDraft.id, 409, {
+    method: "POST",
+    body: JSON.stringify({ action: "CREATE" }),
+  }, token);
+  await expectStatus(
+    "/api/preferences",
+    200,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ automationPaused: false, defaultApprovalMode: "CONFIRM" }),
+    },
+    token,
+  );
+  const resumedApproval = await expectStatus("/api/actions/" + pausedProposal.action.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({ decision: "APPROVE" }),
+  }, token);
+  assert.equal((await resumedApproval.json()).action.status, "SUCCEEDED");
+  assert.equal(
+    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    1,
+  );
+  check(true, "global automation pause blocks task approval, email sends, and calendar creation until resumed");
+
   const cronUnauthenticated = await expectStatus("/api/cron/daily-briefings", 401, {
     method: "POST",
   });
