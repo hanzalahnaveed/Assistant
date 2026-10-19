@@ -16,7 +16,8 @@
     "test:sidebar-routes": "node scripts/sidebar-route-test.mjs",
     "verify:javascript": "node scripts/verify-javascript.mjs",
     "format": "npx --yes prettier@3 --write .",
-    "format:check": "npx --yes prettier@3 --check ."
+    "format:check": "npx --yes prettier@3 --check .",
+    "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
