@@ -75,10 +75,27 @@ export async function googleApiGet(accessToken, url) {
     headers: { authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-  if (response.status === 401)
-    throw new Error("Google access was rejected. Please reconnect your account.");
-  if (response.status === 403)
-    throw new Error("Google has not granted the required read-only scope or API access.");
-  if (!response.ok) throw new Error("Google Workspace request failed.");
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const googleError = body?.error;
+    const reason = Array.isArray(googleError?.errors)
+      ? googleError.errors.find((item) => typeof item?.reason === "string")?.reason
+      : undefined;
+    const message =
+      typeof googleError?.message === "string"
+        ? googleError.message.slice(0, 240)
+        : "Google did not provide an error description.";
+
+    if (response.status === 401) {
+      throw new Error("Google access was rejected. Reconnect your Google account.");
+    }
+
+    const detail = reason ? `${reason}: ` : "";
+    if (response.status === 403) {
+      throw new Error(`Google API access denied (${detail}${message}).`);
+    }
+
+    throw new Error(`Google Workspace API returned HTTP ${response.status} (${detail}${message}).`);
+  }
   return response.json();
 }
