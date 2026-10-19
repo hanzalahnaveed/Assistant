@@ -119,6 +119,16 @@ for (const route of routes) {
     assert.match(client, /Meeting end must be after its start/, "meeting workflow must reject invalid time ranges");
     assert.match(client, /valid IANA timezone/, "meeting workflow must validate the selected timezone");
     assert.match(client, /Check attendee emails/, "meeting workflow must validate attendee email addresses");
+    const createApi = await read("src/app/api/meeting-drafts/route.js");
+    const detailApi = await read("src/app/api/meeting-drafts/[id]/route.js");
+    for (const [api, label] of [[createApi, "meeting proposal creation API"], [detailApi, "meeting proposal detail API"]]) {
+      assert.match(api, /valid IANA timezone/, label + " must validate timezones server-side");
+      assert.match(api, /Meeting end must be after its start/, label + " must reject reversed meeting times");
+    }
+    const e2e = await read("scripts/e2e-test.mjs");
+    assert.match(e2e, /meeting proposal API rejects invalid timezone/, "E2E must cover invalid meeting input");
+    assert.match(e2e, /meeting proposals require approval before creation/, "E2E must cover the approval and safe creation lifecycle");
+    assert.match(e2e, /meeting proposal edits persist/, "E2E must cover meeting proposal editing");
   }
 
   console.log(`PASS ${route.href}: ${route.label} page, client workflow, and API coverage`);
