@@ -55,6 +55,8 @@ jobs:
         run: npm ci
       - name: Verify JavaScript-only source
         run: npm run verify:javascript
+      - name: Verify sidebar route workflows
+        run: npm run test:sidebar-routes
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client
