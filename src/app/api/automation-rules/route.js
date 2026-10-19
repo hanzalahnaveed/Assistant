@@ -24,11 +24,11 @@ export async function GET() {
       where: { userId: user.id },
       create: { userId: user.id },
       update: {},
-      select: { defaultApprovalMode: true },
+      select: { defaultApprovalMode: true, automationPaused: true },
     }),
   ]);
   return NextResponse.json(
-    { rules, defaultApprovalMode: preferences.defaultApprovalMode },
+    { rules, defaultApprovalMode: preferences.defaultApprovalMode, automationPaused: preferences.automationPaused },
     { headers: { "cache-control": "no-store" } },
   );
 }
