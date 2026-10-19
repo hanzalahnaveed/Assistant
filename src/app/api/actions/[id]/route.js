@@ -29,6 +29,18 @@ export async function PATCH(request, context) {
       { status: 409 },
     );
   }
+  if (parsed.data.decision === "APPROVE") {
+    const preferences = await prisma.userPreference.findUnique({
+      where: { userId: user.id },
+      select: { automationPaused: true },
+    });
+    if (preferences?.automationPaused) {
+      return NextResponse.json(
+        { error: "Automation is paused. Resume it before executing actions." },
+        { status: 409 },
+      );
+    }
+  }
   if (parsed.data.decision === "REJECT") {
     const action = await prisma.$transaction(async (tx) => {
       const updated = await tx.actionRecord.update({
