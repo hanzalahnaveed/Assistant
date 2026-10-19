@@ -42,64 +42,21 @@ export async function PATCH(request, context) {
     }
   }
   if (parsed.data.decision === "REJECT") {
-    const action = await prisma.$transaction(async (tx) => {
-      const updated = await tx.actionRecord.update({
-        where: { id },
-        data: {
-          status: "CANCELLED",
-          completedAt: new Date(),
-          result: { reason: "Rejected by user" },
-        },
-      });
-      await tx.auditEvent.create({
-        data: {
-          userId: user.id,
-          eventType: "ACTION_REJECTED",
-          actor: "USER",
-          resourceId: id,
-          metadata: { actionType: existing.actionType },
-        },
-      });
-      return updated;
-    });
-    return NextResponse.json({ action }, { headers: { "cache-control": "no-store" } });
-  }
-  if (existing.actionType !== "CREATE_TASK") {
-    return NextResponse.json(
-      { error: "This action type is not enabled for execution." },
-      { status: 400 },
-    );
-  }
-  const input = z
-    .object({
-      title: z.string().trim().min(1).max(200),
-      description: z.string().trim().max(5000).optional().nullable(),
-      priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
-      dueAt: z.string().datetime().optional().nullable(),
-      source: z.enum(["EMAIL", "MEETING"]).optional(),
-      sourceRef: z.string().trim().min(1).max(300).optional().nullable(),
-    })
-    .safeParse(existing.input);
-  if (!input.success) {
-    await prisma.actionRecord.update({
-      where: { id },
-      data: { status: "FAILED", errorCode: "INVALID_ACTION_INPUT", completedAt: new Date() },
-    });
-    return NextResponse.json(
-      { error: "The saved action details are invalid and cannot be executed." },
-      { status: 409 },
-    );
-  }
-  const action = await prisma.$transaction(async (tx) => {
-    const current = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
-    if (!current) throw new Error("Action not found.");
-    if (current.status === "SUCCEEDED" || current.status === "CANCELLED") return current;
-    if (current.status !== "PENDING" && current.status !== "APPROVED")
-      throw new Error("Action is already being processed.");
-    await tx.actionRecord.update({
-      where: { id },
+    const execution = await prisma.$transaction(async (tx) => {
+    // Atomically claim only pending/approved actions. Concurrent approval requests
+    // must not both execute after reading the same stale status.
+    const claim = await tx.actionRecord.updateMany({
+      where: { id, userId: user.id, status: { in: ["PENDING", "APPROVED"] } },
       data: { status: "RUNNING", approvedAt: new Date(), startedAt: new Date(), errorCode: null },
     });
+    if (!claim.count) {
+      const current = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
+      if (!current) return { error: "Action not found.", status: 404 };
+      if (current.status === "SUCCEEDED" || current.status === "CANCELLED") {
+        return { action: current, reused: true };
+      }
+      return { error: "This action is already being processed or has changed.", status: 409 };
+    }
     const taskSource =
       input.data.source && input.data.sourceRef ? input.data.source : "ASSISTANT";
     const taskSourceRef = input.data.source && input.data.sourceRef ? input.data.sourceRef : id;
@@ -139,7 +96,12 @@ export async function PATCH(request, context) {
         metadata: { actionType: existing.actionType, taskId: task.id },
       },
     });
-    return completed;
+    return { action: completed, reused: false };
   });
-  return NextResponse.json({ action }, { headers: { "cache-control": "no-store" } });
-}
+  if (execution.error) {
+    return NextResponse.json({ error: execution.error }, { status: execution.status });
+  }
+  return NextResponse.json(
+    { action: execution.action, ...(execution.reused ? { reused: true } : {}) },
+    { headers: { "cache-control": "no-store" } },
+  );
