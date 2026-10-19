@@ -7,7 +7,7 @@ This inventory is the route-by-route baseline for completing the app's user-faci
 | Sidebar route | Page/client | Current user workflow | Main API dependencies |
 | --- | --- | --- | --- |
 | Overview (`/briefing`) | `src/app/briefing/page.jsx` → `briefing-client.jsx` | Review the daily briefing, tasks, calendar context, email follow-ups, and commitments; mark eligible tasks complete and manage follow-ups. | `/api/workspace/briefing`, task and follow-up endpoints |
-| My tasks (`/tasks`) | `src/app/tasks/page.jsx` → `tasks-client.jsx` | Create, search, filter, sort, edit, complete, and remove tasks; inspect due dates and priorities. | `/api/tasks` |
+| My tasks (`/tasks`) | `src/app/tasks/page.jsx` → `tasks-client.jsx` | Create, search, filter, sort, edit, complete, and archive tasks; inspect due dates and priorities, select visible active tasks, and complete multiple tasks in one operation with retry feedback for partial failures. | `/api/tasks` |
 | AI assistant (`/assistant`) | `src/app/assistant/page.jsx` → `assistant-client.jsx` | Start a conversation, search/open saved conversations, send messages, and review task-action cards returned by the assistant. | `/api/chat`, `/api/chat/[id]` |
 | Calendar & meetings (`/calendar`) | `src/app/calendar/page.jsx` → `calendar-client.jsx` | Review calendar events, search events and proposals, draft meeting details, and approve or cancel proposals. | `/api/meeting-drafts`, calendar/workspace endpoints |
 | Email outreach (`/email`) | `src/app/email/page.jsx` → `email-client.jsx` | Create or generate a draft, edit recipients/content, filter drafts, and use the approval/send lifecycle. | `/api/email-drafts` and draft action endpoints |
@@ -22,7 +22,7 @@ Run:
 npm run test:sidebar-routes
 ```
 
-The check verifies that every sidebar link has a page module, mounts the expected client component, and retains its key workflow markers and expected API wiring. It is a static coverage check, not a substitute for running the app and testing real interactions with authenticated data and configured Google credentials.
+The check verifies that every sidebar link has a page module, mounts the expected client component, and retains its key workflow markers and expected API wiring. It also checks that the task page exposes bulk selection, bulk completion, and partial-failure retry feedback. This is a static coverage check, not a substitute for running the app and testing real interactions with authenticated data and configured Google credentials.
 
 ## Manual acceptance pass
 
