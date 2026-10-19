@@ -9,6 +9,8 @@ const createTaskSchema = z.object({
   description: z.string().trim().max(5000).optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
   dueAt: z.string().datetime().optional().nullable(),
+  source: z.enum(["USER", "EMAIL", "MEETING"]).optional(),
+  sourceRef: z.string().trim().min(1).max(300).optional().nullable(),
 });
 export async function GET() {
   const user = await getSessionUser();
@@ -31,24 +33,34 @@ export async function POST(request) {
       { error: "Enter a task title and valid optional details.", details: parsed.error.flatten() },
       { status: 400 },
     );
-  const task = await prisma.task.create({
-    data: {
-      userId: user.id,
-      title: parsed.data.title,
-      description: parsed.data.description || null,
-      priority: parsed.data.priority ?? "MEDIUM",
-      dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
-      source: "USER",
-    },
-  });
-  await prisma.auditEvent.create({
-    data: {
-      userId: user.id,
-      eventType: "TASK_CREATED",
-      actor: "USER",
-      resourceId: task.id,
-      metadata: { priority: task.priority },
-    },
-  });
+  const source = parsed.data.source ?? "USER";
+  const sourceRef = parsed.data.sourceRef || null;
+  const taskData = {
+    userId: user.id,
+    title: parsed.data.title,
+    description: parsed.data.description || null,
+    priority: parsed.data.priority ?? "MEDIUM",
+    dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+    source,
+    sourceRef,
+  };
+  const task = sourceRef
+    ? await prisma.task.upsert({
+        where: { userId_source_sourceRef: { userId: user.id, source, sourceRef } },
+        create: taskData,
+        update: {},
+      })
+    : await prisma.task.create({ data: taskData });
+  if (task.createdAt.getTime() === task.updatedAt.getTime()) {
+    await prisma.auditEvent.create({
+      data: {
+        userId: user.id,
+        eventType: "TASK_CREATED",
+        actor: "USER",
+        resourceId: task.id,
+        metadata: { priority: task.priority, source, sourceRef },
+      },
+    });
+  }
   return NextResponse.json({ task }, { status: 201, headers: { "cache-control": "no-store" } });
 }
