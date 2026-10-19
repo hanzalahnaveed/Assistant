@@ -170,6 +170,7 @@ try {
   await expectStatus("/api/workspace/briefing", 401);
   await expectStatus("/api/preferences", 401);
   await expectStatus("/api/notifications", 401);
+  await expectStatus("/api/integrations/google/verify", 401, { method: "POST" });
   check(true, "protected APIs reject unauthenticated requests");
 
   const credentialsEmail = "credentials-" + Date.now() + "@example.test";
