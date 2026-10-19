@@ -61,7 +61,7 @@ export async function POST(request) {
       parsed.data.input,
     );
     return NextResponse.json(result, {
-      status: result.reused ? 200 : 201,
+      status: result.reused || result.alreadyExists ? 200 : 201,
       headers: { "cache-control": "no-store" },
     });
   } catch (error) {

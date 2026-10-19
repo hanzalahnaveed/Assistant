@@ -13,6 +13,40 @@ import {
   Target,
 } from "lucide-react";
 
+function normalizeDueAt(value, timeZone) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const [year, month, day] = value.split("-").map(Number);
+  const target = Date.UTC(year, month - 1, day);
+  let guess = target;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: timeZone || "UTC",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date(guess));
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      const observed = Date.UTC(
+        Number(values.year),
+        Number(values.month) - 1,
+        Number(values.day),
+        Number(values.hour),
+        Number(values.minute),
+        Number(values.second),
+      );
+      guess += target - observed;
+    }
+    return new Date(guess).toISOString();
+  } catch {
+    return new Date(`${value}T00:00:00.000Z`).toISOString();
+  }
+}
+
 function formatDateTime(value, timeZone) {
   if (!value) return "Time not set";
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -96,7 +130,7 @@ export default function BriefingClient() {
             title: item.title,
             description: item.description,
             priority: item.priority,
-            dueAt: item.dueAt,
+            dueAt: normalizeDueAt(item.dueAt, data?.timezone),
             source: item.sourceType,
             sourceRef: item.sourceId,
           },
