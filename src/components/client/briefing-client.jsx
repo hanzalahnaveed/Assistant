@@ -83,6 +83,7 @@ export default function BriefingClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [creatingCommitment, setCreatingCommitment] = useState("");
+  const [updatingFollowUp, setUpdatingFollowUp] = useState("");
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async (refresh = false) => {
@@ -154,6 +155,27 @@ export default function BriefingClient() {
       setError(cause instanceof Error ? cause.message : "Could not create this task.");
     } finally {
       setCreatingCommitment("");
+    }
+  }
+
+  async function updateFollowUp(item, status) {
+    setUpdatingFollowUp(item.followUpId);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/follow-ups/${encodeURIComponent(item.followUpId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not update this follow-up.");
+      setNotice(status === "DISMISSED" ? "Suggestion dismissed. You can restore it from dismissed suggestions." : "Suggestion restored to your open follow-ups.");
+      await load(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update this follow-up.");
+    } finally {
+      setUpdatingFollowUp("");
     }
   }
 
@@ -342,26 +364,48 @@ export default function BriefingClient() {
                 <ul className="mt-4 divide-y divide-[#edf1ed]">
                   {data.commitments.slice(0, 8).map((item) => (
                     <li key={item.id} className="py-3 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium">{item.title}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium">{item.title}</span>
+                            {item.lifecycleStatus === "TASK_CREATED" && <span className="rounded-full bg-[#eef6ef] px-2 py-0.5 text-[10px] font-semibold text-[#176b52]">Task linked</span>}
+                            {item.lifecycleStatus === "TASK_COMPLETED" && <span className="rounded-full bg-[#eef6ef] px-2 py-0.5 text-[10px] font-semibold text-[#176b52]">Task completed</span>}
+                          </div>
                           <p className="mt-1 text-xs leading-5 text-[#76817c]">{item.rationale}</p>
                           {item.evidence && <p className="mt-1 text-xs leading-5 text-[#5d6961]">{item.evidence}</p>}
+                          {item.sourceType === "EMAIL" && <a href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.sourceId)}`} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open source email ↗</a>}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void createCommitmentTask(item)}
-                          disabled={creatingCommitment === item.id}
-                          className="shrink-0 rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50"
-                        >
-                          {creatingCommitment === item.id ? "Adding…" : "Create task"}
-                        </button>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          {item.lifecycleStatus !== "TASK_CREATED" && item.lifecycleStatus !== "TASK_COMPLETED" && (
+                            <button type="button" onClick={() => void createCommitmentTask(item)} disabled={creatingCommitment === item.id || updatingFollowUp === item.followUpId} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50">
+                              {creatingCommitment === item.id ? "Adding…" : "Create task"}
+                            </button>
+                          )}
+                          <button type="button" onClick={() => void updateFollowUp(item, "DISMISSED")} disabled={updatingFollowUp === item.followUpId} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-medium text-[#76817c] hover:bg-[#f5f8f4] disabled:opacity-50">
+                            {updatingFollowUp === item.followUpId ? "Saving…" : "Dismiss"}
+                          </button>
+                        </div>
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-4 text-sm text-[#76817c]">No potential commitments found in the current briefing.</p>
+                <p className="mt-4 text-sm text-[#76817c]">No open potential commitments. Dismissed suggestions stay hidden unless restored.</p>
+              )}
+              {data.dismissedCommitments?.length > 0 && (
+                <div className="mt-5 border-t border-[#edf1ed] pt-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[#76817c]">Dismissed suggestions</h3>
+                  <ul className="mt-2 divide-y divide-[#edf1ed]">
+                    {data.dismissedCommitments.slice(0, 5).map((item) => (
+                      <li key={item.followUpId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                        <span className="min-w-0 flex-1 text-sm text-[#76817c]">{item.title}</span>
+                        <button type="button" onClick={() => void updateFollowUp(item, "OPEN")} disabled={updatingFollowUp === item.followUpId} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-semibold text-[#176b52] hover:bg-[#f5f8f4] disabled:opacity-50">
+                          {updatingFollowUp === item.followUpId ? "Saving…" : "Restore"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </section>
 
