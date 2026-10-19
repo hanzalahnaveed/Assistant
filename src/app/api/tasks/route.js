@@ -44,6 +44,12 @@ export async function POST(request) {
     source,
     sourceRef,
   };
+  const existingSourceTask = sourceRef
+    ? await prisma.task.findUnique({
+        where: { userId_source_sourceRef: { userId: user.id, source, sourceRef } },
+        select: { id: true },
+      })
+    : null;
   const task = sourceRef
     ? await prisma.task.upsert({
         where: { userId_source_sourceRef: { userId: user.id, source, sourceRef } },
@@ -51,7 +57,7 @@ export async function POST(request) {
         update: {},
       })
     : await prisma.task.create({ data: taskData });
-  if (task.createdAt.getTime() === task.updatedAt.getTime()) {
+  if (!existingSourceTask) {
     await prisma.auditEvent.create({
       data: {
         userId: user.id,
