@@ -305,6 +305,22 @@ export default function IntegrationsClient() {
             </section>
           </div>
         )}
+        {data?.user && (
+          <section className="mt-6 flex flex-col gap-4 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <h2 className="font-semibold tracking-[-0.025em]">Your data</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-[#6B7280] text-pretty">
+                Export your Assistant tasks, conversations, preferences, briefings, drafts, and activity history as JSON. OAuth access and refresh tokens are never included.
+              </p>
+            </div>
+            <a
+              href="/api/account/export"
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#dfe6dd] bg-white px-4 py-2.5 text-sm font-semibold text-[#526159] hover:bg-[#fafbf9]"
+            >
+              Download data export <ExternalLink size={14} />
+            </a>
+          </section>
+        )}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#87918b]">
           <span>OAuth credentials stay server-side and stored tokens are encrypted at rest.</span>
           {data?.user && (
