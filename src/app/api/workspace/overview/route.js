@@ -66,6 +66,15 @@ export async function GET() {
         url.searchParams.append("metadataHeaders", "Subject");
         url.searchParams.append("metadataHeaders", "Date");
         const item = await googleApiGet(token.accessToken, url.toString());
+        const labels = item.labelIds ?? [];
+        const priorityReasons = [];
+        if (labels.includes("IMPORTANT")) priorityReasons.push("Marked important");
+        if (labels.includes("UNREAD")) priorityReasons.push("Unread");
+        if (labels.includes("STARRED")) priorityReasons.push("Starred");
+        const priorityScore =
+          (labels.includes("IMPORTANT") ? 3 : 0) +
+          (labels.includes("UNREAD") ? 2 : 0) +
+          (labels.includes("STARRED") ? 1 : 0);
         return {
           id: item.id,
           threadId: item.threadId,
@@ -73,8 +82,15 @@ export async function GET() {
           subject: header(item, "Subject") || "(no subject)",
           date: header(item, "Date"),
           snippet: item.snippet ?? "",
+          priority: priorityScore >= 3 ? "HIGH" : priorityScore > 0 ? "MEDIUM" : "NORMAL",
+          priorityReasons,
+          priorityScore,
+          internalDate: Number(item.internalDate ?? 0),
         };
       }),
+    );
+    details.sort(
+      (a, b) => b.priorityScore - a.priorityScore || b.internalDate - a.internalDate,
     );
     await prisma.integration.updateMany({
       where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },

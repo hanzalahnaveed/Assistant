@@ -250,14 +250,38 @@ export default function IntegrationsClient() {
                 <div className="divide-y divide-[#edf1ed]">
                   {data.emails.map((email) => (
                     <article key={email.id} className="py-3 min-w-0">
-                      <div className="truncate text-xs font-semibold">{email.subject}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="truncate text-xs font-semibold">{email.subject}</div>
+                        {email.priority && email.priority !== "NORMAL" && (
+                          <span className="rounded-full bg-[#fff3e5] px-2 py-0.5 text-[10px] font-semibold text-[#995500]">
+                            {email.priority === "HIGH" ? "High priority" : "Needs attention"}
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-1 truncate text-[11px] text-[#6B7280]">{email.from}</div>
+                      {email.priorityReasons?.length > 0 && (
+                        <div className="mt-1 text-[10px] text-[#9a6a2c]">
+                          {email.priorityReasons.join(" · ")} · based on Gmail labels
+                        </div>
+                      )}
                       <p className="mt-2 text-xs leading-5 text-[#5d6961] text-pretty">
                         {email.snippet}
                       </p>
-                      {email.date && (
-                        <div className="mt-1 text-[10px] text-[#9aa39e]">{email.date}</div>
-                      )}
+                      <div className="mt-1 flex flex-wrap items-center gap-3">
+                        {email.date && (
+                          <span className="text-[10px] text-[#9aa39e]">{email.date}</span>
+                        )}
+                        {email.threadId && (
+                          <a
+                            className="text-[10px] font-semibold text-[#FA8500] hover:underline"
+                            href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(email.threadId)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open source email ↗
+                          </a>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>

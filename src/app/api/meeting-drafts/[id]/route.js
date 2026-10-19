@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { getGoogleAccessToken } from "@/lib/google/client";
+import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z
@@ -193,6 +193,66 @@ export async function POST(request, context) {
   }
   if (!token)
     return NextResponse.json({ error: "Google connection needs reconnecting." }, { status: 403 });
+  // Fail closed if Calendar availability cannot be verified. This check is best-effort;
+  // Google Calendar does not provide a transaction spanning the check and event creation.
+  const availabilityUrl = new URL(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+  );
+  availabilityUrl.searchParams.set("timeMin", draft.startAt.toISOString());
+  availabilityUrl.searchParams.set("timeMax", draft.endAt.toISOString());
+  availabilityUrl.searchParams.set("singleEvents", "true");
+  availabilityUrl.searchParams.set("orderBy", "startTime");
+  availabilityUrl.searchParams.set("maxResults", "250");
+  let availability;
+  try {
+    availability = await googleApiGet(token.accessToken, availabilityUrl.toString());
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "Could not verify calendar availability. No meeting was created; reconnect Google or retry after checking your calendar.",
+      },
+      { status: 502 },
+    );
+  }
+  const localDateKey = (value) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: draft.timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(value);
+    const part = (type) => parts.find((item) => item.type === type)?.value ?? "";
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  };
+  const meetingStartDate = localDateKey(draft.startAt);
+  const meetingEndDate = localDateKey(new Date(draft.endAt.getTime() - 1));
+  const conflicts = (availability.items ?? []).filter((event) => {
+    if (event.status === "cancelled") return false;
+    if (event.start?.dateTime && event.end?.dateTime) {
+      const existingStart = new Date(event.start.dateTime);
+      const existingEnd = new Date(event.end.dateTime);
+      return existingStart < draft.endAt && existingEnd > draft.startAt;
+    }
+    if (event.start?.date && event.end?.date) {
+      // All-day event end dates are exclusive in the Google Calendar API.
+      return event.start.date <= meetingEndDate && event.end.date > meetingStartDate;
+    }
+    return false;
+  });
+  if (conflicts.length) {
+    return NextResponse.json(
+      {
+        error: "This time overlaps an existing calendar event. Review availability and edit the proposal.",
+        conflicts: conflicts.slice(0, 5).map((event) => ({
+          title: event.summary || "(untitled event)",
+          start: event.start?.dateTime ?? event.start?.date ?? null,
+          end: event.end?.dateTime ?? event.end?.date ?? null,
+        })),
+      },
+      { status: 409 },
+    );
+  }
   const claimed = await prisma.meetingDraft.updateMany({
     where: { id, userId: user.id, status: "APPROVED" },
     data: { status: "CREATING", lastError: null },
