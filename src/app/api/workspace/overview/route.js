@@ -14,7 +14,7 @@ function header(message, name) {
 export async function GET() {
   const user = await getSessionUser();
   if (!user)
-    return NextResponse.json({ error: "Sign in with Google to continue." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const integration = await prisma.integration.findFirst({
     where: { userId: user.id, provider: "GOOGLE" },
     orderBy: { updatedAt: "desc" },
