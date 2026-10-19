@@ -111,6 +111,13 @@ for (const route of routes) {
     assert.match(client, /Retry the remaining selection/i, "bulk completion must report partial failures");
   }
 
+  if (route.href === "/calendar") {
+    assert.match(client, /validateMeetingForm/, "meeting workflow must validate before saving");
+    assert.match(client, /Meeting end must be after its start/, "meeting workflow must reject invalid time ranges");
+    assert.match(client, /valid IANA timezone/, "meeting workflow must validate the selected timezone");
+    assert.match(client, /Check attendee emails/, "meeting workflow must validate attendee email addresses");
+  }
+
   console.log(`PASS ${route.href}: ${route.label} page, client workflow, and API coverage`);
 }
 
