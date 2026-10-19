@@ -9,7 +9,7 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
       where: { userId },
       create: { userId },
       update: {},
-      select: { defaultApprovalMode: true },
+      select: { defaultApprovalMode: true, automationPaused: true },
     }),
     prisma.automationRule.findFirst({
       where: { userId, actionType: "CREATE_TASK", enabled: true },
@@ -18,11 +18,13 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
     }),
   ]);
   const approvalMode = rule?.mode ?? preferences.defaultApprovalMode;
+  const automationPaused = preferences.automationPaused;
   if (approvalMode === "BLOCK") {
     const error = new Error("Your approval settings currently block assistant-proposed actions.");
     error.name = "ActionBlockedError";
     throw error;
   }
+  const autoExecute = approvalMode === "AUTO" && !automationPaused;
   try {
     const action = await prisma.$transaction(async (tx) => {
       const record = await tx.actionRecord.create({
@@ -31,19 +33,19 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
           actionType: "CREATE_TASK",
           idempotencyKey,
           input,
-          status: approvalMode === "AUTO" ? "RUNNING" : "PENDING",
-          requiresApproval: approvalMode !== "AUTO",
-          ...(approvalMode === "AUTO" ? { approvedAt: new Date(), startedAt: new Date() } : {}),
+          status: autoExecute ? "RUNNING" : "PENDING",
+          requiresApproval: !autoExecute,
+          ...(autoExecute ? { approvedAt: new Date(), startedAt: new Date() } : {}),
         },
       });
-      if (approvalMode !== "AUTO") {
+      if (!autoExecute) {
         await tx.auditEvent.create({
           data: {
             userId,
             eventType: "ACTION_PROPOSED",
             actor: "ASSISTANT",
             resourceId: record.id,
-            metadata: { actionType: record.actionType },
+            metadata: { actionType: record.actionType, automationPaused },
           },
         });
         return record;
@@ -78,7 +80,7 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
       });
       return completed;
     });
-    return { action, reused: false };
+    return { action, reused: false, automationPaused };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       const duplicate = await prisma.actionRecord.findUnique({
