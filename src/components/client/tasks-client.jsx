@@ -158,9 +158,9 @@ export default function TasksClient() {
   const visibleTasks = tasks.filter((task) => {
     const matchesView =
       view === "all" ||
-      (view === "completed"
-        ? task.status === "DONE"
-        : task.status !== "DONE" && task.status !== "CANCELLED");
+      (view === "completed" && task.status === "DONE") ||
+      (view === "in_progress" && task.status === "IN_PROGRESS") ||
+      (view === "open" && task.status !== "DONE" && task.status !== "CANCELLED");
     const needle = query.trim().toLowerCase();
     const matchesQuery =
       !needle ||
@@ -426,6 +426,11 @@ export default function TasksClient() {
                   count: open.length,
                 },
                 {
+                  id: "in_progress",
+                  label: "In progress",
+                  count: tasks.filter((task) => task.status === "IN_PROGRESS").length,
+                },
+                {
                   id: "completed",
                   label: "Completed",
                   count: done.length,
@@ -440,6 +445,7 @@ export default function TasksClient() {
                   key={tab.id}
                   htmlType="button"
                   onClick={() => setView(tab.id)}
+                  aria-pressed={view === tab.id}
                   className={`rounded-xl px-3.5 py-2 text-xs font-semibold ${view === tab.id ? "bg-[#e7f3ed] text-[#FA8500]" : "border border-[#e2e8e0] text-[#6B7280] hover:bg-[#f8faf7]"}`}
                 >
                   {tab.label}
