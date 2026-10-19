@@ -74,6 +74,7 @@ const routes = [
       "/api/preferences",
       "/api/integrations/google/disconnect",
       "/api/auth/google/start",
+      "/api/integrations/google/verify",
     ],
     workflow: /savePreferences|disconnect|logout|Connect Google/i,
   },
@@ -103,6 +104,18 @@ for (const route of routes) {
   assert.match(client, route.workflow, `${route.href} must retain its key interactive workflow`);
   for (const endpoint of route.endpoints) {
     assert.ok(client.includes(endpoint), `${route.href} must call ${endpoint}`);
+  }
+
+  if (route.href === "/integrations") {
+    assert.match(client, /verifyIntegration/, "connections workflow must offer live Google integration verification");
+    assert.match(client, /Run integration checks/, "connections workflow must explain the verification action");
+    assert.match(client, /Routes powered by Google/, "connections workflow must link to dependent routes");
+    const verificationApi = await read("src/app/api/integrations/google/verify/route.js");
+    assert.match(verificationApi, /getGoogleAccessToken/, "integration verification must check live Google access");
+    assert.match(verificationApi, /gmailRead/, "integration verification must report Gmail read capability");
+    assert.match(verificationApi, /calendarRead/, "integration verification must report Calendar read capability");
+    assert.match(verificationApi, /gmailSend/, "integration verification must report Gmail send scope");
+    assert.match(verificationApi, /calendarWrite/, "integration verification must report Calendar event scope");
   }
 
   if (route.href === "/tasks") {
