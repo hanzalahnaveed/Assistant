@@ -493,6 +493,16 @@ function TaskRow({ task, updateTask, removeTask }) {
           </div>
         )}
       </div>
+      <select
+        aria-label="Task status"
+        value={task.status}
+        onChange={(event) => void updateTask(task, { status: event.target.value })}
+        className="rounded-lg border border-[#dfe6dd] bg-white px-2 py-1.5 text-xs"
+      >
+        <option value="TODO">To do</option>
+        <option value="IN_PROGRESS">In progress</option>
+        <option value="DONE">Completed</option>
+      </select>
       <span
         className={`rounded-md px-2 py-1 text-[10px] font-semibold ${priorityStyle[task.priority]}`}
       >
