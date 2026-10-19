@@ -90,16 +90,19 @@ export async function PATCH(request, context) {
       { status: 409 },
     );
   }
-  const action = await prisma.$transaction(async (tx) => {
-    const current = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
-    if (!current) throw new Error("Action not found.");
-    if (current.status === "SUCCEEDED" || current.status === "CANCELLED") return current;
-    if (current.status !== "PENDING" && current.status !== "APPROVED")
-      throw new Error("Action is already being processed.");
-    await tx.actionRecord.update({
-      where: { id },
+  const execution = await prisma.$transaction(async (tx) => {
+    const claim = await tx.actionRecord.updateMany({
+      where: { id, userId: user.id, status: { in: ["PENDING", "APPROVED"] } },
       data: { status: "RUNNING", approvedAt: new Date(), startedAt: new Date(), errorCode: null },
     });
+    if (!claim.count) {
+      const current = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
+      if (!current) return { error: "Action not found.", status: 404 };
+      if (current.status === "SUCCEEDED" || current.status === "CANCELLED") {
+        return { action: current, reused: true };
+      }
+      return { error: "This action is already being processed or has changed.", status: 409 };
+    }
     const taskSource =
       input.data.source && input.data.sourceRef ? input.data.source : "ASSISTANT";
     const taskSourceRef = input.data.source && input.data.sourceRef ? input.data.sourceRef : id;
@@ -139,7 +142,13 @@ export async function PATCH(request, context) {
         metadata: { actionType: existing.actionType, taskId: task.id },
       },
     });
-    return completed;
+    return { action: completed, reused: false };
   });
-  return NextResponse.json({ action }, { headers: { "cache-control": "no-store" } });
+  if (execution.error) {
+    return NextResponse.json({ error: execution.error }, { status: execution.status });
+  }
+  return NextResponse.json(
+    { action: execution.action, ...(execution.reused ? { reused: true } : {}) },
+    { headers: { "cache-control": "no-store" } },
+  );
 }
