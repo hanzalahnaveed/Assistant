@@ -64,6 +64,22 @@ function formatDateTime(value, timeZone) {
   }
 }
 
+function getTimeGreeting(value, timeZone) {
+  if (!value) return null;
+  const options = {
+    hour: "numeric",
+    hourCycle: "h23",
+    ...(timeZone ? { timeZone } : {}),
+  };
+  let hour;
+  try {
+    hour = Number(new Intl.DateTimeFormat("en-US", options).format(value));
+  } catch {
+    hour = value.getHours();
+  }
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
 function Metric({ label, value, icon }) {
   return (
     <article className="rounded-2xl border border-[#e7ebe7] bg-white p-5">
@@ -87,6 +103,7 @@ export default function BriefingClient() {
   const [updatingFollowUp, setUpdatingFollowUp] = useState("");
   const [updatingTask, setUpdatingTask] = useState("");
   const [notice, setNotice] = useState("");
+  const [currentTime, setCurrentTime] = useState(null);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -117,6 +134,17 @@ export default function BriefingClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const updateCurrentTime = () => setCurrentTime(new Date());
+    updateCurrentTime();
+    const interval = setInterval(updateCurrentTime, 60_000);
+    document.addEventListener("visibilitychange", updateCurrentTime);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", updateCurrentTime);
+    };
+  }, []);
 
   async function createCommitmentTask(item) {
     setCreatingCommitment(item.id);
@@ -214,7 +242,10 @@ export default function BriefingClient() {
               Overview
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              {data?.greeting ?? "Your day, under control"}.
+              {getTimeGreeting(currentTime, data?.timezone) ??
+                data?.greeting ??
+                "Your day, under control"}
+              .
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#76817c]">
               {data?.summary ??
