@@ -39,6 +39,8 @@ export default function EmailClient() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/email-drafts", {
@@ -180,6 +182,12 @@ export default function EmailClient() {
     editable = !selected || selected.status === "DRAFT" || selected.status === "FAILED";
   const sent = drafts.filter((d) => d.status === "SENT").length,
     pending = drafts.filter((d) => d.status === "DRAFT" || d.status === "APPROVED").length;
+  const filteredDrafts = drafts.filter((draft) => {
+    const needle = search.trim().toLowerCase();
+    const matchesSearch = !needle || [draft.toEmail, draft.ccEmail, draft.subject, draft.body, draft.goal]
+      .some((value) => (value || "").toLowerCase().includes(needle));
+    return matchesSearch && (statusFilter === "ALL" || draft.status === statusFilter);
+  });
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
@@ -234,19 +242,46 @@ export default function EmailClient() {
               <Button
                 aria-label="Refresh drafts"
                 onClick={() => void load()}
-                className="rounded-lg p-2 text-[#6B7280] hover:bg-[#f4f7f3]"
+                disabled={loading}
+                className="rounded-lg p-2 text-[#6B7280] hover:bg-[#f4f7f3] disabled:opacity-50"
               >
                 <RefreshCw size={14} />
               </Button>
+            </div>
+            <div className="mb-3 space-y-2">
+              <Input
+                aria-label="Search email drafts"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search recipient, subject, or message…"
+                className="w-full rounded-xl border px-3 py-2 text-xs"
+              />
+              <select
+                aria-label="Filter email drafts by status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-xs"
+              >
+                <option value="ALL">All statuses</option>
+                {Object.entries(labels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              {(search || statusFilter !== "ALL") && (
+                <button type="button" onClick={() => { setSearch(""); setStatusFilter("ALL"); }} className="text-xs font-semibold text-[#FA8500]">
+                  Clear filters
+                </button>
+              )}
+              <p className="text-[10px] text-[#87918b]">{filteredDrafts.length} of {drafts.length} emails</p>
             </div>
             {loading ? (
               <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
                 <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
                 Loading…
               </div>
-            ) : drafts.length ? (
+            ) : filteredDrafts.length ? (
               <div className="space-y-1">
-                {drafts.map((d) => (
+                {filteredDrafts.map((d) => (
                   <Button
                     key={d.id}
                     onClick={() => choose(d)}
@@ -270,7 +305,7 @@ export default function EmailClient() {
               </div>
             ) : (
               <p className="py-8 text-center text-xs leading-5 text-[#6B7280] text-pretty">
-                No emails yet. Create your first outreach draft.
+                {drafts.length ? "No emails match these filters." : "No emails yet. Create your first outreach draft."}
               </p>
             )}
           </aside>

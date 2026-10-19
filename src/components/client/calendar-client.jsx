@@ -74,7 +74,16 @@ export default function CalendarClient() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const [selected, setSelected] = useState(""),
-    [form, setForm] = useState(blank);
+    [form, setForm] = useState(() => ({
+      ...blank,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi",
+    }));
+  const [defaultTimezone, setDefaultTimezone] = useState(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi",
+  );
+  const [calendarQuery, setCalendarQuery] = useState("");
+  const [eventQuery, setEventQuery] = useState("");
+  const [proposalStatusFilter, setProposalStatusFilter] = useState("ACTIVE");
   const load = useCallback(async () => {
     setError("");
     try {
@@ -93,7 +102,37 @@ export default function CalendarClient() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/preferences", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) return;
+        const timezone = body.preferences?.timezone;
+        if (timezone && !cancelled) {
+          setDefaultTimezone(timezone);
+          setForm((current) => current.startAt || current.endAt ? current : { ...current, timezone });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const chosen = data?.drafts.find((d) => d.id === selected);
+  const needle = calendarQuery.trim().toLowerCase();
+  const eventNeedle = eventQuery.trim().toLowerCase();
+  const visibleEvents = (data?.events || []).filter((event) =>
+    !eventNeedle || [event.title, event.description, event.location, ...(event.attendees || [])]
+      .some((value) => (value || "").toLowerCase().includes(eventNeedle))
+  );
+  const visibleDrafts = (data?.drafts || []).filter((draft) => {
+    const matchesSearch = !needle || [draft.title, draft.description, draft.location, ...(draft.attendees || [])]
+      .some((value) => (value || "").toLowerCase().includes(needle));
+    const matchesStatus = proposalStatusFilter === "ALL" ||
+      (proposalStatusFilter === "ACTIVE" && !["CANCELLED", "CREATED"].includes(draft.status)) ||
+      (proposalStatusFilter === "CREATED" && draft.status === "CREATED") ||
+      (proposalStatusFilter === "CANCELLED" && draft.status === "CANCELLED");
+    return matchesSearch && matchesStatus;
+  });
   const editable = !chosen || chosen.status === "DRAFT" || chosen.status === "FAILED";
   function selectDraft(d) {
     setSelected(d.id);
@@ -113,7 +152,7 @@ export default function CalendarClient() {
     setSelected("");
     setForm({
       ...blank,
-      timezone: data?.drafts[0]?.timezone || "Asia/Karachi",
+      timezone: data?.drafts[0]?.timezone || defaultTimezone,
     });
     setError("");
     setNotice("");
@@ -288,11 +327,18 @@ export default function CalendarClient() {
               </div>
               <CalendarDays size={18} className="text-[#FA8500]" />
             </div>
+            <Input
+              aria-label="Search calendar events"
+              value={eventQuery}
+              onChange={(event) => setEventQuery(event.target.value)}
+              placeholder="Search events, locations, attendees…"
+              className="mb-3 w-full rounded-xl border px-3 py-2 text-xs"
+            />
             {loading ? (
               <Loading />
-            ) : data?.events.length ? (
+            ) : visibleEvents.length ? (
               <div className="space-y-2">
-                {data.events.map((e) => (
+                {visibleEvents.map((e) => (
                   <article key={e.id} className="rounded-xl bg-[#f7f9f6] p-3.5 min-w-0">
                     <div className="text-sm font-semibold">{e.title}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
@@ -320,7 +366,7 @@ export default function CalendarClient() {
                 ))}
               </div>
             ) : (
-              <Empty text="No upcoming events found. Create a proposal for your next meeting." />
+              <Empty text={eventQuery ? "No calendar events match your search." : "No upcoming events found. Create a proposal for your next meeting."} />
             )}
           </section>
           <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
@@ -505,14 +551,33 @@ export default function CalendarClient() {
         <section className="mt-5 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
           <h2 className="font-semibold tracking-[-0.025em]">Saved proposals</h2>
           <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-            Select any editable proposal to revise it. Creation outcomes are retained for
-            traceability.
+            Search proposals and filter by lifecycle status. Creation outcomes remain available for traceability.
           </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Input
+              aria-label="Search meeting proposals"
+              value={calendarQuery}
+              onChange={(event) => setCalendarQuery(event.target.value)}
+              placeholder="Search title, agenda, location, or attendee…"
+              className="w-full rounded-xl border px-3 py-2 text-xs"
+            />
+            <select
+              aria-label="Filter meeting proposals by status"
+              value={proposalStatusFilter}
+              onChange={(event) => setProposalStatusFilter(event.target.value)}
+              className="rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-xs sm:min-w-44"
+            >
+              <option value="ACTIVE">Active proposals</option>
+              <option value="ALL">All statuses</option>
+              <option value="CREATED">Created</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
           {loading ? (
             <Loading />
-          ) : data?.drafts.length ? (
+          ) : visibleDrafts.length ? (
             <div className="mt-4 divide-y divide-[#edf1ed]">
-              {data.drafts.map((d) => (
+              {visibleDrafts.map((d) => (
                 <Button
                   key={d.id}
                   onClick={() => selectDraft(d)}
@@ -531,7 +596,7 @@ export default function CalendarClient() {
               ))}
             </div>
           ) : (
-            <Empty text="Your saved meeting proposals will appear here." />
+            <Empty text={data?.drafts.length ? "No proposals match your search and status filter." : "Your saved meeting proposals will appear here."} />
           )}
         </section>
         <p className="mt-5 text-xs leading-5 text-[#87918b] text-pretty">

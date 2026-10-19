@@ -26,6 +26,8 @@ export default function TasksClient() {
   const [view, setView] = useState("open");
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [dueFilter, setDueFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("DUE_ASC");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -75,6 +77,7 @@ export default function TasksClient() {
       setView("open");
       setQuery("");
       setPriorityFilter("ALL");
+      setDueFilter("ALL");
       setNotice("Task saved.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create task.");
@@ -118,6 +121,11 @@ export default function TasksClient() {
   }
   const open = tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
   const done = tasks.filter((task) => task.status === "DONE");
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const overdueCount = open.filter((task) => task.dueAt && new Date(task.dueAt) < todayStart).length;
+  const dueTodayCount = open.filter((task) => task.dueAt && new Date(task.dueAt) >= todayStart && new Date(task.dueAt) < tomorrowStart).length;
   const visibleTasks = tasks.filter((task) => {
     const matchesView =
       view === "all" ||
@@ -129,9 +137,24 @@ export default function TasksClient() {
       !needle ||
       task.title.toLowerCase().includes(needle) ||
       (task.description ?? "").toLowerCase().includes(needle);
-    return (
-      matchesView && matchesQuery && (priorityFilter === "ALL" || task.priority === priorityFilter)
-    );
+    const due = task.dueAt ? new Date(task.dueAt) : null;
+    const matchesDue =
+      dueFilter === "ALL" ||
+      (dueFilter === "OVERDUE" && due && due < todayStart && task.status !== "DONE") ||
+      (dueFilter === "TODAY" && due && due >= todayStart && due < tomorrowStart) ||
+      (dueFilter === "UPCOMING" && due && due >= tomorrowStart) ||
+      (dueFilter === "NO_DUE" && !due);
+    return matchesView && matchesQuery && matchesDue &&
+      (priorityFilter === "ALL" || task.priority === priorityFilter);
+  }).sort((a, b) => {
+    if (sortBy === "NEWEST") return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    if (sortBy === "PRIORITY") {
+      const rank = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      return rank[a.priority] - rank[b.priority] ||
+        (a.dueAt ? new Date(a.dueAt).getTime() : Infinity) - (b.dueAt ? new Date(b.dueAt).getTime() : Infinity);
+    }
+    return (a.dueAt ? new Date(a.dueAt).getTime() : Infinity) -
+      (b.dueAt ? new Date(b.dueAt).getTime() : Infinity);
   });
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
@@ -244,10 +267,18 @@ export default function TasksClient() {
             </Button>
           </form>
         )}
-        <section className="mb-6 grid gap-3 sm:grid-cols-3">
+        <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">Active commitments</p>
             <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{open.length}</div>
+          </div>
+          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
+            <p className="text-xs text-[#6B7280] text-pretty">Overdue</p>
+            <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{overdueCount}</div>
+          </div>
+          <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
+            <p className="text-xs text-[#6B7280] text-pretty">Due today</p>
+            <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{dueTodayCount}</div>
           </div>
           <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">High / urgent</p>
@@ -295,7 +326,7 @@ export default function TasksClient() {
                 aria-label="Filter by priority"
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="md:w-44"
+                className="md:w-40 rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-sm"
               >
                 <option value="ALL">All priorities</option>
                 {priorities.map((item) => (
@@ -303,6 +334,28 @@ export default function TasksClient() {
                     {item[0] + item.slice(1).toLowerCase()}
                   </option>
                 ))}
+              </select>
+              <select
+                aria-label="Filter by due date"
+                value={dueFilter}
+                onChange={(e) => setDueFilter(e.target.value)}
+                className="md:w-40 rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-sm"
+              >
+                <option value="ALL">Any due date</option>
+                <option value="OVERDUE">Overdue</option>
+                <option value="TODAY">Due today</option>
+                <option value="UPCOMING">Upcoming</option>
+                <option value="NO_DUE">No due date</option>
+              </select>
+              <select
+                aria-label="Sort tasks"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="md:w-40 rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-sm"
+              >
+                <option value="DUE_ASC">Soonest due</option>
+                <option value="PRIORITY">Highest priority</option>
+                <option value="NEWEST">Recently created</option>
               </select>
             </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Task status filter">
@@ -354,22 +407,23 @@ export default function TasksClient() {
           ) : (
             <div className="py-10 text-center">
               <div className="text-sm font-semibold">
-                {query || priorityFilter !== "ALL"
+                {query || priorityFilter !== "ALL" || dueFilter !== "ALL"
                   ? "No matching tasks"
                   : view === "completed"
                     ? "Nothing completed yet"
                     : "You’re all caught up"}
               </div>
               <p className="mt-2 text-xs leading-5 text-[#6B7280] text-pretty">
-                {query || priorityFilter !== "ALL"
+                {query || priorityFilter !== "ALL" || dueFilter !== "ALL"
                   ? "Try changing your search or filters."
                   : "Create a task when a new commitment comes in."}
               </p>
-              {(query || priorityFilter !== "ALL") && (
+              {(query || priorityFilter !== "ALL" || dueFilter !== "ALL") && (
                 <Button
                   onClick={() => {
                     setQuery("");
                     setPriorityFilter("ALL");
+                    setDueFilter("ALL");
                   }}
                   className="mt-3 text-xs font-semibold text-[#FA8500]"
                 >
