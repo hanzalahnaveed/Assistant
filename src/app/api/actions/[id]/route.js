@@ -42,15 +42,24 @@ export async function PATCH(request, context) {
     }
   }
   if (parsed.data.decision === "REJECT") {
-    const action = await prisma.$transaction(async (tx) => {
-      const updated = await tx.actionRecord.update({
-        where: { id },
+    const decision = await prisma.$transaction(async (tx) => {
+      const changed = await tx.actionRecord.updateMany({
+        where: { id, userId: user.id, status: { in: ["PENDING", "APPROVED"] } },
         data: {
           status: "CANCELLED",
           completedAt: new Date(),
           result: { reason: "Rejected by user" },
         },
       });
+      if (!changed.count) {
+        const current = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
+        if (!current) return { error: "Action not found.", status: 404 };
+        if (current.status === "SUCCEEDED" || current.status === "CANCELLED") {
+          return { action: current, reused: true };
+        }
+        return { error: "This action is already being processed or has changed.", status: 409 };
+      }
+      const updated = await tx.actionRecord.findFirst({ where: { id, userId: user.id } });
       await tx.auditEvent.create({
         data: {
           userId: user.id,
@@ -60,9 +69,15 @@ export async function PATCH(request, context) {
           metadata: { actionType: existing.actionType },
         },
       });
-      return updated;
+      return { action: updated, reused: false };
     });
-    return NextResponse.json({ action }, { headers: { "cache-control": "no-store" } });
+    if (decision.error) {
+      return NextResponse.json({ error: decision.error }, { status: decision.status });
+    }
+    return NextResponse.json(
+      { action: decision.action, ...(decision.reused ? { reused: true } : {}) },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
   if (existing.actionType !== "CREATE_TASK") {
     return NextResponse.json(
