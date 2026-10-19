@@ -12,6 +12,21 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return;
+    const messages = {
+      google_not_configured: "Google sign-in is not configured yet. Please use email and password or contact your administrator.",
+      google_consent_cancelled: "Google sign-in was cancelled. You can try again whenever you're ready.",
+      invalid_oauth_state: "The Google sign-in request expired or could not be verified. Please try again.",
+      account_not_found: "No account exists for this Google account yet. Create an account first.",
+      account_exists: "An account with this Google email already exists. Please sign in instead.",
+      google_connection_failed: "Google sign-in could not be completed. Please try again.",
+      sign_in_required: "Please sign in before connecting Google Workspace.",
+    };
+    setError(messages[code] || "Google sign-in could not be completed. Please try again.");
+  }, []);
+
   async function submitCredentials(event) {
     event.preventDefault();
     setBusy(true);
