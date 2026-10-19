@@ -571,6 +571,30 @@ try {
   assert.equal(linkedCommitmentTask.priority, "HIGH");
   check(true, "commitment task proposals require approval, are idempotent, and retain their source email");
 
+  const concurrentKey = "concurrent-idempotency-" + Date.now();
+  const concurrentInput = {
+    actionType: "CREATE_TASK",
+    idempotencyKey: concurrentKey,
+    input: {
+      title: "Concurrent idempotency regression task",
+      description: "Concurrent requests must create only one proposal.",
+      priority: "MEDIUM",
+    },
+  };
+  const concurrentResponses = await Promise.all(
+    [201, 200].map(() => expectStatus("/api/actions", [200, 201], {
+      method: "POST",
+      body: JSON.stringify(concurrentInput),
+    }, token)),
+  );
+  const concurrentPayloads = await Promise.all(concurrentResponses.map((response) => response.json()));
+  assert.equal(
+    await prisma.actionRecord.count({ where: { userId: user.id, idempotencyKey: concurrentKey } }),
+    1,
+  );
+  assert.equal(concurrentPayloads.filter((payload) => payload.reused).length, 1);
+  check(true, "simultaneous duplicate action requests resolve to one persisted proposal");
+
   await expectStatus("/api/preferences", 200, {
     method: "PATCH",
     body: JSON.stringify({ defaultApprovalMode: "BLOCK", automationPaused: false }),
