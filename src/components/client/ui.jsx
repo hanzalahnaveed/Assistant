@@ -35,6 +35,11 @@ export default function IntegrationsClient() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [oauthError, setOauthError] = useState("");
+  const [preferences, setPreferences] = useState(null);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
+  const [preferencesError, setPreferencesError] = useState("");
+  const [preferencesNotice, setPreferencesNotice] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -63,6 +68,48 @@ export default function IntegrationsClient() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/preferences", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Could not load your preferences.");
+        if (!cancelled) setPreferences(body.preferences);
+      })
+      .catch((cause) => {
+        if (!cancelled) setPreferencesError(cause instanceof Error ? cause.message : "Could not load your preferences.");
+      })
+      .finally(() => {
+        if (!cancelled) setPreferencesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+  async function savePreferences(event) {
+    event.preventDefault();
+    if (!preferences || preferencesSaving) return;
+    setPreferencesSaving(true);
+    setPreferencesError("");
+    setPreferencesNotice("");
+    try {
+      const response = await fetch("/api/preferences", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          dailyBriefingEnabled: preferences.dailyBriefingEnabled,
+          briefingHour: Number(preferences.briefingHour),
+          defaultApprovalMode: preferences.defaultApprovalMode,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not save your preferences.");
+      setPreferences(body.preferences);
+      setPreferencesNotice("Your briefing and approval preferences have been saved.");
+    } catch (cause) {
+      setPreferencesError(cause instanceof Error ? cause.message : "Could not save your preferences.");
+    } finally {
+      setPreferencesSaving(false);
+    }
+  }
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("error");
     if (!code) return;
@@ -348,6 +395,78 @@ export default function IntegrationsClient() {
             </section>
           </div>
         )}
+        <section className="mt-6 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:p-6">
+          <div className="mb-5">
+            <h2 className="font-semibold tracking-[-0.025em]">Assistant preferences</h2>
+            <p className="mt-1 text-xs leading-5 text-[#6B7280]">Choose when your daily briefing runs and how task proposals are handled by default.</p>
+          </div>
+          {preferencesError && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-800">{preferencesError}</div>}
+          {preferencesNotice && <div role="status" className="mb-4 rounded-xl border border-[#d8e9dd] bg-[#eef7f0] px-3.5 py-3 text-sm text-[#24543f]">{preferencesNotice}</div>}
+          {preferencesLoading || !preferences ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-[#6B7280]">
+              <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" /> Loading preferences…
+            </div>
+          ) : (
+            <form onSubmit={savePreferences} className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-4">
+                <label className="flex items-start gap-3 rounded-xl bg-[#f7f9f6] p-4">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(preferences.dailyBriefingEnabled)}
+                    onChange={(event) => setPreferences((current) => ({ ...current, dailyBriefingEnabled: event.target.checked }))}
+                    className="mt-1 h-4 w-4 accent-[#176b52]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">Daily briefing</span>
+                    <span className="mt-1 block text-xs leading-5 text-[#6B7280]">Enable the scheduled daily summary of your tasks, calendar, and follow-ups.</span>
+                  </span>
+                </label>
+                <label className="block text-xs font-semibold text-[#526159]">
+                  Briefing hour (24-hour clock)
+                  <select
+                    value={String(preferences.briefingHour)}
+                    onChange={(event) => setPreferences((current) => ({ ...current, briefingHour: Number(event.target.value) }))}
+                    disabled={!preferences.dailyBriefingEnabled}
+                    className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3 py-3 text-sm font-normal disabled:opacity-50"
+                  >
+                    {Array.from({ length: 24 }, (_, hour) => (
+                      <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block font-normal text-[#89938d]">Uses your saved account timezone.</span>
+                </label>
+              </div>
+              <div className="space-y-4">
+                <label className="block text-xs font-semibold text-[#526159]">
+                  Default approval mode
+                  <select
+                    value={preferences.defaultApprovalMode}
+                    onChange={(event) => setPreferences((current) => ({ ...current, defaultApprovalMode: event.target.value }))}
+                    className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3 py-3 text-sm font-normal"
+                  >
+                    <option value="CONFIRM">Confirm — ask before acting</option>
+                    <option value="AUTO">Auto — execute eligible task actions</option>
+                    <option value="BLOCK">Block — prevent task actions</option>
+                  </select>
+                </label>
+                <p className="rounded-xl border border-[#e5ebe5] px-3.5 py-3 text-xs leading-5 text-[#6B7280]">
+                  Existing action-specific rules take precedence over this default. Global automation pause still blocks execution.
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <Button
+                  htmlType="submit"
+                  loading={preferencesSaving}
+                  disabled={preferencesSaving || preferencesLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FA8500] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  Save preferences
+                </Button>
+              </div>
+            </form>
+          )}
+        </section>
+
         {data?.user && (
           <section className="mt-6 flex flex-col gap-4 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
