@@ -109,6 +109,9 @@ for (const route of routes) {
     assert.match(client, /completeSelectedTasks/, "task workflow must support completing selected tasks");
     assert.match(client, /Select all visible active tasks/, "task workflow must support selecting visible tasks");
     assert.match(client, /Retry the remaining selection/i, "bulk completion must report partial failures");
+    assert.match(client, /id: "in_progress"/, "task workflow must expose an in-progress view");
+    assert.match(client, /task\.status === "IN_PROGRESS"/, "in-progress view must filter by task status");
+    assert.match(client, /aria-pressed=\{view === tab\.id\}/, "task status tabs must expose their selected state");
   }
 
   if (route.href === "/calendar") {
