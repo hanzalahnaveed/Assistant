@@ -228,7 +228,7 @@ try {
   const exportResponse = await expectStatus("/api/account/export", 200, {}, token);
   assert.match(
     exportResponse.headers.get("content-disposition") || "",
-    /attachment; filename="assistant-data-export-\\d{4}-\\d{2}-\\d{2}\\.json"/,
+    /attachment; filename="assistant-data-export-\d{4}-\d{2}-\d{2}\.json"/,
   );
   const exportBody = await exportResponse.json();
   assert.equal(exportBody.formatVersion, 1);
