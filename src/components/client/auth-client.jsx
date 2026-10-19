@@ -1,208 +1,141 @@
 "use client";
 
-import { Button, Input } from "antd";
+import { Alert, Button, Input } from "antd";
 import { useEffect, useState } from "react";
 
-export default function AuthPage() {
+const googleErrors = {
+  google_not_configured: "Google sign-in is not configured yet. Use email and password instead.",
+  google_consent_cancelled: "Google sign-in was cancelled. You can try again whenever you're ready.",
+  invalid_oauth_state: "The Google sign-in request expired or could not be verified. Please try again.",
+  account_not_found: "No account exists for this Google account yet. Create an account first.",
+  account_exists: "An account with this Google email already exists. Please sign in instead.",
+  google_connection_failed: "Google sign-in could not be completed. Please try again.",
+  sign_in_required: "Please sign in before connecting Google Workspace.",
+};
 
+export default function AuthPage() {
   const [mode, setMode] = useState("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("error");
-    if (!code) return;
-    const messages = {
-      google_not_configured: "Google sign-in is not configured yet. Please use email and password or contact your administrator.",
-      google_consent_cancelled: "Google sign-in was cancelled. You can try again whenever you're ready.",
-      invalid_oauth_state: "The Google sign-in request expired or could not be verified. Please try again.",
-      account_not_found: "No account exists for this Google account yet. Create an account first.",
-      account_exists: "An account with this Google email already exists. Please sign in instead.",
-      google_connection_failed: "Google sign-in could not be completed. Please try again.",
-      sign_in_required: "Please sign in before connecting Google Workspace.",
-    };
-    setError(messages[code] || "Google sign-in could not be completed. Please try again.");
+    if (code) setError(googleErrors[code] || "Google sign-in could not be completed. Please try again.");
   }, []);
+
+  function changeMode(nextMode) {
+    setMode(nextMode);
+    setError("");
+    setSuccess("");
+  }
 
   async function submitCredentials(event) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
-    setError(null);
+    setError("");
+    setSuccess("");
+
     try {
       const response = await fetch(mode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password,
-        }),
+        headers: { "content-type": "application/json", accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
       });
-      const responseText = await response.text();
-      let data = {};
+
+      let data;
       try {
-        data = JSON.parse(responseText);
+        data = await response.json();
       } catch {
-        if (!response.ok) {
-          setError(
-            "The server returned an unexpected response (HTTP " +
-              response.status +
-              "). Check the terminal running Next.js for the underlying error.",
-          );
-          return;
-        }
-        throw new Error("The server returned an invalid response.");
-      }
-      if (!response.ok) {
-        setError(
-          data.message ??
-            (data.error === "account_exists"
-              ? "An account with this email already exists. Please sign in."
-              : "The request failed (HTTP " +
-                response.status +
-                "). Check the server logs if this continues."),
+        throw new Error(
+          response.ok
+            ? "The server returned an unexpected response. Please try again."
+            : `The server could not complete the request (HTTP ${response.status}). Check the server logs.`,
         );
+      }
+
+      if (!response.ok) {
+        setError(data?.message || ({
+          account_exists: "An account with this email already exists. Please sign in.",
+          invalid_credentials: "Email or password is incorrect.",
+          server_misconfigured: "Authentication is not configured on the server. Set AUTH_SECRET to a random value of at least 32 characters and redeploy.",
+        }[data?.error]) || `Request failed (HTTP ${response.status}). Please try again.`);
         return;
       }
+
+      setSuccess(mode === "signup" ? "Account created. Redirecting to your workspace…" : "Signed in successfully. Redirecting…");
       window.location.assign("/");
-    } catch (error) {
-      if (error instanceof TypeError) {
-        setError(
-          "We couldn't reach the server. Check that the app is running at this address and try again.",
-        );
-      } else {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "The server returned an invalid response. Check the Next.js terminal logs.",
-        );
-      }
+    } catch (requestError) {
+      setError(requestError instanceof TypeError
+        ? "We couldn't reach the server. Check your connection and try again."
+        : requestError instanceof Error
+          ? requestError.message
+          : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="flex justify-center items-center h-screen py-16 bg-gradient-to-br from-[#698cbf] to-[#4b749f]">
-      <div className="flex flex-col justify-between w-[35%] h-full border rounded-2xl p-12 bg-white/70">
-        <div className="">
-          {mode === "signin" ? 
-            <div className={``}>
-              <p className={`font-semibold font-sans text-[32px] text-black`}>
-                Welcome back
-              </p>
-              <p className={`text-black`}>
-                Sign in to continue to your workspace.
-              </p> 
-            </div> :
-            <p className={`text-black`}>
-              Create your account
-            </p>
-          }
-        </div>
-        <div
-          className="grid grid-cols-2 gap-1 rounded-xl border border-[#e8ece8] bg-[#f6f8f5] p-1"
-          role="tablist"
-          aria-label="Account access"
-        >
-          <Button
-            htmlType="button"
-            role="tab"
-            aria-selected={mode === "signin"}
-            className={`${mode === "signin" ? "bg-white text-[#164e3b] shadow-[0_1px_4px_rgb(22_43_30/10%)]" : "bg-transparent text-[#738078]"}`}
-            onClick={() => {
-              setMode("signin");
-              setError(null);
-            }}
-          >
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f] px-4 py-8 sm:px-6">
+      <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-white/60 bg-white/95 p-6 shadow-xl sm:p-9">
+        <header>
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#4b749f]">Personal AI Assistant</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[#17212b]">
+            {mode === "signin" ? "Welcome back" : "Create your account"}
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-[#586575]">
+            {mode === "signin" ? "Sign in to continue to your workspace." : "Set up your account to get started."}
+          </p>
+        </header>
+
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#e3e8ee] bg-[#f5f7fa] p-1" role="tablist" aria-label="Account access">
+          <button type="button" role="tab" aria-selected={mode === "signin"} onClick={() => changeMode("signin")}
+            className={`min-h-11 rounded-lg px-3 text-sm font-medium transition ${mode === "signin" ? "bg-white text-[#234e78] shadow-sm" : "text-[#657487] hover:text-[#234e78]"}`}>
             Sign in
-          </Button>
-          <Button
-            htmlType="button"
-            role="tab"
-            aria-selected={mode === "signup"}
-            className={`${mode === "signup" ? "bg-white text-[#164e3b]" : "bg-transparent text-[#738078]"}`}
-            onClick={() => {
-              setMode("signup");
-              setError(null);
-            }}
-          >
+          </button>
+          <button type="button" role="tab" aria-selected={mode === "signup"} onClick={() => changeMode("signup")}
+            className={`min-h-11 rounded-lg px-3 text-sm font-medium transition ${mode === "signup" ? "bg-white text-[#234e78] shadow-sm" : "text-[#657487] hover:text-[#234e78]"}`}>
             Create account
-          </Button>
+          </button>
         </div>
-        {error && (
-          <div
-            role="alert"
-            className="flex items-start gap-2.5 rounded-[13px] border border-[#f0d8d2] bg-[#fff7f5] p-3 text-[11px] leading-[1.65] text-[#8b4134]"
-          >
-            <span className="grid shrink-0 place-items-center rounded-full bg-[#b65b49] font-[750] text-white">
-              !
-            </span>
-            <p className="m-0 text-pretty">{error}</p>
-          </div>
-        )}
-        <form className="flex flex-col gap-10" onSubmit={submitCredentials}>
+
+        {error && <Alert type="error" showIcon message="Unable to continue" description={error} role="alert" />}
+        {success && <Alert type="success" showIcon message={success} role="status" />}
+
+        <form className="flex flex-col gap-4" onSubmit={submitCredentials} noValidate={false}>
           {mode === "signup" && (
-            <label className="flex flex-col gap-2 text-[14px]">
-              <span>Your name</span>
-              <Input
-                className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
-                autoComplete="name"
-                name="name"
-                type="text"
-                maxLength={80}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="How should we address you?"
-              />
+            <label className="flex flex-col gap-2 text-sm font-medium text-[#273444]">
+              Your name
+              <Input autoComplete="name" name="name" type="text" maxLength={80} value={name}
+                onChange={(event) => setName(event.target.value)} placeholder="How should we address you?" size="large" />
             </label>
           )}
-          <label className="flex flex-col gap-2 text-[14px]">
-            <span>Email address</span>
-            <Input
-              className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
-              autoComplete="email"
-              name="email"
-              type="email"
-              required
-              maxLength={254}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@company.com"
-            />
+          <label className="flex flex-col gap-2 text-sm font-medium text-[#273444]">
+            Email address
+            <Input autoComplete="email" name="email" type="email" required maxLength={254} value={email}
+              onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" size="large" />
           </label>
-          <label className="flex flex-col gap-2 text-[14px]">
-            <span>Password</span>
-            <Input
-              className="h-12 w-full rounded-[11px] border border-[#E3E7ED] bg-white font-[450]! text-[#26382d] outline-none! placeholder:text-[#a1aaa3]"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              name="password"
-              type="password"
-              required
-              minLength={mode === "signup" ? 8 : 1}
-              maxLength={128}
-              value={password}
+          <label className="flex flex-col gap-2 text-sm font-medium text-[#273444]">
+            Password
+            <Input autoComplete={mode === "signup" ? "new-password" : "current-password"} name="password"
+              type="password" required minLength={mode === "signup" ? 8 : 1} maxLength={128} value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
-            />
+              placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"} size="large" />
           </label>
-          {mode === "signup" && (
-            <p className="mb-0 text-[10px] leading-normal text-[#89958c] text-pretty">
-              Use at least 8 characters. Your password is stored as a secure hash.
-            </p>
-          )}
-        </form>
-        <Button
-          className="flex w-full h-10 items-center justify-center rounded-xl"
-        >
+          {mode === "signup" && <p className="text-xs leading-5 text-[#687789]">Use at least 8 characters. Your password is stored as a secure hash.</p>}
+          <Button htmlType="submit" type="primary" size="large" block loading={busy} disabled={busy}
+            className="mt-2 h-12 rounded-xl font-semibold">
             {busy ? "Please wait…" : mode === "signin" ? "Sign in with email" : "Create account"}
-        </Button>
-      </div>
+          </Button>
+        </form>
+        <p className="text-center text-xs leading-5 text-[#7b8795]">Your account is protected with secure password hashing and a private session.</p>
+      </section>
     </main>
   );
 }
