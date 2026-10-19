@@ -34,6 +34,7 @@ export default function IntegrationsClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [oauthError, setOauthError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -62,6 +63,21 @@ export default function IntegrationsClient() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return;
+    const messages = {
+      google_not_configured: "Google Workspace is not configured yet. Please try again after setup is complete.",
+      google_consent_cancelled: "Google connection was cancelled. No changes were made.",
+      invalid_oauth_state: "The Google connection request expired or could not be verified. Please try connecting again.",
+      sign_in_required: "Sign in before connecting Google Workspace.",
+      google_account_already_linked: "That Google account is already connected to another Assistant account.",
+      google_connection_failed: "Google Workspace could not be connected. Please try again.",
+      account_not_found: "No matching Assistant account was found. Sign in or create an account first.",
+      account_exists: "An account already exists for that Google email. Sign in instead.",
+    };
+    setOauthError(messages[code] || "Google Workspace connection failed. Please try again.");
+  }, []);
   async function disconnect() {
     if (!window.confirm("Disconnect Google Workspace and revoke this app's stored Google access?"))
       return;
@@ -116,6 +132,14 @@ export default function IntegrationsClient() {
             Refresh
           </Button>
         </div>
+        {oauthError && (
+          <div
+            role="alert"
+            className="mb-5 border border-[#f0d6cc] bg-[#fff5f0] px-4 py-3 text-sm text-[#994b36] rounded-[13px]"
+          >
+            {oauthError}
+          </div>
+        )}
         {error && (
           <div
             role="alert"
