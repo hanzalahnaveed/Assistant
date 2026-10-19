@@ -223,6 +223,29 @@ try {
   });
   const token = makeSession(user);
 
+  const authenticatedIntegrationStart = await expectStatus(
+    "/api/auth/google/start",
+    307,
+    {},
+    token,
+  );
+  const integrationAuthorizationUrl = new URL(authenticatedIntegrationStart.headers.get("location"));
+  assert.equal(integrationAuthorizationUrl.origin, "https://accounts.google.com");
+  assert.ok(
+    integrationAuthorizationUrl.searchParams
+      .get("scope")
+      .includes("https://www.googleapis.com/auth/gmail.readonly"),
+  );
+  assert.ok(
+    integrationAuthorizationUrl.searchParams
+      .get("scope")
+      .includes("https://www.googleapis.com/auth/calendar.readonly"),
+  );
+  assert.ok(
+    authenticatedIntegrationStart.headers.get("set-cookie")?.includes("google_auth_intent=connect"),
+  );
+  check(true, "authenticated Google connection requests read-only Gmail/Calendar scopes");
+
   const sessionResponse = await expectStatus("/api/auth/session", 200, {}, token);
   const sessionBody = await sessionResponse.json();
   assert.equal(sessionBody.user.id, user.id);
