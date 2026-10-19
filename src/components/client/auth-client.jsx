@@ -69,7 +69,7 @@ export default function AuthPage() {
       }
 
       setSuccess(mode === "signup" ? "Account created. Redirecting to your workspace…" : "Signed in successfully. Redirecting…");
-      window.location.assign("/");
+      window.location.replace("/briefing");
     } catch (requestError) {
       setError(requestError instanceof TypeError
         ? "We couldn't reach the server. Check your connection and try again."
