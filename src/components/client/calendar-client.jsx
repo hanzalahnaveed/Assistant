@@ -4,7 +4,7 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import WorkspaceHeader from "@/components/workspace-header";
-import { localDateTimeToIso, toLocalDateTime } from "@/lib/calendar-timezone";
+import { localDateTimeToIso, toLocalDateTime } from "@/lib/calendar-timezone.mjs";
 import {
   CalendarDays,
   CheckCircle2,
