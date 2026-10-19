@@ -9,6 +9,7 @@ const updateSchema = z
     dailyBriefingEnabled: z.boolean().optional(),
     briefingHour: z.number().int().min(0).max(23).optional(),
     defaultApprovalMode: z.enum(["AUTO", "CONFIRM", "BLOCK"]).optional(),
+    automationPaused: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, "Provide at least one preference.");
 export async function GET() {
@@ -22,6 +23,7 @@ export async function GET() {
       dailyBriefingEnabled: true,
       briefingHour: true,
       defaultApprovalMode: true,
+      automationPaused: true,
       updatedAt: true,
     },
   });
@@ -44,6 +46,7 @@ export async function PATCH(request) {
       dailyBriefingEnabled: true,
       briefingHour: true,
       defaultApprovalMode: true,
+      automationPaused: true,
       updatedAt: true,
     },
   });
