@@ -672,7 +672,9 @@ try {
   assert.equal(inProgress.priority, "URGENT");
   assert.equal(new Date(inProgress.dueAt).toISOString(), dueAt);
   assert.equal(inProgress.completedAt, null);
-  check(true, "task title, notes, due date, priority, and in-progress status persist");
+  const inProgressList = (await (await expectStatus("/api/tasks", 200, {}, token)).json()).tasks;
+  assert.ok(inProgressList.some((task) => task.id === created.id && task.status === "IN_PROGRESS"));
+  check(true, "task title, notes, due date, priority, and in-progress status persist in the task list");
 
   const patchResponse = await expectStatus(
     "/api/tasks/" + created.id,
