@@ -169,7 +169,7 @@ export async function generateBriefingData(user, now = new Date()) {
     prisma.integration.findFirst({
       where: { userId: user.id, provider: "GOOGLE" },
       orderBy: { updatedAt: "desc" },
-      select: { status: true, email: true, lastSyncedAt: true },
+      select: { status: true, email: true, lastSyncedAt: true, scopes: true },
     }),
   ]);
   const rankedTasks = tasks
@@ -194,53 +194,65 @@ export async function generateBriefingData(user, now = new Date()) {
       const token = await getGoogleAccessToken(user.id);
       if (!token) connected = false;
       else {
+        const scopes = new Set(integration.scopes ?? []);
+        const canReadGmail = scopes.has("https://www.googleapis.com/auth/gmail.readonly");
+        const canReadCalendar =
+          scopes.has("https://www.googleapis.com/auth/calendar.readonly") ||
+          scopes.has("https://www.googleapis.com/auth/calendar.events");
+        const warnings = [];
+        if (!canReadGmail) warnings.push("Gmail read permission is missing; reconnect Google to enable inbox follow-ups.");
+        if (!canReadCalendar) warnings.push("Calendar read permission is missing; reconnect Google to enable event context.");
         const gmailUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
         gmailUrl.searchParams.set("maxResults", "25");
-        gmailUrl.searchParams.set(
-          "q",
-          "in:inbox newer_than:30d -category:promotions -category:social",
-        );
-        const calendarUrl = new URL(
-          "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-        );
+        gmailUrl.searchParams.set("q", "in:inbox newer_than:30d -category:promotions -category:social");
+        const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
         calendarUrl.searchParams.set("timeMin", dayStart.toISOString());
         calendarUrl.searchParams.set("timeMax", dayEnd.toISOString());
         calendarUrl.searchParams.set("singleEvents", "true");
         calendarUrl.searchParams.set("orderBy", "startTime");
         calendarUrl.searchParams.set("maxResults", "20");
-        const [gmail, calendar] = await Promise.all([
-          googleApiGet(token.accessToken, gmailUrl.toString()),
-          googleApiGet(token.accessToken, calendarUrl.toString()),
+        const [gmailResult, calendarResult] = await Promise.allSettled([
+          canReadGmail ? googleApiGet(token.accessToken, gmailUrl.toString()) : Promise.resolve(null),
+          canReadCalendar ? googleApiGet(token.accessToken, calendarUrl.toString()) : Promise.resolve(null),
         ]);
-        const messages = await Promise.all(
-          (gmail.messages ?? []).slice(0, 25).map(async (message) => {
-            const url = new URL(
-              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(message.id)}`,
-            );
-            url.searchParams.set("format", "metadata");
-            for (const name of ["From", "Subject", "Date"])
-              url.searchParams.append("metadataHeaders", name);
-            return googleApiGet(token.accessToken, url.toString());
-          }),
-        );
-        followUps = messages
-          .map((item) => {
-            const candidate = {
-              id: item.id,
-              threadId: item.threadId,
-              from: header(item, "From"),
-              subject: header(item, "Subject") || "(no subject)",
-              snippet: item.snippet ?? "",
-              date: header(item, "Date"),
-              labels: item.labelIds ?? [],
-            };
-            return { ...candidate, ...rankEmail(candidate) };
-          })
-          .filter((email) => email.score >= 3)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 8)
-          .map(({ labels: _labels, ...email }) => email);
-        events = (calendar.items ?? [])
+        let gmail = null;
+        let calendar = null;
+        if (gmailResult.status === "fulfilled") gmail = gmailResult.value;
+        else warnings.push("Gmail could not be read: " + (gmailResult.reason instanceof Error ? gmailResult.reason.message : "Google API request failed."));
+        if (calendarResult.status === "fulfilled") calendar = calendarResult.value;
+        else warnings.push("Calendar could not be read: " + (calendarResult.reason instanceof Error ? calendarResult.reason.message : "Google API request failed."));
+        if (gmail?.messages?.length) {
+          const messageResults = await Promise.allSettled(
+            gmail.messages.slice(0, 25).map(async (message) => {
+              const url = new URL(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(message.id)}`);
+              url.searchParams.set("format", "metadata");
+              for (const name of ["From", "Subject", "Date"]) url.searchParams.append("metadataHeaders", name);
+              return googleApiGet(token.accessToken, url.toString());
+            }),
+          );
+          const messages = messageResults
+            .filter((result) => result.status === "fulfilled")
+            .map((result) => result.value);
+          if (messages.length < messageResults.length) warnings.push("Some Gmail message details could not be loaded.");
+          followUps = messages
+            .map((item) => {
+              const candidate = {
+                id: item.id,
+                threadId: item.threadId,
+                from: header(item, "From"),
+                subject: header(item, "Subject") || "(no subject)",
+                snippet: item.snippet ?? "",
+                date: header(item, "Date"),
+                labels: item.labelIds ?? [],
+              };
+              return { ...candidate, ...rankEmail(candidate) };
+            })
+            .filter((email) => email.score >= 3)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8)
+            .map(({ labels: _labels, ...email }) => email);
+        }
+        events = (calendar?.items ?? [])
           .filter((event) => event.status !== "cancelled")
           .map((event) => ({
             id: event.id,
@@ -250,18 +262,20 @@ export async function generateBriefingData(user, now = new Date()) {
             location: event.location ?? null,
             link: event.htmlLink ?? null,
           }));
-        await prisma.integration.updateMany({
-          where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
-          data: { lastSyncedAt: new Date() },
-        });
+        if (gmailResult.status === "fulfilled" || calendarResult.status === "fulfilled") {
+          await prisma.integration.updateMany({
+            where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
+            data: { lastSyncedAt: new Date() },
+          });
+        }
+        workspaceError = warnings.length ? warnings.join(" ") : null;
       }
     } catch (error) {
       if (error instanceof Error && error.code === "GOOGLE_REAUTH_REQUIRED") {
         connected = false;
         if (integration) integration.status = "REAUTH_REQUIRED";
       }
-      workspaceError =
-        error instanceof Error ? error.message : "Google Workspace data could not be loaded.";
+      workspaceError = error instanceof Error ? error.message : "Google Workspace data could not be loaded.";
     }
   }
   // Surface evidence-backed next steps separately from generic inbox scoring.
