@@ -13,6 +13,22 @@ import {
   Target,
 } from "lucide-react";
 
+function formatDateTime(value, timeZone) {
+  if (!value) return "Time not set";
+  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      ...(timeZone ? { timeZone } : {}),
+    }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+}
+
 function Metric({ label, value, icon }) {
   return (
     <article className="rounded-2xl border border-[#e7ebe7] bg-white p-5">
@@ -162,6 +178,97 @@ export default function BriefingClient() {
               Your overview is not available yet. Refresh to try again.
             </div>
           )
+        )}
+        {data && (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <section aria-labelledby="briefing-priorities" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+              <h2 id="briefing-priorities" className="font-semibold tracking-tight">Next actions</h2>
+              <p className="mt-1 text-xs text-[#76817c]">The most important things to look at first.</p>
+              {data.priorities?.length ? (
+                <ul className="mt-4 divide-y divide-[#edf1ed]">
+                  {data.priorities.slice(0, 6).map((item) => (
+                    <li key={item.type + ":" + item.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{item.title}</span>
+                        <span className="rounded-full bg-[#fff3e5] px-2 py-0.5 text-[10px] font-semibold text-[#995500]">{item.priority}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#76817c]">{item.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[#76817c]">No urgent follow-ups surfaced. Review your open tasks below.</p>
+              )}
+            </section>
+
+            <section aria-labelledby="briefing-tasks" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+              <h2 id="briefing-tasks" className="font-semibold tracking-tight">Tasks to move forward</h2>
+              <p className="mt-1 text-xs text-[#76817c]">Ranked by urgency, due date, and task context.</p>
+              {data.tasks?.length ? (
+                <ul className="mt-4 divide-y divide-[#edf1ed]">
+                  {data.tasks.slice(0, 6).map((task) => (
+                    <li key={task.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{task.title}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#176b52]">{task.priority}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#76817c]">
+                        {task.reasons?.join(" · ") || task.status.replaceAll("_", " ").toLowerCase()}
+                        {task.dueAt ? " · Due " + formatDateTime(task.dueAt, data.timezone) : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[#76817c]">No open tasks. Add a task when a new commitment comes up.</p>
+              )}
+              <a href="/tasks" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open task manager ↗</a>
+            </section>
+
+            <section aria-labelledby="briefing-calendar" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+              <h2 id="briefing-calendar" className="font-semibold tracking-tight">Today’s calendar</h2>
+              <p className="mt-1 text-xs text-[#76817c]">Use the source event to review details or prepare an agenda.</p>
+              {data.events?.length ? (
+                <ul className="mt-4 divide-y divide-[#edf1ed]">
+                  {data.events.slice(0, 6).map((event) => (
+                    <li key={event.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="text-sm font-medium">{event.title}</div>
+                      <p className="mt-1 text-xs text-[#76817c]">
+                        {formatDateTime(event.start, data.timezone)}
+                        {event.end ? " – " + formatDateTime(event.end, data.timezone) : ""}
+                        {event.location ? " · " + event.location : ""}
+                      </p>
+                      {event.link && <a href={event.link} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar event ↗</a>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[#76817c]">No more calendar events scheduled for today.</p>
+              )}
+              <a href="/calendar" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar tools ↗</a>
+            </section>
+
+            <section aria-labelledby="briefing-followups" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
+              <h2 id="briefing-followups" className="font-semibold tracking-tight">Email follow-ups</h2>
+              <p className="mt-1 text-xs text-[#76817c]">Heuristic suggestions based on inbox snippets and labels, not confirmed obligations.</p>
+              {data.followUps?.length ? (
+                <ul className="mt-4 divide-y divide-[#edf1ed]">
+                  {data.followUps.slice(0, 6).map((email) => (
+                    <li key={email.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="text-sm font-medium">{email.subject}</div>
+                      <p className="mt-1 text-xs text-[#76817c]">{email.from || "Unknown sender"}{email.date ? " · " + email.date : ""}</p>
+                      <p className="mt-2 text-xs leading-5 text-[#5d6961]">{email.snippet}</p>
+                      {email.reasons?.length > 0 && <p className="mt-1 text-[10px] text-[#9a6a2c]">{email.reasons.join(" · ")}</p>}
+                      {email.threadId && <a href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(email.threadId)}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open source email ↗</a>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[#76817c]">No likely follow-up messages surfaced. The assistant uses limited message metadata and snippets.</p>
+              )}
+              <a href="/email" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open inbox tools ↗</a>
+            </section>
+          </div>
         )}
       </div>
     </main>
