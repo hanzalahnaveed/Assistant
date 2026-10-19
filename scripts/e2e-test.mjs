@@ -616,6 +616,43 @@ try {
   );
   check(true, "simultaneous approvals execute a task and record execution exactly once");
 
+  const raceKey = "approval-rejection-race-" + Date.now();
+  const raceProposalResponse = await expectStatus("/api/actions", 201, {
+    method: "POST",
+    body: JSON.stringify({
+      actionType: "CREATE_TASK",
+      idempotencyKey: raceKey,
+      input: { title: "Approval rejection race regression", priority: "MEDIUM" },
+    }),
+  }, token);
+  const raceProposal = (await raceProposalResponse.json()).action;
+  const raceResponses = await Promise.all([
+    request("/api/actions/" + raceProposal.id, {
+      method: "PATCH", body: JSON.stringify({ decision: "APPROVE" }),
+    }, token),
+    request("/api/actions/" + raceProposal.id, {
+      method: "PATCH", body: JSON.stringify({ decision: "REJECT" }),
+    }, token),
+  ]);
+  assert.ok(raceResponses.every((response) => [200, 409].includes(response.status)));
+  const raceFinal = await prisma.actionRecord.findUnique({ where: { id: raceProposal.id } });
+  assert.ok(["SUCCEEDED", "CANCELLED"].includes(raceFinal.status));
+  const raceTaskCount = await prisma.task.count({
+    where: { userId: user.id, title: "Approval rejection race regression" },
+  });
+  assert.equal(raceTaskCount, raceFinal.status === "SUCCEEDED" ? 1 : 0);
+  assert.equal(
+    await prisma.auditEvent.count({
+      where: {
+        userId: user.id,
+        resourceId: raceProposal.id,
+        eventType: { in: ["ACTION_REJECTED", "ACTION_APPROVED_AND_EXECUTED"] },
+      },
+    }),
+    1,
+  );
+  check(true, "concurrent approval and rejection cannot overwrite terminal state");
+
   await expectStatus("/api/preferences", 200, {
     method: "PATCH",
     body: JSON.stringify({ defaultApprovalMode: "BLOCK", automationPaused: false }),
