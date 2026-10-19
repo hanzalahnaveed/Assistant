@@ -123,7 +123,7 @@ export async function POST() {
 
   const now = new Date();
   const gmailProbe = hasGmailRead
-    ? googleApiGet(token.accessToken, "https://gmail.googleapis.com/gmail/v1/users/me/profile")
+    ? googleApiGet(token.accessToken, "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=1&q=in%3Ainbox")
     : Promise.resolve(null);
   const calendarProbe = hasCalendarRead
     ? (() => {
