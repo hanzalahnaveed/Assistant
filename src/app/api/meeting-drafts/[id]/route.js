@@ -18,6 +18,17 @@ const schema = z
   .refine((v) => new Date(v.endAt) > new Date(v.startAt), {
     message: "Meeting end must be after its start.",
     path: ["endAt"],
+  })
+  .refine((v) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: v.timezone }).format(new Date(v.startAt));
+      return true;
+    } catch {
+      return false;
+    }
+  }, {
+    message: "Enter a valid IANA timezone.",
+    path: ["timezone"],
   });
 export async function PATCH(request, context) {
   const user = await getSessionUser();
