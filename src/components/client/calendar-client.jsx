@@ -37,12 +37,13 @@ const labels = {
   CREATE_UNCERTAIN: "Check Calendar",
   CANCELLED: "Cancelled",
 };
-function format(value) {
+function format(value, timezone) {
   if (!value) return "Time not set";
   const d = new Date(value);
   return Number.isNaN(d.getTime())
     ? value
     : d.toLocaleString(undefined, {
+        ...(timezone ? { timeZone: timezone } : {}),
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -82,9 +83,10 @@ function rangeLabel(range, timezone) {
   if (range.startDate === range.endDate || shiftDateKey(range.startDate, 1) === range.endDate) return formatter.format(start);
   return formatter.format(start) + " – " + formatter.format(end);
 }
-function formatEventTime(event) {
+function formatEventTime(event, fallbackTimezone) {
   if (event.allDay) return "All day · " + event.startAt;
-  return format(event.startAt) + " – " + format(event.endAt);
+  const timezone = event.timezone || fallbackTimezone;
+  return format(event.startAt, timezone) + " – " + format(event.endAt, timezone);
 }
 function fromForm(f) {
   return {
@@ -713,7 +715,7 @@ export default function CalendarClient() {
                     <div className="text-sm font-semibold">{e.title}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
                       <Clock3 size={13} />
-                      {formatEventTime(e)}
+                      {formatEventTime(e, defaultTimezone)}
                     </div>
                     {e.location && <div className="mt-1 text-xs text-[#87918b]">{e.location}</div>}
                     {e.attendees.length > 0 && (
@@ -966,7 +968,7 @@ export default function CalendarClient() {
                   <span>
                     <span className="block text-sm font-semibold">{d.title}</span>
                     <span className="mt-1 block text-xs text-[#6B7280]">
-                      {format(d.startAt)} · {d.attendees.length} attendees
+                      {format(d.startAt, d.timezone)} · {d.attendees.length} attendees
                     </span>
                   </span>
                   <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
