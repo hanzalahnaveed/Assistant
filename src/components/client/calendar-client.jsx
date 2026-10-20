@@ -321,7 +321,7 @@ export default function CalendarClient() {
       const body = await response.json();
       if (!response.ok) throw Error(body.error || "Could not load your daily schedule.");
       setSchedule(body.plan);
-      setScheduleWarnings([]);
+      setScheduleWarnings(body.plan?.warnings || []);
     } catch (error) {
       setScheduleError(error instanceof Error ? error.message : "Could not load your daily schedule.");
     } finally {
@@ -333,6 +333,7 @@ export default function CalendarClient() {
   }, [loadSchedule]);
 
   async function generateSchedule() {
+    if (schedule?.status === "APPROVED" && !window.confirm("Regenerating replaces your approved plan with a new draft. Continue?")) return;
     setScheduleBusy(true);
     setScheduleError("");
     setScheduleNotice("");
