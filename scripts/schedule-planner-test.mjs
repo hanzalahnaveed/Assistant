@@ -12,6 +12,7 @@ const schedule = buildDailySchedule({
   timezone: "UTC",
   events: [
     { id: "busy", title: "Existing meeting", startAt: "2026-10-20T10:00:00.000Z", endAt: "2026-10-20T11:30:00.000Z" },
+    { id: "free", title: "Free hold", startAt: "2026-10-20T13:00:00.000Z", endAt: "2026-10-20T14:00:00.000Z", transparency: "transparent" },
   ],
 });
 assert.equal(schedule.blocks.length, 2);
