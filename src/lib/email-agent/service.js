@@ -415,6 +415,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           classification.category === "ROUTINE" &&
           !user.preferences?.automationPaused;
         let autoReplySent = false;
+        let autoReplyUncertain = false;
         if (autoEligible) {
           try {
             await sendAutomatedReply({ userId: user.id, integration, draft, sourceMessageId: message.id });
@@ -422,6 +423,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
             autoReplySent = true;
           } catch (error) {
             const messageText = error instanceof Error ? error.message : "Automated reply failed.";
+            autoReplyUncertain = error?.uncertain === true;
             await prisma.emailDraft.updateMany({
               where: { id: draft.id, userId: user.id, status: "DRAFT" },
               data: error?.uncertain
@@ -433,7 +435,8 @@ export async function processInboundEmailForUser(user, integration, settings) {
         await prisma.inboundEmail.update({
           where: { id: record.id },
           data: {
-            status: classification.sensitive ? "AWAITING_APPROVAL" :
+            status: autoReplyUncertain ? "SEND_UNCERTAIN" :
+              classification.sensitive ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" ? "MEETING_REVIEW" :
               classification.category === "TASK" ? "TASK_REVIEW" :
               autoReplySent ? "REPLIED" :
