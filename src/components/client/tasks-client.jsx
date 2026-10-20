@@ -188,14 +188,25 @@ export default function TasksClient() {
   const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
   return (
     <main className="flex flex-col p-4 bg-[#F8F9FA] text-[#212529]">
-        <div className="mb-7">
-          <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
-            <Check size={40} /> 
-            My tasks
-          </h1>
-          <p className="mt-2 text-sm text-[#6B7280] text-pretty">
-            Tasks are saved to your account and stay in sync across sessions.
-          </p>
+        <div className="flex justify-between mb-7 items-end">
+          <div className={``}>
+            <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
+              <Check size={40} /> 
+              My tasks
+            </h1>
+            <p className="mt-2 text-sm text-[#6B7280] text-pretty">
+              Tasks are saved to your account and stay in sync across sessions.
+            </p>
+          </div>
+          <Button
+            type="primary"
+            htmlType="button"
+            onClick={() => setShowComposer((value) => !value)}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
+          >
+            {showComposer ? <X size={16} /> : <Plus size={16} />}{" "}
+            {showComposer ? "Close form" : "New task"}
+          </Button>
         </div>
         {error && (
           <div
@@ -218,45 +229,30 @@ export default function TasksClient() {
             {notice}
           </div>
         )}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-4 sm:p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
-          <div>
-            <h2 className="font-semibold tracking-[-0.025em]">Capture a commitment</h2>
-            <p className="mt-1 text-xs leading-5 text-[#6B7280] text-pretty">
-              Turn a next step into a tracked task with an owner, priority, and deadline.
-            </p>
-          </div>
-          <Button
-            type="primary"
-            htmlType="button"
-            onClick={() => setShowComposer((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
-          >
-            {showComposer ? <X size={16} /> : <Plus size={16} />}{" "}
-            {showComposer ? "Close form" : "New task"}
-          </Button>
-        </div>
         {showComposer && (
           <form
             onSubmit={addTask}
             className="mb-7 space-y-3 rounded-[18px] border border-[#E3E7ED] bg-white p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]"
           >
             <h2 className="font-semibold tracking-[-0.025em]">New task details</h2>
-            <Input
-              required
-              maxLength={200}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to get done?"
-              className="w-full rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
-            />
-            <Input.TextArea
-              maxLength={5000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Notes (optional)"
-              rows={2}
-              className="w-full resize-y rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
-            />
+            <div className={`flex flex-col gap-3`}>
+              <Input
+                required
+                maxLength={200}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to get done?"
+                className="w-full rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
+              />
+              <Input.TextArea
+                maxLength={5000}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Notes (optional)"
+                rows={2}
+                className="w-full resize-y rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
+              />
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-medium text-[#6B7280]">
                 Priority
