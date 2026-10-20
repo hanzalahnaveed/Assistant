@@ -100,6 +100,7 @@ export async function PATCH(request, context) {
   } catch {
     return NextResponse.json({ error: "Could not verify calendar availability. No event update was applied." }, { status: 502 });
   }
+  if (availability.nextPageToken) return NextResponse.json({ error: "There are too many events to verify this time safely. Open Google Calendar and choose a less crowded time." }, { status: 409 });
   const proposedStart = new Date(value.startAt).getTime();
   const proposedEnd = new Date(value.endAt).getTime();
   const conflicts = (availability.items ?? []).filter((event) => {
