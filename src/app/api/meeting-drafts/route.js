@@ -95,6 +95,7 @@ export async function GET(request) {
               .filter((event) => event.status !== "cancelled")
               .map((event) => ({
                 id: event.id,
+                etag: event.etag ?? null,
                 title: event.summary || "(untitled meeting)",
                 description: event.description || "",
                 location: event.location || "",
