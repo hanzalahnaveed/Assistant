@@ -294,6 +294,8 @@ try {
   };
   await expectStatus("/api/calendar-events/fake-event-id", 401, { method: "PATCH", body: JSON.stringify(eventEditInput) });
   await expectStatus("/api/calendar-events/fake-event-id", 403, { method: "PATCH", body: JSON.stringify(eventEditInput) }, token);
+  await expectStatus("/api/calendar-events/fake-event-id", 400, { method: "PATCH", body: JSON.stringify({ ...eventEditInput, allDay: true, startAt: "2026-99-99", endAt: "2026-99-100" }) }, token);
+  await expectStatus("/api/calendar-events/fake-event-id", 403, { method: "PATCH", body: JSON.stringify({ ...eventEditInput, allDay: true, startAt: "2026-10-22", endAt: "2026-10-23" }) }, token);
   await expectStatus("/api/calendar-events/fake-event-id", 401, { method: "DELETE" });
   await expectStatus("/api/calendar-events/fake-event-id", 403, { method: "DELETE" }, token);
   check(true, "existing calendar event edits and cancellations require an authenticated user and explicit calendar event permission");
