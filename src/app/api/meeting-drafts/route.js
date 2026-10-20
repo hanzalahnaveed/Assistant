@@ -30,7 +30,7 @@ const schema = z
     message: "Enter a valid IANA timezone.",
     path: ["timezone"],
   });
-export async function GET() {
+export async function GET(request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in to manage meetings." }, { status: 401 });
   const drafts = await prisma.meetingDraft.findMany({
@@ -38,39 +38,80 @@ export async function GET() {
     orderBy: { startAt: "asc" },
     take: 100,
   });
+  const requestUrl = new URL(request.url);
+  const requestedStart = requestUrl.searchParams.get("start");
+  const requestedEnd = requestUrl.searchParams.get("end");
+  const now = new Date();
+  const rangeStart = requestedStart ? new Date(requestedStart) : now;
+  const rangeEnd = requestedEnd ? new Date(requestedEnd) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  if (
+    Number.isNaN(rangeStart.getTime()) ||
+    Number.isNaN(rangeEnd.getTime()) ||
+    rangeEnd <= rangeStart ||
+    rangeEnd.getTime() - rangeStart.getTime() > 32 * 24 * 60 * 60 * 1000
+  ) {
+    return NextResponse.json(
+      { error: "Choose a valid calendar range of up to 32 days." },
+      { status: 400 },
+    );
+  }
   let events = [];
   let calendarError = null;
+  let eventsTruncated = false;
   const integration = await prisma.integration.findFirst({
     where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
     orderBy: { updatedAt: "desc" },
     select: { scopes: true },
   });
-  if (integration?.scopes.includes("https://www.googleapis.com/auth/calendar.readonly")) {
+  const canReadCalendar = Boolean(
+    integration?.scopes.some((scope) =>
+      [
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar",
+      ].includes(scope),
+    ),
+  );
+  if (integration && !canReadCalendar) {
+    calendarError = "Calendar read permission is missing. Reconnect Google and grant calendar access.";
+  }
+  if (integration && canReadCalendar) {
     try {
       const token = await getGoogleAccessToken(user.id);
       if (token) {
-        const now = new Date();
-        const until = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-        url.searchParams.set("timeMin", now.toISOString());
-        url.searchParams.set("timeMax", until.toISOString());
-        url.searchParams.set("singleEvents", "true");
-        url.searchParams.set("orderBy", "startTime");
-        url.searchParams.set("maxResults", "100");
-        const result = await googleApiGet(token.accessToken, url.toString());
-        events = (result.items ?? [])
-          .filter((e) => e.status !== "cancelled")
-          .map((e) => ({
-            id: e.id,
-            title: e.summary || "(untitled meeting)",
-            description: e.description || "",
-            location: e.location || "",
-            startAt: e.start?.dateTime ?? e.start?.date ?? null,
-            endAt: e.end?.dateTime ?? e.end?.date ?? null,
-            timezone: e.start?.timeZone ?? user.timezone,
-            link: e.htmlLink ?? null,
-            attendees: (e.attendees ?? []).map((a) => a.email).filter(Boolean),
-          }));
+        let pageToken = null;
+        const maxPages = 5;
+        for (let page = 0; page < maxPages; page += 1) {
+          const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+          url.searchParams.set("timeMin", rangeStart.toISOString());
+          url.searchParams.set("timeMax", rangeEnd.toISOString());
+          url.searchParams.set("singleEvents", "true");
+          url.searchParams.set("orderBy", "startTime");
+          url.searchParams.set("maxResults", "250");
+          if (pageToken) url.searchParams.set("pageToken", pageToken);
+          const result = await googleApiGet(token.accessToken, url.toString());
+          events.push(
+            ...(result.items ?? [])
+              .filter((event) => event.status !== "cancelled")
+              .map((event) => ({
+                id: event.id,
+                title: event.summary || "(untitled meeting)",
+                description: event.description || "",
+                location: event.location || "",
+                startAt: event.start?.dateTime ?? event.start?.date ?? null,
+                endAt: event.end?.dateTime ?? event.end?.date ?? null,
+                allDay: Boolean(event.start?.date && !event.start?.dateTime),
+                timezone: event.start?.timeZone ?? user.timezone,
+                link: event.htmlLink ?? null,
+                attendees: (event.attendees ?? []).map((attendee) => attendee.email).filter(Boolean),
+              })),
+          );
+          pageToken = result.nextPageToken ?? null;
+          if (!pageToken) break;
+          if (page === maxPages - 1) eventsTruncated = true;
+        }
+      } else {
+        calendarError = "Google Calendar access needs to be renewed. Reconnect Google and try again.";
       }
     } catch (e) {
       calendarError = e instanceof Error ? e.message : "Could not load Google Calendar events.";
@@ -81,6 +122,8 @@ export async function GET() {
       drafts,
       events,
       calendarConnected: Boolean(integration),
+      calendarRange: { start: rangeStart.toISOString(), end: rangeEnd.toISOString() },
+      eventsTruncated,
       canCreateEvents: Boolean(
         integration?.scopes.includes("https://www.googleapis.com/auth/calendar.events"),
       ),
