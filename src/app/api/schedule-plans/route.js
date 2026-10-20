@@ -135,8 +135,8 @@ export async function POST(request) {
   generated.warnings = context.warnings;
   const plan = await prisma.dailySchedulePlan.upsert({
     where: { userId_localDate: { userId: user.id, localDate: date } },
-    create: { userId: user.id, localDate: date, timezone, status: "DRAFT", blocks: generated.blocks, unscheduled: generated.unscheduled, generatedAt: new Date() },
-    update: { timezone, status: "DRAFT", blocks: generated.blocks, unscheduled: generated.unscheduled, generatedAt: new Date() },
+    create: { userId: user.id, localDate: date, timezone, status: "DRAFT", blocks: generated.blocks, unscheduled: generated.unscheduled, warnings: context.warnings, generatedAt: new Date() },
+    update: { timezone, status: "DRAFT", blocks: generated.blocks, unscheduled: generated.unscheduled, warnings: context.warnings, generatedAt: new Date() },
   });
   await prisma.auditEvent.create({ data: { userId: user.id, eventType: "DAILY_SCHEDULE_GENERATED", actor: "USER", resourceId: plan.id, metadata: { localDate: date, scheduledCount: generated.blocks.length, unscheduledCount: generated.unscheduled.length } } });
   return NextResponse.json({ plan, tasks, warnings: context.warnings, workWindow: generated.workWindow }, { headers: { "cache-control": "no-store" } });
@@ -201,8 +201,8 @@ export async function PUT(request) {
   const unscheduled = input.unscheduled.map((item) => ({ ...item, title: taskMap.get(item.taskId).title }));
   const plan = await prisma.dailySchedulePlan.upsert({
     where: { userId_localDate: { userId: user.id, localDate: input.localDate } },
-    create: { userId: user.id, localDate: input.localDate, timezone: input.timezone, status: input.status, blocks: ordered, unscheduled },
-    update: { timezone: input.timezone, status: input.status, blocks: ordered, unscheduled },
+    create: { userId: user.id, localDate: input.localDate, timezone: input.timezone, status: input.status, blocks: ordered, unscheduled, warnings: context.warnings },
+    update: { timezone: input.timezone, status: input.status, blocks: ordered, unscheduled, warnings: context.warnings },
   });
   await prisma.auditEvent.create({ data: { userId: user.id, eventType: input.status === "APPROVED" ? "DAILY_SCHEDULE_APPROVED" : "DAILY_SCHEDULE_SAVED", actor: "USER", resourceId: plan.id, metadata: { localDate: input.localDate, scheduledCount: ordered.length, unscheduledCount: unscheduled.length } } });
   return NextResponse.json({ plan, warnings: context.warnings }, { headers: { "cache-control": "no-store" } });
