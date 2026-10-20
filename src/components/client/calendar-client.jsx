@@ -122,7 +122,7 @@ function fromForm(f) {
     description: f.description,
     location: f.location,
     startAt: f.allDay ? f.startAt : localDateTimeToIso(f.startAt, f.timezone),
-    endAt: f.allDay ? f.endAt : localDateTimeToIso(f.endAt, f.timezone),
+    endAt: f.allDay ? shiftDateKey(f.endAt, 1) : localDateTimeToIso(f.endAt, f.timezone),
     allDay: Boolean(f.allDay),
     timezone: f.timezone,
     attendees: f.attendees
@@ -145,8 +145,9 @@ function validateMeetingForm(f) {
         return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
       };
       if (!validDate(f.startAt) || !validDate(f.endAt)) return "Choose valid all-day start and end dates.";
+      if (f.endAt < f.startAt) return "All-day end date must be on or after its start date.";
       startIso = localDateTimeToIso(f.startAt + "T00:00", f.timezone);
-      endIso = localDateTimeToIso(f.endAt + "T00:00", f.timezone);
+      endIso = localDateTimeToIso(shiftDateKey(f.endAt, 1) + "T00:00", f.timezone);
     } else {
       startIso = localDateTimeToIso(f.startAt, f.timezone);
       endIso = localDateTimeToIso(f.endAt, f.timezone);
@@ -377,7 +378,7 @@ export default function CalendarClient() {
       description: event.description || "",
       location: event.location || "",
       startAt: event.allDay ? event.startAt : toLocalDateTime(event.startAt, event.timezone || defaultTimezone),
-      endAt: event.allDay ? event.endAt : toLocalDateTime(event.endAt, event.timezone || defaultTimezone),
+      endAt: event.allDay ? shiftDateKey(event.endAt, -1) : toLocalDateTime(event.endAt, event.timezone || defaultTimezone),
       allDay: Boolean(event.allDay),
       timezone: event.timezone || defaultTimezone,
       attendees: (event.attendees || []).join(", "),
