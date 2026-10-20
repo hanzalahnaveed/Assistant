@@ -141,6 +141,13 @@ export default function CalendarClient() {
   const [calendarQuery, setCalendarQuery] = useState("");
   const [eventQuery, setEventQuery] = useState("");
   const [proposalStatusFilter, setProposalStatusFilter] = useState("ACTIVE");
+  const [scheduleDate, setScheduleDate] = useState(() => dateKey(new Date()));
+  const [schedule, setSchedule] = useState(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleNotice, setScheduleNotice] = useState("");
+  const [scheduleWarnings, setScheduleWarnings] = useState([]);
   const load = useCallback(async () => {
     setError("");
     setLoading(true);
@@ -306,6 +313,101 @@ export default function CalendarClient() {
       setBusy(false);
     }
   }
+  const loadSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    setScheduleError("");
+    try {
+      const response = await fetch("/api/schedule-plans?date=" + encodeURIComponent(scheduleDate), { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw Error(body.error || "Could not load your daily schedule.");
+      setSchedule(body.plan);
+      setScheduleWarnings([]);
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Could not load your daily schedule.");
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [scheduleDate]);
+  useEffect(() => {
+    void loadSchedule();
+  }, [loadSchedule]);
+
+  async function generateSchedule() {
+    setScheduleBusy(true);
+    setScheduleError("");
+    setScheduleNotice("");
+    try {
+      const response = await fetch("/api/schedule-plans", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ localDate: scheduleDate, timezone: defaultTimezone }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw Error(body.error || "Could not generate a schedule.");
+      setSchedule(body.plan);
+      setScheduleWarnings(body.warnings || []);
+      setScheduleNotice("Draft schedule generated. Review and adjust each block before approving it.");
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Could not generate a schedule.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
+
+  function updateScheduleBlock(taskId, key, value) {
+    if (!schedule) return;
+    const iso = localDateTimeToIso(value, schedule.timezone || defaultTimezone);
+    setSchedule((current) => ({
+      ...current,
+      status: "DRAFT",
+      blocks: current.blocks.map((block) => block.taskId === taskId
+        ? { ...block, [key]: iso || value, ...(key === "startAt" && iso && new Date(iso) >= new Date(block.endAt) ? { endAt: new Date(new Date(iso).getTime() + 60 * 60 * 1000).toISOString() } : {}) }
+        : block),
+    }));
+  }
+
+  function removeScheduleBlock(block) {
+    if (!schedule) return;
+    setSchedule((current) => ({
+      ...current,
+      status: "DRAFT",
+      blocks: current.blocks.filter((item) => item.taskId !== block.taskId),
+      unscheduled: [...(current.unscheduled || []), { taskId: block.taskId, title: block.title, reason: "Removed from the proposed schedule by you." }],
+    }));
+  }
+
+  async function saveSchedule(status) {
+    if (!schedule) return;
+    setScheduleBusy(true);
+    setScheduleError("");
+    setScheduleNotice("");
+    try {
+      const response = await fetch("/api/schedule-plans", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          localDate: scheduleDate,
+          timezone: schedule.timezone || defaultTimezone,
+          status,
+          blocks: schedule.blocks.map((block) => ({ taskId: block.taskId, startAt: block.startAt, endAt: block.endAt })),
+          unscheduled: (schedule.unscheduled || []).map((item) => ({ taskId: item.taskId, reason: item.reason || "Not scheduled." })),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        const conflictText = body.conflicts?.map((conflict) => conflict.task + " conflicts with " + conflict.event).join("; ");
+        throw Error(conflictText ? body.error + " " + conflictText : body.error || "Could not save your schedule.");
+      }
+      setSchedule(body.plan);
+      setScheduleWarnings(body.warnings || []);
+      setScheduleNotice(status === "APPROVED" ? "Daily plan approved and saved. No calendar events were created." : "Schedule changes saved.");
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Could not save your schedule.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
@@ -379,6 +481,70 @@ export default function CalendarClient() {
             value={data?.drafts.filter((d) => d.status === "CREATED").length || 0}
           />
         </div>
+        <section className="mb-5 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold tracking-[-0.025em]">Plan your day</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-[#6B7280]">
+                Build a priority-first draft around calendar events. Blocks are one hour by default; nothing is written to Google Calendar by approving this plan.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input aria-label="Schedule date" type="date" value={scheduleDate} onChange={(event) => event.target.value && setScheduleDate(event.target.value)} disabled={scheduleBusy || scheduleLoading} className="rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs" />
+              <Button onClick={() => void generateSchedule()} disabled={scheduleBusy || scheduleLoading} className="rounded-xl bg-[#FA8500] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {scheduleBusy ? "Working…" : "Generate draft"}
+              </Button>
+            </div>
+          </div>
+          {scheduleError && <p role="alert" className="mt-4 rounded-lg border border-[#f0d6cc] bg-[#fff5f0] p-3 text-sm text-[#994b36]">{scheduleError}</p>}
+          {scheduleNotice && <p role="status" className="mt-4 rounded-lg border border-[#d8e9dd] bg-[#eef7f0] p-3 text-sm text-[#24543f]">{scheduleNotice}</p>}
+          {scheduleWarnings.map((warning, index) => <p key={index} className="mt-3 rounded-lg border border-[#eadfc8] bg-[#fffaf0] p-3 text-xs text-[#76551e]">{warning}</p>)}
+          {scheduleLoading ? <Loading /> : schedule ? (
+            <>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-[#6B7280]">
+                  <span className="font-semibold text-[#233044]">{schedule.blocks?.length || 0} scheduled</span>
+                  {" · "}{schedule.unscheduled?.length || 0} need another time
+                  {" · "}{schedule.timezone}
+                  {" · "}<span className="font-semibold">{schedule.status}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => void saveSchedule("DRAFT")} disabled={scheduleBusy} className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-xs font-semibold">Save draft</Button>
+                  <Button onClick={() => void saveSchedule("APPROVED")} disabled={scheduleBusy || schedule.status === "APPROVED"} className="rounded-xl bg-[#233044] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Approve plan</Button>
+                </div>
+              </div>
+              {schedule.blocks?.length ? (
+                <div className="mt-4 space-y-3">
+                  {[...schedule.blocks].sort((a, b) => new Date(a.startAt) - new Date(b.startAt)).map((block) => (
+                    <article key={block.taskId} className="grid gap-3 rounded-xl border border-[#edf1ed] bg-[#f8faf7] p-3 sm:grid-cols-[minmax(0,1fr)_180px_180px_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#233044]">{block.title}</p>
+                        <p className="mt-1 text-xs text-[#6B7280]">{block.priority || "MEDIUM"} priority · 60-minute focus block</p>
+                      </div>
+                      <label className="text-xs text-[#6B7280]">Start
+                        <input aria-label={"Start time for " + block.title} type="datetime-local" value={toLocalDateTime(block.startAt, schedule.timezone || defaultTimezone)} onChange={(event) => updateScheduleBlock(block.taskId, "startAt", event.target.value)} disabled={scheduleBusy || schedule.status === "APPROVED"} className="mt-1 w-full rounded-lg border border-[#dfe6dd] bg-white px-2 py-2 text-xs disabled:bg-[#f0f2f0]" />
+                      </label>
+                      <label className="text-xs text-[#6B7280]">End
+                        <input aria-label={"End time for " + block.title} type="datetime-local" value={toLocalDateTime(block.endAt, schedule.timezone || defaultTimezone)} onChange={(event) => updateScheduleBlock(block.taskId, "endAt", event.target.value)} disabled={scheduleBusy || schedule.status === "APPROVED"} className="mt-1 w-full rounded-lg border border-[#dfe6dd] bg-white px-2 py-2 text-xs disabled:bg-[#f0f2f0]" />
+                      </label>
+                      <Button onClick={() => removeScheduleBlock(block)} disabled={scheduleBusy || schedule.status === "APPROVED"} className="rounded-lg border border-[#e7d8d2] px-3 py-2 text-xs font-semibold text-[#994b36] disabled:opacity-50">Remove</Button>
+                    </article>
+                  ))}
+                </div>
+              ) : <Empty text="No tasks are scheduled yet. Generate a draft after adding open tasks." />}
+              {schedule.unscheduled?.length > 0 && (
+                <div className="mt-5 rounded-xl bg-[#fffaf0] p-4">
+                  <h3 className="text-sm font-semibold text-[#76551e]">Needs another time</h3>
+                  <ul className="mt-2 space-y-2">
+                    {schedule.unscheduled.map((item) => <li key={item.taskId} className="text-xs leading-5 text-[#76551e]"><span className="font-semibold">{item.title}</span> — {item.reason}</li>)}
+                  </ul>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="mt-4 rounded-xl bg-[#f7f9f6] p-4 text-sm text-[#6B7280]">No saved plan for this date. Generate a draft to schedule your open tasks around your calendar.</p>
+          )}
+        </section>
         <div className="grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-4 flex items-center justify-between">
