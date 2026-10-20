@@ -59,10 +59,12 @@ export async function POST(request, context) {
   if (["CONFIRM_CREATED", "CONFIRM_NONE_CREATED"].includes(action)) {
     if (plan.status !== "CREATE_UNCERTAIN") return NextResponse.json({ error: "This plan has no uncertain calendar creation to reconcile." }, { status: 409 });
     const status = action === "CONFIRM_CREATED" ? "CREATED" : "APPROVED";
-    const saved = await prisma.dailySchedulePlan.update({
-      where: { id: plan.id },
+    const changed = await prisma.dailySchedulePlan.updateMany({
+      where: { id: plan.id, userId: user.id, status: "CREATE_UNCERTAIN" },
       data: { status, ...(action === "CONFIRM_NONE_CREATED" ? { calendarEvents: [] } : {}) },
     });
+    if (!changed.count) return NextResponse.json({ error: "This schedule was already reconciled by another request." }, { status: 409 });
+    const saved = await prisma.dailySchedulePlan.findFirst({ where: { id: plan.id, userId: user.id } });
     await prisma.auditEvent.create({ data: { userId: user.id, eventType: action === "CONFIRM_CREATED" ? "DAILY_SCHEDULE_CREATE_CONFIRMED" : "DAILY_SCHEDULE_RETRY_UNLOCKED", actor: "USER", resourceId: plan.id, metadata: { calendarEventCount: Array.isArray(saved.calendarEvents) ? saved.calendarEvents.length : 0 } } }).catch(() => undefined);
     return NextResponse.json({ plan: saved }, { headers: { "cache-control": "no-store" } });
   }
