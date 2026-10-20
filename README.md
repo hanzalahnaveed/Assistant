@@ -22,6 +22,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
 - [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
+- [x] Inbound email agent with per-user tone/style/signature preferences, sensitive-message review, idempotent Gmail message tracking, policy-controlled task proposals, calendar availability suggestions, and optional routine-only auto-replies (disabled by default)
 - [x] Unified ScheduleItem model for local commitments and Google Calendar-backed items
 - [x] Shared schedule-item collection rendered in list and day/week/month calendar views, with timezone-aware event editing, conflict checks, and idempotent Google sync
 - [ ] Real Google account verification and production deployment
@@ -92,6 +93,16 @@ npm run test:e2e
 ```
 
 The end-to-end suite uses a local test database and mocked AI provider. Real Google Calendar event creation/edit/cancellation still requires your own Google OAuth credentials and granted Calendar event scope. No hosted deployment is needed for local development.
+
+## Scheduled inbound email agent
+
+The inbound email worker is `POST /api/cron/email-agent` and requires `Authorization: Bearer $CRON_SECRET`. The optional workflow `.github/workflows/email-agent.yml` runs every five minutes and uses the same repository variable `APP_BASE_URL` and repository secret `CRON_SECRET` as the daily briefing worker.
+
+Enable the agent in **Dashboard → Email & outreach → Inbound email agent**. It is disabled by default. The worker scans recent inbox messages, records Gmail message IDs to avoid duplicate processing, classifies messages using the configured OpenAI-compatible provider, and creates reply drafts. Tone, style, and signature are stored per user. Routine auto-replies are also disabled by default and require an explicit opt-in; sensitive messages, meeting requests, and task-related replies are never auto-sent. A globally paused automation state prevents auto-replies.
+
+Task requests use the existing task action policy (`AUTO`, `CONFIRM`, or `BLOCK`). Meeting requests may include candidate free slots calculated against the primary calendar, but this first iteration does not create an event or invent a meeting URL; the generated reply remains a reviewable draft. Approving and sending an inbound reply uses Gmail thread metadata so it is sent as a reply to the original conversation. Uncertain send outcomes are locked for manual Sent-folder verification to reduce duplicate sends.
+
+For local development, start the app and database as described above, sign in, connect Google with Gmail read/send and Calendar read permissions, configure `OPENAI_API_KEY`, enable the email agent, and manually call the worker with the local `CRON_SECRET`. The worker returns aggregate counts and never includes email bodies in its response. End-to-end tests cover settings persistence, default-off auto-send, authentication, and account isolation; live Gmail delivery still requires a real Google test account.
 
 ## Security principles
 
