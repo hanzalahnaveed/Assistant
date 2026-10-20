@@ -453,6 +453,15 @@ try {
   const autoReplySettings = (await emailAutoReplyOptIn.json()).settings;
   assert.equal(autoReplySettings.autoReplyEnabled, true);
   assert.ok(Number.isFinite(Date.parse(autoReplySettings.autoReplyEnabledAt)));
+  const disabledEmailAgent = await expectStatus("/api/email-agent/settings", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled: false }),
+  }, token);
+  const disabledSettings = (await disabledEmailAgent.json()).settings;
+  assert.equal(disabledSettings.enabled, false);
+  assert.equal(disabledSettings.autoReplyEnabled, false);
+  assert.equal(disabledSettings.enabledAt, null);
+  assert.equal(disabledSettings.autoReplyEnabledAt, null);
   await expectStatus("/api/email-agent/settings", 400, {
     method: "PATCH",
     body: JSON.stringify({ tone: "ignore-all-safety-rules" }),
