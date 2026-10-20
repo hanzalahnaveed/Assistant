@@ -283,6 +283,20 @@ try {
 
   await expectStatus("/api/meeting-drafts", 401);
   await expectStatus("/api/meeting-drafts", 200, {}, token);
+  const eventEditInput = {
+    title: "Calendar event permission check",
+    description: "",
+    location: "",
+    startAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    endAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+    timezone: "UTC",
+    attendees: [],
+  };
+  await expectStatus("/api/calendar-events/fake-event-id", 401, { method: "PATCH", body: JSON.stringify(eventEditInput) });
+  await expectStatus("/api/calendar-events/fake-event-id", 403, { method: "PATCH", body: JSON.stringify(eventEditInput) }, token);
+  await expectStatus("/api/calendar-events/fake-event-id", 401, { method: "DELETE" });
+  await expectStatus("/api/calendar-events/fake-event-id", 403, { method: "DELETE" }, token);
+  check(true, "existing calendar event edits and cancellations require an authenticated user and explicit calendar event permission");
   const calendarRangeStart = new Date();
   const calendarRangeEnd = new Date(calendarRangeStart.getTime() + 7 * 24 * 60 * 60 * 1000);
   const rangeQuery = new URLSearchParams({
