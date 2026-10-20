@@ -495,7 +495,14 @@ try {
   assert.equal(generatedSchedule.status, "APPROVED");
   const reloadedApprovedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
   assert.equal(reloadedApprovedSchedule.plan.status, "APPROVED");
-  check(true, "daily schedule edits are validated, approval persists, and approved plans reload");
+  assert.deepEqual(reloadedApprovedSchedule.plan.calendarEvents, []);
+  await expectStatus("/api/schedule-plans/" + generatedSchedule.id, 403, {
+    method: "POST",
+    body: JSON.stringify({ action: "CREATE_EVENTS" }),
+  }, token);
+  const scheduleAfterDeniedCalendarWrite = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
+  assert.equal(scheduleAfterDeniedCalendarWrite.plan.status, "APPROVED");
+  check(true, "daily schedule approval persists, and calendar writes require Google event permission without changing plan state");
 
   const preferencesResponse = await expectStatus("/api/preferences", 200, {}, token);
   const preferences = (await preferencesResponse.json()).preferences;
