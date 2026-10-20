@@ -184,8 +184,11 @@ export async function POST(request, context) {
     where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
     orderBy: { updatedAt: "desc" },
   });
-  const requiredScope = "https://www.googleapis.com/auth/calendar.events";
-  if (!integration || !integration.scopes.includes(requiredScope))
+  const writableCalendarScopes = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar",
+  ];
+  if (!integration || !integration.scopes.some((scope) => writableCalendarScopes.includes(scope)))
     return NextResponse.json(
       {
         error:
@@ -224,6 +227,12 @@ export async function POST(request, context) {
           "Could not verify calendar availability. No meeting was created; reconnect Google or retry after checking your calendar.",
       },
       { status: 502 },
+    );
+  }
+  if (availability.nextPageToken) {
+    return NextResponse.json(
+      { error: "There are too many events to verify this time safely. Review Google Calendar and choose a less crowded time." },
+      { status: 409 },
     );
   }
   const localDateKey = (value) => {
