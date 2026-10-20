@@ -30,5 +30,18 @@ export async function GET() {
       createdAt: true,
     },
   });
-  return NextResponse.json({ messages }, { headers: { "cache-control": "no-store" } });
+  const draftIds = messages.map((message) => message.draftId).filter(Boolean);
+  const drafts = draftIds.length
+    ? await prisma.emailDraft.findMany({
+        where: { userId: user.id, id: { in: draftIds } },
+        select: { id: true, status: true },
+      })
+    : [];
+  const draftStatusById = new Map(drafts.map((draft) => [draft.id, draft.status]));
+  return NextResponse.json({
+    messages: messages.map((message) => ({
+      ...message,
+      draftStatus: message.draftId ? draftStatusById.get(message.draftId) || null : null,
+    })),
+  }, { headers: { "cache-control": "no-store" } });
 }
