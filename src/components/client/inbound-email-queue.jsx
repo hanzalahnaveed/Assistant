@@ -12,6 +12,7 @@ const statusLabels = {
   MEETING_BOOKED_REVIEW: "Meeting booked · reply review",
   TASK_REVIEW: "Task review",
   REPLIED: "Replied",
+  SKIPPED: "Skipped automated sender",
   SEND_UNCERTAIN: "Check Sent folder",
   FAILED: "Needs attention",
 };
