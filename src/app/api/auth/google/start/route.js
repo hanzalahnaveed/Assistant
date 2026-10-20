@@ -40,7 +40,7 @@ export async function GET(request) {
   } catch {
     const destination = isAuthentication
       ? "/auth?error=google_not_configured"
-      : "/integrations?error=google_not_configured";
+      : "/dashboard/integrations?error=google_not_configured";
     // Return to the same origin that initiated OAuth. Falling back to localhost
     // breaks the user's error feedback on deployed environments without APP_URL.
     return NextResponse.redirect(new URL(destination, request.url));

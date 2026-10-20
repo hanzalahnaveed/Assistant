@@ -4,7 +4,6 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Clock3, LoaderCircle, MessageCircle, Plus, Search, Send, Sparkles } from "lucide-react";
-import WorkspaceHeader from "@/components/workspace-header";
 export default function AssistantClient() {
   const [conversations, setConversations] = useState([]);
   const [conversationId, setConversationId] = useState("");
@@ -109,185 +108,184 @@ export default function AssistantClient() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
-      <div className="mx-auto grid max-w-7xl gap-5 px-4 sm:px-7 lg:grid-cols-[260px_minmax(0,1fr)] pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
-        <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
-          <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#FA8500]">
-            <Sparkles size={14} /> Your conversations
-          </div>
-          <Button
-            onClick={newConversation}
-            className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3 py-2.5 text-sm font-semibold text-white"
-          >
-            <Plus size={15} /> New conversation
-          </Button>
-          <h2 className="mb-2 text-[11px] font-semibold uppercase text-[#87918b] tracking-[-0.025em]">
-            Recent conversations
-          </h2>
-          <label className="mb-3 flex items-center gap-2 rounded-lg border border-[#e3e7ed] px-2.5 py-2 text-[#87918b]">
-            <Search size={14} />
-            <input
-              aria-label="Search conversations"
-              value={conversationSearch}
-              onChange={(event) => setConversationSearch(event.target.value)}
-              placeholder="Search chats…"
-              className="min-w-0 w-full bg-transparent text-xs text-[#47534c] outline-none placeholder:text-[#a1aaa4]"
-            />
-          </label>
-          {loading ? (
-            <p className="py-4 text-xs text-[#87918b] text-pretty">Loading…</p>
-          ) : visibleConversations.length ? (
-            <div className="space-y-1">
-              {visibleConversations.map((item) => (
-                <Button
-                  key={item.id}
-                  onClick={() => void openConversation(item.id)}
-                  className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#FA8500]" : "text-[#59665e] hover:bg-[#F8F9FA]"}`}
-                >
-                  <MessageCircle size={14} className="mt-0.5 shrink-0" />
-                  <span className="line-clamp-2">{item.title || "New conversation"}</span>
-                </Button>
-              ))}
+      <main className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden bg-[#f8f9fa] p-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 sm:flex-row">
+          <section className="max-h-44 w-full shrink-0 overflow-y-auto rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:max-h-none sm:w-64">
+            <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-[#FA8500]">
+              <Sparkles size={14} /> Your conversations
             </div>
-          ) : (
-            <p className="py-3 text-xs leading-5 text-[#87918b] text-pretty">
-              {conversationSearch ? "No conversations match that search." : "Your saved chats will appear here."}
-            </p>
-          )}
-        </aside>
-        <section className="flex min-h-[78vh] flex-col overflow-hidden rounded-[18px] border border-[#E3E7ED] shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
-          <header className="flex items-center gap-3 border-b border-[#E3E7ED] bg-[#fbfcfa] px-5 py-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white">
-              <Sparkles size={17} />
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold tracking-[-0.045em] leading-[1.13]">
-                Your executive assistant
-              </h1>
-              <p className="mt-1 text-[11px] text-[#6B7280] text-pretty">
-                AI chat with persistent conversation history and task context
-              </p>
-            </div>
-          </header>
-          {error && (
-            <div
-              role="alert"
-              className="mx-5 mt-4 border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900 rounded-[13px]"
+            <Button
+              onClick={newConversation}
+              className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3 py-2.5 text-sm font-semibold text-white"
             >
-              {error}
-              {error.toLowerCase().includes("connect google") && (
-                <a href="/api/auth/google/start" className="ml-1 font-semibold underline">
-                  Connect Google
-                </a>
-              )}
-            </div>
-          )}
-          <div className="flex-1 space-y-4 p-5 sm:p-7">
-            {messages.length === 0 && (
-              <div className="mx-auto max-w-lg py-12 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e7f3ed] text-[#FA8500]">
-                  <Sparkles size={22} />
-                </div>
-                <h2 className="text-lg font-semibold tracking-[-0.025em]">
-                  What would you like to move forward?
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#6B7280] text-pretty">
-                  Ask for help prioritizing tasks, preparing for a meeting, planning your week, or
-                  drafting a message. Replies use your open-task context.
+              <Plus size={15} /> New conversation
+            </Button>
+            <h2 className="mb-2 text-[11px] font-semibold uppercase text-[#87918b] tracking-[-0.025em]">
+              Recent conversations
+            </h2>
+            <label className="mb-3 flex items-center gap-2 rounded-lg border border-[#e3e7ed] px-2.5 py-2 text-[#87918b]">
+              <Search size={14} />
+              <input
+                aria-label="Search conversations"
+                value={conversationSearch}
+                onChange={(event) => setConversationSearch(event.target.value)}
+                placeholder="Search chats…"
+                className="min-w-0 w-full bg-transparent text-xs text-[#47534c] outline-none placeholder:text-[#a1aaa4]"
+              />
+            </label>
+            {loading ? (
+              <p className="py-4 text-xs text-[#87918b] text-pretty">Loading…</p>
+            ) : visibleConversations.length ? (
+              <div className="space-y-1">
+                {visibleConversations.map((item) => (
+                  <Button
+                    key={item.id}
+                    onClick={() => void openConversation(item.id)}
+                    className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#FA8500]" : "text-[#59665e] hover:bg-[#F8F9FA]"}`}
+                  >
+                    <MessageCircle size={14} className="mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">{item.title || "New conversation"}</span>
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <p className="py-3 text-xs leading-5 text-[#87918b] text-pretty">
+                {conversationSearch ? "No conversations match that search." : "Your saved chats will appear here."}
+              </p>
+            )}
+          </section>
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-[#E3E7ED] bg-white shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
+            <header className="flex items-center gap-3 border-b border-[#E3E7ED] bg-[#fbfcfa] px-5 py-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white">
+                <Sparkles size={17} />
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold tracking-[-0.045em] leading-[1.13]">
+                  Your executive assistant
+                </h1>
+                <p className="mt-1 text-[11px] text-[#6B7280] text-pretty">
+                  AI chat with persistent conversation history and task context
                 </p>
-                <div className="mt-5 flex flex-wrap justify-center gap-2">
-                  {[
-                    "Help me prioritize my tasks",
-                    "Plan a productive day",
-                    "Draft a concise follow-up",
-                  ].map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      onClick={() => setInput(suggestion)}
-                      className="rounded-full border border-[#dfe6dd] px-3 py-2 text-xs text-[#59665e] hover:border-[#a9c8b4] tracking-[0.01em]"
-                    >
-                      {suggestion}
-                    </Button>
-                  ))}
-                </div>
+              </div>
+            </header>
+            {error && (
+              <div
+                role="alert"
+                className="mx-5 mt-4 border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900 rounded-[13px]"
+              >
+                {error}
+                {error.toLowerCase().includes("connect google") && (
+                  <a href="/api/auth/google/start" className="ml-1 font-semibold underline">
+                    Connect Google
+                  </a>
+                )}
               </div>
             )}
-            {messages.map((item) => (
-              <div
-                key={item.id}
-                className={`flex gap-3 ${item.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {item.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#FA8500]">
-                    <Sparkles size={15} />
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-7">
+              {messages.length === 0 && (
+                <div className="mx-auto max-w-lg py-12 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#e7f3ed] text-[#FA8500]">
+                    <Sparkles size={22} />
                   </div>
-                )}
-                <div className="max-w-[85%]">
-                  <div
-                    className={`whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
-                  >
-                    {item.content}
+                  <h2 className="text-lg font-semibold tracking-[-0.025em]">
+                    What would you like to move forward?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#6B7280] text-pretty">
+                    Ask for help prioritizing tasks, preparing for a meeting, planning your week, or
+                    drafting a message. Replies use your open-task context.
+                  </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
+                    {[
+                      "Help me prioritize my tasks",
+                      "Plan a productive day",
+                      "Draft a concise follow-up",
+                    ].map((suggestion) => (
+                      <Button
+                        key={suggestion}
+                        onClick={() => setInput(suggestion)}
+                        className="rounded-full border border-[#dfe6dd] px-3 py-2 text-xs text-[#59665e] hover:border-[#a9c8b4] tracking-[0.01em]"
+                      >
+                        {suggestion}
+                      </Button>
+                    ))}
                   </div>
-                  {item.role === "assistant" && item.metadata?.actionType === "CREATE_TASK" && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs">
-                      {item.metadata.actionStatus === "SUCCEEDED" ? (
-                        <CheckCircle2 size={15} className="text-[#176b52]" />
-                      ) : (
-                        <Clock3 size={15} className="text-[#9a6a2c]" />
-                      )}
-                      <span className="text-[#526159]">
-                        {item.metadata.actionStatus === "SUCCEEDED"
-                          ? "Task created"
-                          : `Task proposal: ${item.metadata.actionStatus?.toLowerCase() || "review"}`}
-                      </span>
-                      <a href="/actions" className="ml-auto font-semibold text-[#176b52] hover:underline">
-                        {item.metadata.actionStatus === "SUCCEEDED" ? "Open Action Center" : "Review action ↗"}
-                      </a>
+                </div>
+              )}
+              {messages.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex gap-3 ${item.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {item.role === "assistant" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#e7f3ed] text-[#FA8500]">
+                      <Sparkles size={15} />
                     </div>
                   )}
+                  <div className="max-w-[85%]">
+                    <div
+                      className={`whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 ${item.role === "user" ? "bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white" : "bg-[#f5f7f3] text-[#47534c]"}`}
+                    >
+                      {item.content}
+                    </div>
+                    {item.role === "assistant" && item.metadata?.actionType === "CREATE_TASK" && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs">
+                        {item.metadata.actionStatus === "SUCCEEDED" ? (
+                          <CheckCircle2 size={15} className="text-[#176b52]" />
+                        ) : (
+                          <Clock3 size={15} className="text-[#9a6a2c]" />
+                        )}
+                        <span className="text-[#526159]">
+                          {item.metadata.actionStatus === "SUCCEEDED"
+                            ? "Task created"
+                            : `Task proposal: ${item.metadata.actionStatus?.toLowerCase() || "review"}`}
+                        </span>
+                        <a href="/dashboard/actions" className="ml-auto font-semibold text-[#176b52] hover:underline">
+                          {item.metadata.actionStatus === "SUCCEEDED" ? "Open Action Center" : "Review action ↗"}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {sending && (
-              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
-                Thinking…
-              </div>
-            )}
-          </div>
-          <form
-            onSubmit={sendMessage}
-            className="m-4 flex items-end gap-2 rounded-xl border border-[#dfe6dd] p-2 focus-within:border-[#a4c8b0] sm:m-5"
-          >
-            <Input.TextArea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (input.trim() && !sending) void sendMessage(e);
-                }
-              }}
-              rows={2}
-              maxLength={8000}
-              placeholder="Ask your assistant anything…"
-              className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-[#a1aaa4]"
-            />
-            <Button
-              aria-label="Send message"
-              htmlType="submit"
-              disabled={!input.trim() || sending}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white disabled:opacity-40"
+              ))}
+              {sending && (
+                <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                  <LoaderCircle size={15} className="animate-[spin_0.9s_linear_infinite]" />
+                  Thinking…
+                </div>
+              )}
+            </div>
+            <form
+              onSubmit={sendMessage}
+              className="m-4 flex items-end gap-2 rounded-xl border border-[#dfe6dd] p-2 focus-within:border-[#a4c8b0] sm:m-5"
             >
-              <Send size={15} />
-            </Button>
-          </form>
-          <p className="px-5 pb-4 text-center text-[10px] text-[#929c95] text-pretty">
-            Chat can plan and draft; it does not send emails or modify your calendar.
-          </p>
-        </section>
-      </div>
-    </main>
+              <Input.TextArea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (input.trim() && !sending) void sendMessage(e);
+                  }
+                }}
+                rows={2}
+                maxLength={8000}
+                placeholder="Ask your assistant anything…"
+                className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-[#a1aaa4]"
+              />
+              <Button
+                aria-label="Send message"
+                htmlType="submit"
+                disabled={!input.trim() || sending}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] text-white disabled:opacity-40"
+              >
+                <Send size={15} />
+              </Button>
+            </form>
+            <p className="px-5 pb-4 text-center text-[10px] text-[#929c95] text-pretty">
+              Chat can plan and draft; it does not send emails or modify your calendar.
+            </p>
+          </section>
+        </div>
+      </main>
   );
 }

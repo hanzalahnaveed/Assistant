@@ -109,13 +109,13 @@ try {
   for (const path of [
     "/auth",
     "/",
-    "/integrations",
-    "/tasks",
-    "/assistant",
-    "/briefing",
-    "/calendar",
-    "/email",
-    "/actions",
+    "/dashboard",
+    "/dashboard/integrations",
+    "/dashboard/tasks",
+    "/dashboard/briefing",
+    "/dashboard/calendar",
+    "/dashboard/email",
+    "/dashboard/actions",
   ]) {
     const response = await expectStatus(path, 200);
     const html = await response.text();

@@ -16,41 +16,42 @@ import {
 import { useEffect, useState } from "react";
 const items = [
   {
-    href: "/briefing",
+    href: "/dashboard/briefing",
     label: "Briefing",
     icon: LayoutDashboard,
   },
   {
-    href: "/tasks",
+    href: "/dashboard/tasks",
     label: "Tasks",
     icon: CheckSquare,
   },
   {
-    href: "/assistant",
+    href: "/dashboard",
     label: "AI assistant",
     icon: MessageSquareText,
   },
   {
-    href: "/calendar",
+    href: "/dashboard/calendar",
     label: "Calendar & Schedule",
     icon: CalendarDays,
   },
   {
-    href: "/email",
+    href: "/dashboard/email",
     label: "Email outreach",
     icon: MailPlus,
   },
   {
-    href: "/actions",
+    href: "/dashboard/actions",
     label: "Action center",
     icon: ClipboardCheck,
   },
   {
-    href: "/integrations",
+    href: "/dashboard/integrations",
     label: "Integrations",
     icon: Settings2,
   },
 ];
+
 export default function WorkspaceHeader() {
   const pathname = usePathname();
   const [user, setUser] = useState(null);
@@ -64,11 +65,11 @@ export default function WorkspaceHeader() {
   }, []);
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-40 flex w-[58px] flex-col items-center gap-7 bg-[#233044] px-[5px] pt-[18px] pb-3 text-white min-[421px]:w-[72px] min-[421px]:px-2 min-[761px]:w-[252px] min-[761px]:items-stretch min-[761px]:gap-[34px] min-[761px]:px-4 min-[761px]:pt-[27px] min-[761px]:pb-[18px]"
+      className="flex h-screen w-[20vw] shrink-0 flex-col items-center gap-7 bg-[#233044] px-5 py-10 text-white"
       aria-label="Workspace sidebar"
     >
       <Link
-        href="/briefing"
+        href="/dashboard"
         className="inline-flex items-center gap-[11px] px-0 text-[19px] font-[760] tracking-[-0.7px] text-white min-[761px]:px-[9px]"
         aria-label="Assistant home"
       >
@@ -85,7 +86,8 @@ export default function WorkspaceHeader() {
       >
         {items.map(({ href, label, icon: Icon }) => {
           const active =
-            pathname === href || pathname.startsWith(href + "/");
+            pathname === href ||
+            (href !== "/dashboard" && pathname.startsWith(href + "/"));
           return (
             <Link
               key={href}

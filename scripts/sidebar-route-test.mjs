@@ -17,57 +17,57 @@ const exists = async (relativePath) => {
 
 const routes = [
   {
-    href: "/briefing",
+    href: "/dashboard/briefing",
     label: "Briefing",
-    page: "src/app/briefing/page.jsx",
+    page: "src/app/dashboard/briefing/page.jsx",
     client: "src/components/client/briefing-client.jsx",
     endpoints: ["/api/workspace/briefing"],
     workflow: /next actions|daily briefing|priority/i,
   },
   {
-    href: "/tasks",
+    href: "/dashboard/tasks",
     label: "Tasks",
-    page: "src/app/tasks/page.jsx",
+    page: "src/app/dashboard/tasks/page.jsx",
     client: "src/components/client/tasks-client.jsx",
     endpoints: ["/api/tasks"],
     workflow: /addTask|priorityFilter|dueFilter|sortBy/i,
   },
   {
-    href: "/assistant",
+    href: "/dashboard",
     label: "AI assistant",
-    page: "src/app/assistant/page.jsx",
+    page: "src/app/dashboard/page.jsx",
     client: "src/components/client/assistant-client.jsx",
     endpoints: ["/api/chat"],
     workflow: /sendMessage|openConversation|newConversation/i,
   },
   {
-    href: "/calendar",
+    href: "/dashboard/calendar",
     label: "Calendar & Schedule",
-    page: "src/app/calendar/page.jsx",
+    page: "src/app/dashboard/calendar/page.jsx",
     client: "src/components/client/calendar-client.jsx",
     endpoints: ["/api/meeting-drafts"],
     workflow: /save|approve|cancel|proposalStatusFilter/i,
   },
   {
-    href: "/email",
+    href: "/dashboard/email",
     label: "Email outreach",
-    page: "src/app/email/page.jsx",
+    page: "src/app/dashboard/email/page.jsx",
     client: "src/components/client/email-client.jsx",
     endpoints: ["/api/email-drafts"],
     workflow: /save|generate|statusFilter|approve|send/i,
   },
   {
-    href: "/actions",
+    href: "/dashboard/actions",
     label: "Action center",
-    page: "src/app/actions/page.jsx",
+    page: "src/app/dashboard/actions/page.jsx",
     client: "src/components/client/actions-client.jsx",
     endpoints: ["/api/actions", "/api/automation-rules"],
     workflow: /automationPaused|approve|reject|ruleMode/i,
   },
   {
-    href: "/integrations",
+    href: "/dashboard/integrations",
     label: "Integrations",
-    page: "src/app/integrations/page.jsx",
+    page: "src/app/dashboard/integrations/page.jsx",
     client: "src/components/client/ui.jsx",
     endpoints: [
       "/api/workspace/overview",
@@ -106,7 +106,7 @@ for (const route of routes) {
     assert.ok(client.includes(endpoint), `${route.href} must call ${endpoint}`);
   }
 
-  if (route.href === "/integrations") {
+  if (route.href === "/dashboard/integrations") {
     assert.match(client, /verifyIntegration/, "connections workflow must offer live Google integration verification");
     assert.match(client, /Run integration checks/, "connections workflow must explain the verification action");
     assert.match(client, /Routes powered by Google/, "connections workflow must link to dependent routes");
@@ -118,7 +118,7 @@ for (const route of routes) {
     assert.match(verificationApi, /calendarWrite/, "integration verification must report Calendar event scope");
   }
 
-  if (route.href === "/tasks") {
+  if (route.href === "/dashboard/tasks") {
     assert.match(client, /completeSelectedTasks/, "task workflow must support completing selected tasks");
     assert.match(client, /Select all visible active tasks/, "task workflow must support selecting visible tasks");
     assert.match(client, /Retry the remaining selection/i, "bulk completion must report partial failures");
@@ -127,7 +127,7 @@ for (const route of routes) {
     assert.match(client, /aria-pressed=\{view === tab\.id\}/, "task status tabs must expose their selected state");
   }
 
-  if (route.href === "/calendar") {
+  if (route.href === "/dashboard/calendar") {
     assert.match(client, /validateMeetingForm/, "meeting workflow must validate before saving");
     assert.match(client, /Meeting end must be after its start/, "meeting workflow must reject invalid time ranges");
     assert.match(client, /valid IANA timezone/, "meeting workflow must validate the selected timezone");

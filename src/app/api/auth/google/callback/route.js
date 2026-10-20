@@ -30,15 +30,15 @@ export async function GET(request) {
   };
 
   if (providerError) {
-    return redirectError(isAuthentication ? "/auth" : "/integrations", "google_consent_cancelled");
+    return redirectError(isAuthentication ? "/auth" : "/dashboard/integrations", "google_consent_cancelled");
   }
 
   if (!state || !expectedState || state !== expectedState || !code) {
-    return redirectError(isAuthentication ? "/auth" : "/integrations", "invalid_oauth_state");
+    return redirectError(isAuthentication ? "/auth" : "/dashboard/integrations", "invalid_oauth_state");
   }
 
   if (!isAuthentication && !isConnection) {
-    return redirectError("/integrations", "invalid_oauth_intent");
+    return redirectError("/dashboard/integrations", "invalid_oauth_intent");
   }
 
   try {
@@ -55,7 +55,7 @@ export async function GET(request) {
         select: { userId: true },
       });
       if (linkedAccount && linkedAccount.userId !== user.id) {
-        return redirectError("/integrations", "google_account_already_linked");
+        return redirectError("/dashboard/integrations", "google_account_already_linked");
       }
 
       const existingIntegration = await prisma.integration.findFirst({
@@ -96,7 +96,7 @@ export async function GET(request) {
         },
       });
 
-      const response = NextResponse.redirect(new URL("/integrations?connected=google", request.url));
+      const response = NextResponse.redirect(new URL("/dashboard/integrations?connected=google", request.url));
       return clearState(response);
     }
 
@@ -132,12 +132,12 @@ export async function GET(request) {
     });
 
     await createSession(user);
-    return clearState(NextResponse.redirect(new URL("/briefing", request.url)));
+    return clearState(NextResponse.redirect(new URL("/dashboard", request.url)));
   } catch (error) {
     console.error(
       "[auth/google/callback] Google OAuth callback failed:",
       error instanceof Error ? error.message : "Unknown error",
     );
-    return redirectError(isAuthentication ? "/auth" : "/integrations", "google_connection_failed");
+    return redirectError(isAuthentication ? "/auth" : "/dashboard/integrations", "google_connection_failed");
   }
 }

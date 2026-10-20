@@ -4,7 +4,6 @@
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CheckCircle2, Clock3, LoaderCircle, Plus, ShieldCheck, X } from "lucide-react";
-import WorkspaceHeader from "@/components/workspace-header";
 const statusLabels = {
   PENDING: "Needs your approval",
   APPROVED: "Approved",
@@ -229,9 +228,7 @@ export default function ActionsClient() {
   const pending = actions.filter((action) => action.status === "PENDING");
   const history = actions.filter((action) => action.status !== "PENDING");
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
-      <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
+    <main className="flex flex-col p-10 gap-5 bg-[#F8F9FA] text-[#212529]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
@@ -243,10 +240,6 @@ export default function ActionsClient() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs text-[#526159]">
-              <ShieldCheck size={16} className={automationPaused ? "text-rose-600" : "text-[#FA8500]"} />
-              {automationPaused ? "Global automation pause is active" : "Your approval settings apply"}
-            </div>
             <Button
               htmlType="button"
               disabled={savingPause}
@@ -532,7 +525,6 @@ export default function ActionsClient() {
             </div>
           )}
         </section>
-      </div>
     </main>
   );
 }

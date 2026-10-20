@@ -1,10 +1,8 @@
 "use client";
 
-
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, Check, Circle, LoaderCircle, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
-import WorkspaceHeader from "@/components/workspace-header";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const priorityStyle = {
   LOW: "bg-slate-100 text-slate-600",
@@ -189,9 +187,7 @@ export default function TasksClient() {
   const selectedOpenTasks = selectableVisibleTasks.filter((task) => selectedTaskIds.includes(task.id));
   const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
-      <div className="mx-auto max-w-5xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
+    <main className="flex flex-col p-10 bg-[#F8F9FA] text-[#212529]">
         <div className="mb-7">
           <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
             <Check size={40} /> 
@@ -498,7 +494,6 @@ export default function TasksClient() {
             </div>
           )}
         </section>
-      </div>
     </main>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import WorkspaceHeader from "@/components/workspace-header";
 import {
   AlertCircle,
   CalendarDays,
@@ -233,8 +232,7 @@ export default function BriefingClient() {
   const metrics = data?.metrics;
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] text-[#18211f] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
+    <main className="min-h-screen bg-[#f8faf7] text-[#18211f]">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -288,7 +286,7 @@ export default function BriefingClient() {
             className="mb-5 rounded-xl border border-[#eadfc7] bg-[#fffaf0] px-4 py-3 text-sm text-[#87642c]"
           >
             Some Google Workspace data could not be refreshed.{" "}
-            <a href="/integrations" className="font-semibold underline">
+            <a href="/dashboard/integrations" className="font-semibold underline">
               Check connection
             </a>
           </div>
@@ -409,7 +407,7 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No open tasks. Add a task when a new commitment comes up.</p>
               )}
-              <a href="/tasks" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open task manager ↗</a>
+              <a href="/dashboard/tasks" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open task manager ↗</a>
             </section>
 
             <section aria-labelledby="briefing-calendar" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
@@ -432,7 +430,7 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No more calendar events scheduled for today.</p>
               )}
-              <a href="/calendar" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar tools ↗</a>
+              <a href="/dashboard/calendar" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar tools ↗</a>
             </section>
 
             <section aria-labelledby="briefing-commitments" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
@@ -518,7 +516,7 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No likely follow-up messages surfaced. The assistant uses limited message metadata and snippets.</p>
               )}
-              <a href="/email" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open inbox tools ↗</a>
+              <a href="/dashboard/email" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open inbox tools ↗</a>
             </section>
           </div>
         )}

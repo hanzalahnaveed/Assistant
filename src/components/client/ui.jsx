@@ -14,7 +14,6 @@ import {
   Sparkles,
   Unplug,
 } from "lucide-react";
-import WorkspaceHeader from "@/components/workspace-header";
 function formatDate(value) {
   if (!value) return "Time not set";
   const date = new Date(value);
@@ -204,8 +203,7 @@ export default function IntegrationsClient() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529]">
       <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -414,10 +412,10 @@ export default function IntegrationsClient() {
           <p className="mt-1 text-xs leading-5 text-[#6B7280]">These pages use the connected account for read context or separately approved external actions.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ["/briefing", "Overview", "Combines tasks with Gmail follow-ups and today's calendar."],
-              ["/email", "Email outreach", "Drafts stay local; sending needs Gmail send permission and approval."],
-              ["/calendar", "Calendar & meetings", "Reads events; creating a meeting requires event permission and confirmation."],
-              ["/assistant", "AI assistant", "Uses available inbox and calendar context without sending or editing them."],
+              ["/dashboard/briefing", "Overview", "Combines tasks with Gmail follow-ups and today's calendar."],
+              ["/dashboard/email", "Email outreach", "Drafts stay local; sending needs Gmail send permission and approval."],
+              ["/dashboard/calendar", "Calendar & meetings", "Reads events; creating a meeting requires event permission and confirmation."],
+              ["/dashboard", "AI assistant", "Uses available inbox and calendar context without sending or editing them."],
             ].map(([href, title, description]) => (
               <a key={href} href={href} className="rounded-xl border border-[#e8ece8] p-4 transition hover:border-[#FA8500] hover:bg-[#fffaf4]">
                 <span className="text-sm font-semibold">{title} <ExternalLink size={12} className="inline" /></span>

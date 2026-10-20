@@ -69,7 +69,7 @@ export default function AuthPage() {
       }
 
       setSuccess(mode === "signup" ? "Account created. Redirecting to your workspace…" : "Signed in successfully. Redirecting…");
-      window.location.replace("/briefing");
+      window.location.replace("/dashboard");
     } catch (requestError) {
       setError(requestError instanceof TypeError
         ? "We couldn't reach the server. Check your connection and try again."
@@ -82,7 +82,7 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f] px-4 py-8 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f]">
       <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-white/60 bg-white/95 p-6 shadow-xl sm:p-9">
         <header>
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#4b749f]">Personal AI Assistant</p>

@@ -3,7 +3,6 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import WorkspaceHeader from "@/components/workspace-header";
 import {
   AlertCircle,
   CheckCircle2,
@@ -189,8 +188,7 @@ export default function EmailClient() {
     return matchesSearch && (statusFilter === "ALL" || draft.status === statusFilter);
   });
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529]">
       <div className="mx-auto max-w-7xl px-4 sm:px-7 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -233,8 +231,8 @@ export default function EmailClient() {
             {notice}
           </div>
         )}
-        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
+        <div className="grid grid-cols-3 w-full gap-5">
+          <aside className="col-span-1 rounded-[18px] border border-[#E3E7ED] p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold tracking-[-0.025em]">Your emails</h2>
               <Button
@@ -246,7 +244,7 @@ export default function EmailClient() {
                 <RefreshCw size={14} />
               </Button>
             </div>
-            <div className="mb-3 space-y-2">
+            <div className="flex flex-col gap-2">
               <Input
                 aria-label="Search email drafts"
                 value={search}
@@ -258,7 +256,7 @@ export default function EmailClient() {
                 aria-label="Filter email drafts by status"
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-xs"
+                className="w-full rounded-xl border bg-white px-3 py-2 text-xs"
               >
                 <option value="ALL">All statuses</option>
                 {Object.entries(labels).map(([value, label]) => (
@@ -266,11 +264,10 @@ export default function EmailClient() {
                 ))}
               </select>
               {(search || statusFilter !== "ALL") && (
-                <button type="button" onClick={() => { setSearch(""); setStatusFilter("ALL"); }} className="text-xs font-semibold text-[#FA8500]">
+                <button type="button" onClick={() => { setSearch(""); setStatusFilter("ALL"); }} className="text-xs font-semibold text-[#FA8500] mt-1">
                   Clear filters
                 </button>
               )}
-              <p className="text-[10px] text-[#87918b]">{filteredDrafts.length} of {drafts.length} emails</p>
             </div>
             {loading ? (
               <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
@@ -307,7 +304,7 @@ export default function EmailClient() {
               </p>
             )}
           </aside>
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
+          <section className="col-span-2 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-7 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-5 flex items-center gap-3 border-b border-[#E3E7ED] pb-5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f3ec] text-[#FA8500]">
                 <Sparkles size={18} />

@@ -3,7 +3,6 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import WorkspaceHeader from "@/components/workspace-header";
 import { localDateTimeToIso, toLocalDateTime } from "@/lib/calendar-timezone.mjs";
 import {
   CalendarDays,
@@ -612,8 +611,7 @@ export default function CalendarClient() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
-      <WorkspaceHeader />
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529]">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -660,7 +658,7 @@ export default function CalendarClient() {
         {data?.calendarConnected && !data.canCreateEvents && (
           <div className="mb-5 rounded-xl border border-[#eadfc8] bg-[#fffaf0] p-4 text-sm text-[#76551e]">
             Calendar is connected in read-only mode. Reconnect Google from{" "}
-            <a className="font-semibold underline" href="/integrations">
+            <a className="font-semibold underline" href="/dashboard/integrations">
               Connections
             </a>{" "}
             and grant Calendar event access to enable creation.
@@ -684,7 +682,313 @@ export default function CalendarClient() {
             value={data?.drafts.filter((d) => d.status === "CREATED").length || 0}
           />
         </div>
-        <section className="mb-5 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:p-6">
+        <div className="flex flex-col items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
+          <section className="w-full rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2 className="font-semibold tracking-[-0.025em]">Calendar</h2>
+                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
+                  {rangeLabel(currentRange, defaultTimezone)} · {calendarView} view · {defaultTimezone}
+                </p>
+              </div>
+              <CalendarDays size={18} className="shrink-0 text-[#FA8500]" />
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Button
+                aria-label="Previous calendar range"
+                onClick={() => setCalendarDate((date) => {
+                  if (calendarView === "day") return shiftDateKey(date, -1);
+                  if (calendarView === "week") return shiftDateKey(date, -7);
+                  return shiftMonthKey(date, -1);
+                })}
+                disabled={loading || busy}
+                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
+              >Previous</Button>
+              <Button onClick={() => setCalendarDate(dateKey(new Date()))} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs">Today</Button>
+              <Button
+                aria-label="Next calendar range"
+                onClick={() => setCalendarDate((date) => {
+                  if (calendarView === "day") return shiftDateKey(date, 1);
+                  if (calendarView === "week") return shiftDateKey(date, 7);
+                  return shiftMonthKey(date, 1);
+                })}
+                disabled={loading || busy}
+                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
+              >Next</Button>
+              <select aria-label="Calendar view" value={calendarView} onChange={(event) => setCalendarView(event.target.value)} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs">
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+              </select>
+              <input aria-label="Choose calendar date" type="date" value={calendarDate} onChange={(event) => event.target.value && setCalendarDate(event.target.value)} disabled={loading || busy} className="min-w-0 rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs" />
+            </div>
+            {data?.eventsTruncated && (
+              <p role="status" className="mb-3 rounded-lg bg-[#fff8e8] p-3 text-xs text-[#76551e]">
+                This range contains many events. Showing up to 1,250; narrow the date range to see fewer events.
+              </p>
+            )}
+            <Input
+              aria-label="Search calendar events"
+              value={eventQuery}
+              onChange={(event) => setEventQuery(event.target.value)}
+              placeholder="Search events, locations, attendees…"
+              className="mb-3 w-full rounded-xl border px-3 py-2 text-xs"
+            />
+            {loading ? (
+              <Loading />
+            ) : visibleEvents.length ? (
+              calendarView === "day" ? (
+                <div className="space-y-2">{eventsForDate(calendarDate).map(renderCalendarEvent)}</div>
+              ) : (
+                <div className={calendarView === "week" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"}>
+                  {calendarDates.map((date) => {
+                    const dayEvents = eventsForDate(date);
+                    return (
+                      <section key={date} className="min-w-0 rounded-xl border border-[#e5ebe3] bg-white p-2">
+                        <h3 className="mb-2 text-xs font-semibold text-[#46544b]">{formatDateLabel(date, defaultTimezone)}</h3>
+                        {dayEvents.length ? <div className="space-y-2">{dayEvents.map(renderCalendarEvent)}</div> : <p className="py-3 text-center text-[11px] text-[#a0a8a0]">No events</p>}
+                      </section>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <Empty text={eventQuery ? "No calendar events match your search." : "No events in this date range. Create a proposal for your next meeting."} />
+            )}
+          </section>
+          <section className="flex gap-5">
+            <section className="rounded-[18px] w-[70%] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold tracking-[-0.025em]">{editingEventId ? "Edit calendar event" : "Meeting proposal"}</h2>
+                  <p className="mt-1 text-xs text-[#6B7280] text-pretty">
+                    {editingEventId ? "Update an existing event. Attendees may be notified." : "Save → approve → separately confirm creation"}
+                  </p>
+                </div>
+                <Button
+                  onClick={fresh}
+                  htmlType="button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
+                >
+                  <Plus size={15} /> New
+                </Button>
+              </div>
+              <form onSubmit={save} className="space-y-4">
+                <Field label="Meeting title">
+                  <Input
+                    required
+                    maxLength={250}
+                    disabled={!editable || busy}
+                    value={form.title}
+                    onChange={(e) => set("title", e.target.value)}
+                    placeholder="Weekly product review"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                  />
+                </Field>
+                <Field label="Agenda / description">
+                  <Input.TextArea
+                    rows={3}
+                    maxLength={10000}
+                    disabled={!editable || busy}
+                    value={form.description}
+                    onChange={(e) => set("description", e.target.value)}
+                    placeholder="Goals, topics, decisions needed…"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA] resize-y"
+                  />
+                </Field>
+                <Field label="Location or video link (optional)">
+                  <Input
+                    maxLength={500}
+                    disabled={!editable || busy}
+                    value={form.location}
+                    onChange={(e) => set("location", e.target.value)}
+                    placeholder="Room, address, or video meeting link"
+                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                  />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Start">
+                    <input
+                      type={form.allDay ? "date" : "datetime-local"}
+                      required
+                      disabled={!editable || busy}
+                      value={form.startAt}
+                      onChange={(e) => set("startAt", e.target.value)}
+                      className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                    />
+                  </Field>
+                  <Field label="End">
+                    <input
+                      type={form.allDay ? "date" : "datetime-local"}
+                      required
+                      disabled={!editable || busy}
+                      value={form.endAt}
+                      onChange={(e) => set("endAt", e.target.value)}
+                      className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Timezone (IANA)">
+                    <Input
+                      required
+                      maxLength={100}
+                      disabled={!editable || busy}
+                      value={form.timezone}
+                      onChange={(e) => set("timezone", e.target.value)}
+                      placeholder="Asia/Karachi"
+                      className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                    />
+                  </Field>
+                  <Field label="Attendee emails (comma-separated)">
+                    <Input
+                      disabled={!editable || busy}
+                      value={form.attendees}
+                      onChange={(e) => set("attendees", e.target.value)}
+                      placeholder="team@example.com"
+                      className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
+                    />
+                  </Field>
+                </div>
+                {editable && (
+                  <Button
+                    htmlType="submit"
+                    disabled={busy}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                  >
+                    <Save size={15} />
+                    {busy ? "Saving…" : editingEventId ? "Update calendar event" : "Save proposal"}
+                  </Button>
+                )}
+              </form>
+              {chosen && (
+                <div className="mt-5 border-t border-[#edf0ec] pt-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-semibold">Proposal status</div>
+                    <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
+                      {labels[chosen.status]}
+                    </span>
+                  </div>
+                  {chosen.lastError && (
+                    <p className="mb-3 rounded-lg bg-[#fff5f0] p-3 text-xs leading-5 text-[#994b36] text-pretty">
+                      {chosen.lastError}
+                    </p>
+                  )}
+                  {chosen.createdEventLink && (
+                    <a
+                      className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#FA8500]"
+                      href={chosen.createdEventLink}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open created event <ExternalLink size={13} />
+                    </a>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {chosen.status === "DRAFT" && (
+                      <Button
+                        disabled={busy}
+                        onClick={() => void act("APPROVE")}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        <ShieldCheck size={15} /> Approve exact proposal
+                      </Button>
+                    )}
+                    {chosen.status === "APPROVED" && (
+                      <Button
+                        disabled={busy || !data?.canCreateEvents}
+                        onClick={() => void act("CREATE")}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={15} />
+                        {" Confirm & create event"}
+                      </Button>
+                    )}
+                    {chosen.status === "CREATE_UNCERTAIN" && (
+                      <>
+                        <Button
+                          disabled={busy}
+                          onClick={() => void act("CONFIRM_CREATED")}
+                          className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
+                        >
+                          I found it in Calendar
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          onClick={() => void act("CONFIRM_NOT_CREATED")}
+                          className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3 py-2 text-sm font-semibold text-white"
+                        >
+                          Verified absent — unlock retry
+                        </Button>
+                      </>
+                    )}
+                    {["DRAFT", "APPROVED", "FAILED"].includes(chosen.status) && (
+                      <Button
+                        disabled={busy}
+                        onClick={() => void act("CANCEL")}
+                        className="rounded-xl border border-[#e2e8e0] px-3 py-2 text-sm font-medium"
+                      >
+                        Cancel proposal
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+            <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
+              <h2 className="font-semibold tracking-[-0.025em]">Saved proposals</h2>
+              <p className="mt-1 text-xs text-[#6B7280] text-pretty">
+                Search proposals and filter by lifecycle status. Creation outcomes remain available for traceability.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Search meeting proposals"
+                  value={calendarQuery}
+                  onChange={(event) => setCalendarQuery(event.target.value)}
+                  placeholder="Search title, agenda, location, or attendee…"
+                  className="w-full rounded-xl border px-3 py-2 text-xs"
+                />
+                <select
+                  aria-label="Filter meeting proposals by status"
+                  value={proposalStatusFilter}
+                  onChange={(event) => setProposalStatusFilter(event.target.value)}
+                  className="rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-xs sm:min-w-44"
+                >
+                  <option value="ACTIVE">Active proposals</option>
+                  <option value="ALL">All statuses</option>
+                  <option value="CREATED">Created</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+              {loading ? (
+                <Loading />
+              ) : visibleDrafts.length ? (
+                <div className="mt-4 divide-y divide-[#edf1ed] h-fit">
+                  {visibleDrafts.map((d) => (
+                    <Button
+                      key={d.id}
+                      onClick={() => selectDraft(d)}
+                      className={`flex w-full h-full ${selected === d.id ? "text-[#FA8500]" : ""}`}
+                    >
+                      <div className={`flex w-full justify-between`}>
+                        <span className="block text-sm font-semibold">{d.title}</span>
+                        <span className="mt-1 block text-xs text-[#6B7280]">
+                          {format(d.startAt, d.timezone)} · {d.attendees.length} attendees
+                        </span>
+                        <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
+                          {labels[d.status]}
+                        </span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <Empty text={data?.drafts.length ? "No proposals match your search and status filter." : "Your saved meeting proposals will appear here."} />
+              )}
+            </section>
+          </section>
+        </div>
+        <section className="mt-5 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="font-semibold tracking-[-0.025em]">Plan your day</h2>
@@ -788,310 +1092,6 @@ export default function CalendarClient() {
             </>
           ) : (
             <p className="mt-4 rounded-xl bg-[#f7f9f6] p-4 text-sm text-[#6B7280]">No saved plan for this date. Generate a draft to schedule your open tasks around your calendar.</p>
-          )}
-        </section>
-        <div className="grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="min-w-0">
-                <h2 className="font-semibold tracking-[-0.025em]">Calendar</h2>
-                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-                  {rangeLabel(currentRange, defaultTimezone)} · {calendarView} view · {defaultTimezone}
-                </p>
-              </div>
-              <CalendarDays size={18} className="shrink-0 text-[#FA8500]" />
-            </div>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Button
-                aria-label="Previous calendar range"
-                onClick={() => setCalendarDate((date) => {
-                  if (calendarView === "day") return shiftDateKey(date, -1);
-                  if (calendarView === "week") return shiftDateKey(date, -7);
-                  return shiftMonthKey(date, -1);
-                })}
-                disabled={loading || busy}
-                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
-              >Previous</Button>
-              <Button onClick={() => setCalendarDate(dateKey(new Date()))} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs">Today</Button>
-              <Button
-                aria-label="Next calendar range"
-                onClick={() => setCalendarDate((date) => {
-                  if (calendarView === "day") return shiftDateKey(date, 1);
-                  if (calendarView === "week") return shiftDateKey(date, 7);
-                  return shiftMonthKey(date, 1);
-                })}
-                disabled={loading || busy}
-                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
-              >Next</Button>
-              <select aria-label="Calendar view" value={calendarView} onChange={(event) => setCalendarView(event.target.value)} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs">
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-              </select>
-              <input aria-label="Choose calendar date" type="date" value={calendarDate} onChange={(event) => event.target.value && setCalendarDate(event.target.value)} disabled={loading || busy} className="min-w-0 rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs" />
-            </div>
-            {data?.eventsTruncated && (
-              <p role="status" className="mb-3 rounded-lg bg-[#fff8e8] p-3 text-xs text-[#76551e]">
-                This range contains many events. Showing up to 1,250; narrow the date range to see fewer events.
-              </p>
-            )}
-            <Input
-              aria-label="Search calendar events"
-              value={eventQuery}
-              onChange={(event) => setEventQuery(event.target.value)}
-              placeholder="Search events, locations, attendees…"
-              className="mb-3 w-full rounded-xl border px-3 py-2 text-xs"
-            />
-            {loading ? (
-              <Loading />
-            ) : visibleEvents.length ? (
-              calendarView === "day" ? (
-                <div className="space-y-2">{eventsForDate(calendarDate).map(renderCalendarEvent)}</div>
-              ) : (
-                <div className={calendarView === "week" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"}>
-                  {calendarDates.map((date) => {
-                    const dayEvents = eventsForDate(date);
-                    return (
-                      <section key={date} className="min-w-0 rounded-xl border border-[#e5ebe3] bg-white p-2">
-                        <h3 className="mb-2 text-xs font-semibold text-[#46544b]">{formatDateLabel(date, defaultTimezone)}</h3>
-                        {dayEvents.length ? <div className="space-y-2">{dayEvents.map(renderCalendarEvent)}</div> : <p className="py-3 text-center text-[11px] text-[#a0a8a0]">No events</p>}
-                      </section>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <Empty text={eventQuery ? "No calendar events match your search." : "No events in this date range. Create a proposal for your next meeting."} />
-            )}
-          </section>
-          <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold tracking-[-0.025em]">{editingEventId ? "Edit calendar event" : "Meeting proposal"}</h2>
-                <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-                  {editingEventId ? "Update an existing event. Attendees may be notified." : "Save → approve → separately confirm creation"}
-                </p>
-              </div>
-              <Button
-                onClick={fresh}
-                htmlType="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
-              >
-                <Plus size={15} /> New
-              </Button>
-            </div>
-            <form onSubmit={save} className="space-y-4">
-              <Field label="Meeting title">
-                <Input
-                  required
-                  maxLength={250}
-                  disabled={!editable || busy}
-                  value={form.title}
-                  onChange={(e) => set("title", e.target.value)}
-                  placeholder="Weekly product review"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                />
-              </Field>
-              <Field label="Agenda / description">
-                <Input.TextArea
-                  rows={3}
-                  maxLength={10000}
-                  disabled={!editable || busy}
-                  value={form.description}
-                  onChange={(e) => set("description", e.target.value)}
-                  placeholder="Goals, topics, decisions needed…"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA] resize-y"
-                />
-              </Field>
-              <Field label="Location or video link (optional)">
-                <Input
-                  maxLength={500}
-                  disabled={!editable || busy}
-                  value={form.location}
-                  onChange={(e) => set("location", e.target.value)}
-                  placeholder="Room, address, or video meeting link"
-                  className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Start">
-                  <input
-                    type={form.allDay ? "date" : "datetime-local"}
-                    required
-                    disabled={!editable || busy}
-                    value={form.startAt}
-                    onChange={(e) => set("startAt", e.target.value)}
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                  />
-                </Field>
-                <Field label="End">
-                  <input
-                    type={form.allDay ? "date" : "datetime-local"}
-                    required
-                    disabled={!editable || busy}
-                    value={form.endAt}
-                    onChange={(e) => set("endAt", e.target.value)}
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                  />
-                </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Timezone (IANA)">
-                  <Input
-                    required
-                    maxLength={100}
-                    disabled={!editable || busy}
-                    value={form.timezone}
-                    onChange={(e) => set("timezone", e.target.value)}
-                    placeholder="Asia/Karachi"
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                  />
-                </Field>
-                <Field label="Attendee emails (comma-separated)">
-                  <Input
-                    disabled={!editable || busy}
-                    value={form.attendees}
-                    onChange={(e) => set("attendees", e.target.value)}
-                    placeholder="team@example.com"
-                    className="w-full rounded-xl border border-[#dfe6dd] bg-white px-3.5 py-3 text-sm disabled:bg-[#F8F9FA]"
-                  />
-                </Field>
-              </div>
-              {editable && (
-                <Button
-                  htmlType="submit"
-                  disabled={busy}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
-                >
-                  <Save size={15} />
-                  {busy ? "Saving…" : editingEventId ? "Update calendar event" : "Save proposal"}
-                </Button>
-              )}
-            </form>
-            {chosen && (
-              <div className="mt-5 border-t border-[#edf0ec] pt-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold">Proposal status</div>
-                  <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
-                    {labels[chosen.status]}
-                  </span>
-                </div>
-                {chosen.lastError && (
-                  <p className="mb-3 rounded-lg bg-[#fff5f0] p-3 text-xs leading-5 text-[#994b36] text-pretty">
-                    {chosen.lastError}
-                  </p>
-                )}
-                {chosen.createdEventLink && (
-                  <a
-                    className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#FA8500]"
-                    href={chosen.createdEventLink}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open created event <ExternalLink size={13} />
-                  </a>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {chosen.status === "DRAFT" && (
-                    <Button
-                      disabled={busy}
-                      onClick={() => void act("APPROVE")}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      <ShieldCheck size={15} /> Approve exact proposal
-                    </Button>
-                  )}
-                  {chosen.status === "APPROVED" && (
-                    <Button
-                      disabled={busy || !data?.canCreateEvents}
-                      onClick={() => void act("CREATE")}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      <CheckCircle2 size={15} />
-                      {" Confirm & create event"}
-                    </Button>
-                  )}
-                  {chosen.status === "CREATE_UNCERTAIN" && (
-                    <>
-                      <Button
-                        disabled={busy}
-                        onClick={() => void act("CONFIRM_CREATED")}
-                        className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-sm font-semibold"
-                      >
-                        I found it in Calendar
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() => void act("CONFIRM_NOT_CREATED")}
-                        className="rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-3 py-2 text-sm font-semibold text-white"
-                      >
-                        Verified absent — unlock retry
-                      </Button>
-                    </>
-                  )}
-                  {["DRAFT", "APPROVED", "FAILED"].includes(chosen.status) && (
-                    <Button
-                      disabled={busy}
-                      onClick={() => void act("CANCEL")}
-                      className="rounded-xl border border-[#e2e8e0] px-3 py-2 text-sm font-medium"
-                    >
-                      Cancel proposal
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
-        <section className="mt-5 rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
-          <h2 className="font-semibold tracking-[-0.025em]">Saved proposals</h2>
-          <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-            Search proposals and filter by lifecycle status. Creation outcomes remain available for traceability.
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Input
-              aria-label="Search meeting proposals"
-              value={calendarQuery}
-              onChange={(event) => setCalendarQuery(event.target.value)}
-              placeholder="Search title, agenda, location, or attendee…"
-              className="w-full rounded-xl border px-3 py-2 text-xs"
-            />
-            <select
-              aria-label="Filter meeting proposals by status"
-              value={proposalStatusFilter}
-              onChange={(event) => setProposalStatusFilter(event.target.value)}
-              className="rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-xs sm:min-w-44"
-            >
-              <option value="ACTIVE">Active proposals</option>
-              <option value="ALL">All statuses</option>
-              <option value="CREATED">Created</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
-          {loading ? (
-            <Loading />
-          ) : visibleDrafts.length ? (
-            <div className="mt-4 divide-y divide-[#edf1ed]">
-              {visibleDrafts.map((d) => (
-                <Button
-                  key={d.id}
-                  onClick={() => selectDraft(d)}
-                  className={`flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left ${selected === d.id ? "text-[#FA8500]" : ""}`}
-                >
-                  <span>
-                    <span className="block text-sm font-semibold">{d.title}</span>
-                    <span className="mt-1 block text-xs text-[#6B7280]">
-                      {format(d.startAt, d.timezone)} · {d.attendees.length} attendees
-                    </span>
-                  </span>
-                  <span className="rounded-full bg-[#f0f4ef] px-2.5 py-1 text-xs font-semibold tracking-[0.01em]">
-                    {labels[d.status]}
-                  </span>
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <Empty text={data?.drafts.length ? "No proposals match your search and status filter." : "Your saved meeting proposals will appear here."} />
           )}
         </section>
         <p className="mt-5 text-xs leading-5 text-[#87918b] text-pretty">
