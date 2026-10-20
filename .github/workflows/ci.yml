@@ -59,6 +59,8 @@ jobs:
         run: npm run test:sidebar-routes
       - name: Test calendar timezone conversion
         run: npm run test:calendar-timezone
+      - name: Test email-agent message parsing
+        run: npm run test:email-agent
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client
