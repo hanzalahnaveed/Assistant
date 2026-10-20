@@ -48,3 +48,22 @@ export function parseSender(value) {
   const candidate = (match?.[1] || value).trim().replace(/^["']|["']$/g, "");
   return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(candidate) ? candidate.toLowerCase() : null;
 }
+
+export function isAutomatedSender(message, sender) {
+  if (typeof sender !== "string" || !sender.includes("@")) return true;
+  const localPart = sender.split("@")[0].toLowerCase();
+  if (/^(?:no-?reply|do-?not-?reply|mailer-daemon|postmaster|notifications?)(?:[._+-].*)?$/.test(localPart)) {
+    return true;
+  }
+  const headers = message.payload?.headers ?? [];
+  const value = (name) => headers.find((item) => item.name?.toLowerCase() === name.toLowerCase())?.value?.trim() ?? "";
+  const autoSubmitted = value("Auto-Submitted").toLowerCase();
+  const precedence = value("Precedence").toLowerCase();
+  return Boolean(
+    (autoSubmitted && autoSubmitted !== "no") ||
+    /^(bulk|list|junk)$/.test(precedence) ||
+    value("List-Id") ||
+    value("List-Unsubscribe") ||
+    value("X-Auto-Response-Suppress")
+  );
+}
