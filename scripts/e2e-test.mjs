@@ -437,6 +437,52 @@ try {
   assert.ok(briefing.tasks[0].reasons.includes("Business-critical context"));
   check(true, "daily briefing ranks overdue business-critical tasks with explainable reasons");
 
+  const scheduleDate = new Date().toISOString().slice(0, 10);
+  const generatedScheduleResponse = await expectStatus("/api/schedule-plans", 200, {
+    method: "POST",
+    body: JSON.stringify({ localDate: scheduleDate, timezone: "UTC" }),
+  }, token);
+  let generatedSchedule = (await generatedScheduleResponse.json()).plan;
+  assert.equal(generatedSchedule.localDate, scheduleDate);
+  assert.equal(generatedSchedule.timezone, "UTC");
+  assert.ok(generatedSchedule.blocks.length >= 1);
+  assert.ok(generatedSchedule.blocks.every((block) => new Date(block.endAt) > new Date(block.startAt)));
+  assert.ok(generatedSchedule.blocks.every((block) => new Date(block.startAt).getUTCHours() >= 9 && new Date(block.endAt).getUTCHours() <= 17));
+  const loadedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
+  assert.equal(loadedSchedule.plan.id, generatedSchedule.id);
+  check(true, "daily schedule generation prioritizes open tasks and persists a timezone-aware plan");
+
+  const invalidScheduleBlock = {
+    ...generatedSchedule.blocks[0],
+    startAt: scheduleDate + "T08:00:00.000Z",
+    endAt: scheduleDate + "T09:00:00.000Z",
+  };
+  await expectStatus("/api/schedule-plans", 400, {
+    method: "PUT",
+    body: JSON.stringify({
+      localDate: scheduleDate,
+      timezone: "UTC",
+      status: "DRAFT",
+      blocks: [{ taskId: invalidScheduleBlock.taskId, startAt: invalidScheduleBlock.startAt, endAt: invalidScheduleBlock.endAt }],
+      unscheduled: [],
+    }),
+  }, token);
+  const savedScheduleResponse = await expectStatus("/api/schedule-plans", 200, {
+    method: "PUT",
+    body: JSON.stringify({
+      localDate: scheduleDate,
+      timezone: "UTC",
+      status: "APPROVED",
+      blocks: generatedSchedule.blocks.map((block) => ({ taskId: block.taskId, startAt: block.startAt, endAt: block.endAt })),
+      unscheduled: generatedSchedule.unscheduled.map((item) => ({ taskId: item.taskId, reason: item.reason })),
+    }),
+  }, token);
+  generatedSchedule = (await savedScheduleResponse.json()).plan;
+  assert.equal(generatedSchedule.status, "APPROVED");
+  const reloadedApprovedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
+  assert.equal(reloadedApprovedSchedule.plan.status, "APPROVED");
+  check(true, "daily schedule edits are validated, approval persists, and approved plans reload");
+
   const preferencesResponse = await expectStatus("/api/preferences", 200, {}, token);
   const preferences = (await preferencesResponse.json()).preferences;
   assert.equal(preferences.dailyBriefingEnabled, true);
