@@ -496,6 +496,14 @@ try {
   const reloadedApprovedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
   assert.equal(reloadedApprovedSchedule.plan.status, "APPROVED");
   assert.deepEqual(reloadedApprovedSchedule.plan.calendarEvents, []);
+  await prisma.dailySchedulePlan.update({ where: { id: generatedSchedule.id }, data: { status: "CREATE_UNCERTAIN" } });
+  const reconciledScheduleResponse = await expectStatus("/api/schedule-plans/" + generatedSchedule.id, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "CONFIRM_NONE_CREATED" }),
+  }, token);
+  const reconciledSchedule = (await reconciledScheduleResponse.json()).plan;
+  assert.equal(reconciledSchedule.status, "APPROVED");
+  assert.deepEqual(reconciledSchedule.calendarEvents, []);
   await expectStatus("/api/schedule-plans/" + generatedSchedule.id, 403, {
     method: "POST",
     body: JSON.stringify({ action: "CREATE_EVENTS" }),
