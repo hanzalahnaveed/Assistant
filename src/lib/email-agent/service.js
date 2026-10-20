@@ -342,11 +342,32 @@ export async function processInboundEmailForUser(user, integration, settings) {
     try {
       const existing = await prisma.inboundEmail.findUnique({
         where: { userId_gmailMessageId: { userId: user.id, gmailMessageId: item.id } },
-        select: { id: true, status: true },
+        select: { id: true, status: true, updatedAt: true },
       });
       if (existing) {
-        counts.skipped++;
-        continue;
+        if (["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "REPLIED", "SEND_UNCERTAIN"].includes(existing.status)) {
+          counts.skipped++;
+          continue;
+        }
+        const staleProcessing = existing.status === "PROCESSING" &&
+          existing.updatedAt.getTime() < Date.now() - 10 * 60 * 1000;
+        if (existing.status === "PROCESSING" && !staleProcessing) {
+          counts.skipped++;
+          continue;
+        }
+        const claim = await prisma.inboundEmail.updateMany({
+          where: {
+            id: existing.id,
+            status: existing.status,
+            ...(existing.status === "PROCESSING" ? { updatedAt: { lt: new Date(Date.now() - 10 * 60 * 1000) } } : {}),
+          },
+          data: { status: "PROCESSING", lastError: null },
+        });
+        if (!claim.count) {
+          counts.skipped++;
+          continue;
+        }
+        record = { id: existing.id };
       }
       const message = await fetchMessage(token.accessToken, item.id);
       const fromHeader = header(message, "From");
@@ -354,19 +375,22 @@ export async function processInboundEmailForUser(user, integration, settings) {
       const subject = header(message, "Subject").trim().slice(0, 250) || "(no subject)";
       if (!sender || sender === user.email.toLowerCase() || (message.labelIds ?? []).includes("SENT")) {
         counts.skipped++;
+        if (record) await prisma.inboundEmail.update({ where: { id: record.id }, data: { status: "FAILED", lastError: "Sender was not eligible for automated reply." } }).catch(() => undefined);
         continue;
       }
-      record = await prisma.inboundEmail.create({
-        data: {
-          userId: user.id,
-          gmailMessageId: message.id,
-          gmailThreadId: message.threadId,
-          fromEmail: sender,
-          subject,
-          receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : null,
-          status: "PROCESSING",
-        },
-      });
+      if (!record) {
+        record = await prisma.inboundEmail.create({
+          data: {
+            userId: user.id,
+            gmailMessageId: message.id,
+            gmailThreadId: message.threadId,
+            fromEmail: sender,
+            subject,
+            receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : null,
+            status: "PROCESSING",
+          },
+        });
+      }
       newlyClaimed++;
       const body = extractMessageText(message);
       if (!body) throw new Error("Message body was empty or could not be decoded.");
@@ -403,7 +427,17 @@ export async function processInboundEmailForUser(user, integration, settings) {
           }
         }
         const bodyText = classification.replyBody;
-        const draft = await prisma.emailDraft.create({
+        const draftGoal = "Inbound reply for Gmail message " + message.id +
+          "\nClassification: " + classification.category +
+          "\nSensitivity: " + (classification.sensitive ? "sensitive; approval required" : "not flagged sensitive") +
+          "\nReason: " + classification.reason +
+          (taskProposal ? "\nTask action: " + (taskProposal.action?.status || (taskProposal.blocked ? "BLOCKED" : "proposed")) : "") +
+          (availableSlots.length ? "\nAvailability checked against primary calendar. Proposed times: " + availableSlots.map((slot) => slot.label).join(", ") : "");
+        const existingDraft = await prisma.emailDraft.findFirst({
+          where: { userId: user.id, goal: { contains: "Inbound reply for Gmail message " + message.id } },
+          orderBy: { createdAt: "desc" },
+        });
+        const draft = existingDraft || await prisma.emailDraft.create({
           data: {
             userId: user.id,
             toEmail: sender,
@@ -411,23 +445,20 @@ export async function processInboundEmailForUser(user, integration, settings) {
               ? classification.replySubject
               : "Re: " + subject.replace(/^(re:\s*)+/i, ""),
             body: bodyText,
-            goal: "Inbound reply for Gmail message " + message.id +
-              "\nClassification: " + classification.category +
-              "\nSensitivity: " + (classification.sensitive ? "sensitive; approval required" : "not flagged sensitive") +
-              "\nReason: " + classification.reason +
-              (taskProposal ? "\nTask action: " + (taskProposal.action?.status || (taskProposal.blocked ? "BLOCKED" : "proposed")) : "") +
-              (availableSlots.length ? "\nAvailability checked against primary calendar. Proposed times: " + availableSlots.map((slot) => slot.label).join(", ") : ""),
+            goal: draftGoal,
             status: "DRAFT",
             replyThreadId: message.threadId,
             replyMessageId: header(message, "Message-ID") || null,
           },
         });
-        const autoEligible = settings.autoReplyEnabled &&
+        const autoEligible = !existingDraft &&
+          draft.status === "DRAFT" &&
+          settings.autoReplyEnabled &&
           !classification.sensitive &&
           classification.category === "ROUTINE" &&
           !user.preferences?.automationPaused;
-        let autoReplySent = false;
-        let autoReplyUncertain = false;
+        let autoReplySent = draft.status === "SENT";
+        let autoReplyUncertain = draft.status === "SEND_UNCERTAIN";
         if (autoEligible) {
           try {
             await sendAutomatedReply({ userId: user.id, integration, draft, sourceMessageId: message.id });
