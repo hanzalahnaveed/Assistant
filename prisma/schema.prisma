@@ -305,6 +305,7 @@ model DailySchedulePlan {
   status      SchedulePlanStatus @default(DRAFT)
   blocks      Json              @default("[]")
   unscheduled Json              @default("[]")
+  warnings    Json              @default("[]")
   generatedAt DateTime          @default(now())
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
