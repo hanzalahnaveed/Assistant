@@ -391,6 +391,37 @@ export default function CalendarClient() {
     }
   }
 
+  async function scheduleCalendarAction(action) {
+    if (!schedule?.id) return;
+    const prompts = {
+      CANCEL_EVENTS: "Remove the schedule blocks recorded for this plan from Google Calendar? Events that are already gone will be treated as cancelled.",
+      CONFIRM_CREATED: "Confirm that you inspected Google Calendar and every scheduled block exists. This prevents another creation attempt.",
+      CONFIRM_NONE_CREATED: "Only continue if you checked Google Calendar and confirmed none of this plan's blocks exist. This unlocks creation retry.",
+    };
+    if (!window.confirm(prompts[action])) return;
+    setScheduleBusy(true);
+    setScheduleError("");
+    setScheduleNotice("");
+    try {
+      const response = await fetch("/api/schedule-plans/" + encodeURIComponent(schedule.id), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const body = await response.json();
+      if (body.plan) setSchedule(body.plan);
+      if (!response.ok) throw Error(body.error || "Could not update calendar schedule status.");
+      setSchedule(body.plan);
+      setScheduleWarnings(body.plan?.warnings || []);
+      setScheduleNotice(action === "CANCEL_EVENTS" ? "Schedule blocks removed from Google Calendar. The plan is editable again." : action === "CONFIRM_CREATED" ? "Calendar creation reconciled as complete." : "Creation retry unlocked after your confirmation.");
+      await load();
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Could not update calendar schedule status.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
+
   async function createCalendarBlocks() {
     if (!schedule?.id || schedule.status !== "APPROVED") return;
     if (!data?.canCreateEvents) {
@@ -682,8 +713,25 @@ export default function CalendarClient() {
                 </div>
               ) : <Empty text="No tasks are scheduled yet. Generate a draft after adding open tasks." />}
               {schedule.status === "CREATE_UNCERTAIN" && (
-                <p role="alert" className="mt-4 rounded-lg border border-[#f0d6cc] bg-[#fff5f0] p-3 text-sm text-[#994b36]">
-                  Calendar creation has an uncertain or partial outcome. Do not retry automatically. Inspect Google Calendar and use the recorded links below to reconcile what was created.
+                <div role="alert" className="mt-4 rounded-lg border border-[#f0d6cc] bg-[#fff5f0] p-3 text-sm text-[#994b36]">
+                  <p>Calendar creation has an uncertain or partial outcome. Inspect Google Calendar before choosing a recovery action.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button onClick={() => void scheduleCalendarAction("CONFIRM_CREATED")} disabled={scheduleBusy} className="rounded-lg border border-[#d9a99b] px-3 py-2 text-xs font-semibold">I verified all blocks exist</Button>
+                    <Button onClick={() => void scheduleCalendarAction("CONFIRM_NONE_CREATED")} disabled={scheduleBusy} className="rounded-lg border border-[#d9a99b] px-3 py-2 text-xs font-semibold">I verified none exist</Button>
+                  </div>
+                </div>
+              )}
+              {schedule.status === "CREATED" && (
+                <div className="mt-4 rounded-lg border border-[#d8e9dd] bg-[#f4faf5] p-3 text-sm text-[#24543f]">
+                  Calendar blocks are live. Remove them here before editing this plan or generating a replacement.
+                  <div className="mt-3">
+                    <Button onClick={() => void scheduleCalendarAction("CANCEL_EVENTS")} disabled={scheduleBusy} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs font-semibold">Remove schedule blocks</Button>
+                  </div>
+                </div>
+              )}
+              {schedule.status === "CREATING" && (
+                <p role="status" className="mt-4 rounded-lg border border-[#eadfc8] bg-[#fffaf0] p-3 text-sm text-[#76551e]">
+                  A calendar write is still marked as processing. Refresh and verify Google Calendar before attempting any recovery.
                 </p>
               )}
               {schedule.calendarEvents?.length > 0 && (
