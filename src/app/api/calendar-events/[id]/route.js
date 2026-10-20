@@ -19,7 +19,11 @@ const schema = z.object({
   attendees: z.array(z.string().trim().email().max(254)).max(50).default([]),
 }).refine((value) => {
   if (value.allDay) {
-    const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+    const validDate = (date) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+      const parsed = new Date(date + "T00:00:00.000Z");
+      return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+    };
     return validDate(value.startAt) && validDate(value.endAt) && value.endAt > value.startAt;
   }
   const start = new Date(value.startAt).getTime();
