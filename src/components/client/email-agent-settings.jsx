@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, LoaderCircle, Save, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, LoaderCircle, RefreshCw, Save, ShieldCheck } from "lucide-react";
 
 const initial = {
   enabled: false,
@@ -16,6 +16,8 @@ export default function EmailAgentSettings() {
   const [automationPaused, setAutomationPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -40,6 +42,27 @@ export default function EmailAgentSettings() {
   function change(key, value) {
     setSettings((current) => ({ ...current, [key]: value }));
     setNotice("");
+    setRunResult("");
+  }
+
+  async function runInboxNow() {
+    setRunning(true);
+    setError("");
+    setNotice("");
+    setRunResult("");
+    try {
+      const response = await fetch("/api/email-agent/run", { method: "POST", cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.reason || "Inbox processing failed.");
+      const summary = `Inbox check complete: ${data.processed || 0} processed, ${data.drafted || 0} drafts created, ${data.sent || 0} sent, ${data.skipped || 0} skipped, ${data.failed || 0} failed.`;
+      setRunResult(summary + (data.reason ? " " + data.reason : ""));
+      if (data.failed > 0) setError((data.failures?.[0]?.error || data.reason || "One or more messages failed. Check inbound email activity for details."));
+      window.dispatchEvent(new CustomEvent("email-agent-refresh"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Inbox processing failed.");
+    } finally {
+      setRunning(false);
+    }
   }
 
   async function save(event) {
@@ -58,6 +81,7 @@ export default function EmailAgentSettings() {
       setSettings({ ...initial, ...data.settings });
       setAutomationPaused(data.automationPaused === true);
       setNotice("Email-agent settings saved.");
+      setRunResult("");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not save settings.");
     } finally {
@@ -78,6 +102,7 @@ export default function EmailAgentSettings() {
       </div>
       {error && <p role="alert" className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><AlertCircle size={16} />{error}</p>}
       {notice && <p role="status" className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 size={16} />{notice}</p>}
+      {runResult && <p role="status" className="mb-3 rounded-lg border border-[#DDE6F0] bg-[#F7FAFC] p-3 text-sm leading-5 text-[#344256]">{runResult}</p>}
       {automationPaused && <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Global automation is paused. Automatic replies will not be sent while it remains paused.</p>}
       {loading ? (
         <div className="flex items-center gap-2 py-3 text-sm text-[#6B7280]"><LoaderCircle size={16} className="animate-spin" />Loading settings…</div>
@@ -110,7 +135,10 @@ export default function EmailAgentSettings() {
           </label>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EDF0EC] pt-4">
             <p className="max-w-2xl text-xs leading-5 text-[#6B7280]">Automatic replies require both this setting and the existing global automation to be unpaused. Sensitive messages never auto-send.</p>
-            <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save size={15} />{saving ? "Saving…" : "Save settings"}</button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void runInboxNow()} disabled={running || saving || loading || !settings.enabled} className="inline-flex items-center gap-2 rounded-xl border border-[#D8DEE7] bg-white px-4 py-2.5 text-sm font-semibold text-[#233044] disabled:opacity-50"><RefreshCw size={15} className={running ? "animate-spin" : ""} />{running ? "Checking inbox…" : "Process inbox now"}</button>
+              <button type="submit" disabled={saving || running} className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save size={15} />{saving ? "Saving…" : "Save settings"}</button>
+            </div>
           </div>
         </form>
       )}
