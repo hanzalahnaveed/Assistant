@@ -53,6 +53,14 @@ export async function PATCH(request) {
   const root = asObject(current.preferencesJson);
   const saved = getEmailAgentSettings(root);
   const settings = { ...saved, ...parsed.data };
+  const now = new Date().toISOString();
+  if (parsed.data.enabled === true && !saved.enabled) settings.enabledAt = now;
+  if (parsed.data.enabled === false) {
+    settings.enabledAt = null;
+    settings.autoReplyEnabledAt = null;
+  }
+  if (parsed.data.autoReplyEnabled === true && !saved.autoReplyEnabled) settings.autoReplyEnabledAt = now;
+  if (parsed.data.autoReplyEnabled === false) settings.autoReplyEnabledAt = null;
   if (settings.autoReplyEnabled && !settings.enabled) {
     return NextResponse.json({
       error: "Enable the email agent before enabling automatic replies.",
