@@ -92,7 +92,7 @@ Enable the feature from the Email & outreach page after connecting a Google acco
    npm run email-agent:local-worker
    ```
 
-   It loads your local Next.js environment files and polls every 60 seconds by default. Set `EMAIL_AGENT_POLL_INTERVAL_MS` to adjust the interval (minimum 15 seconds, maximum 5 minutes). To run a single worker pass instead, use:
+   It loads your local Next.js environment files and polls every 60 seconds by default. It targets `http://localhost:3000` even if `APP_URL` points elsewhere; set `EMAIL_AGENT_BASE_URL` only when you intentionally want to target another environment. Set `EMAIL_AGENT_POLL_INTERVAL_MS` to adjust the interval (minimum 15 seconds, maximum 5 minutes). To run a single worker pass instead, use:
 
    ```bash
    curl --fail-with-body -sS -X POST http://localhost:3000/api/cron/email-agent \
