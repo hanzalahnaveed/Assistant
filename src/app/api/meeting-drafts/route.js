@@ -102,6 +102,7 @@ export async function GET(request) {
                 startAt: event.start?.dateTime ?? event.start?.date ?? null,
                 endAt: event.end?.dateTime ?? event.end?.date ?? null,
                 allDay: Boolean(event.start?.date && !event.start?.dateTime),
+                transparency: event.transparency ?? "opaque",
                 timezone: event.start?.timeZone ?? user.timezone,
                 link: event.htmlLink ?? null,
                 attendees: (event.attendees ?? []).map((attendee) => attendee.email).filter(Boolean),
