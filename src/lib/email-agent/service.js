@@ -17,6 +17,8 @@ export const CALENDAR_READ_SCOPES = [
 export const DEFAULT_EMAIL_AGENT_SETTINGS = {
   enabled: false,
   autoReplyEnabled: false,
+  enabledAt: null,
+  autoReplyEnabledAt: null,
   tone: "professional",
   style: "concise",
   signature: "",
@@ -50,6 +52,8 @@ export function getEmailAgentSettings(preferencesJson) {
     ...(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {}),
     enabled: saved?.enabled === true,
     autoReplyEnabled: saved?.autoReplyEnabled === true,
+    enabledAt: typeof saved?.enabledAt === "string" ? saved.enabledAt : null,
+    autoReplyEnabledAt: typeof saved?.autoReplyEnabledAt === "string" ? saved.autoReplyEnabledAt : null,
     tone: typeof saved?.tone === "string" ? saved.tone : DEFAULT_EMAIL_AGENT_SETTINGS.tone,
     style: typeof saved?.style === "string" ? saved.style : DEFAULT_EMAIL_AGENT_SETTINGS.style,
     signature: typeof saved?.signature === "string" ? saved.signature : "",
@@ -289,7 +293,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
   for (let page = 0; page < 5; page++) {
     const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
     listUrl.searchParams.set("maxResults", "100");
-    listUrl.searchParams.set("q", "in:inbox newer_than:7d -from:me -category:promotions -category:social");
+    const enabledAt = Date.parse(settings.enabledAt || "");
+    const after = Number.isFinite(enabledAt) ? Math.floor(enabledAt / 1000) : Math.floor(Date.now() / 1000);
+    listUrl.searchParams.set("q", "in:inbox after:" + after + " -from:me -category:promotions -category:social");
     if (pageToken) listUrl.searchParams.set("pageToken", pageToken);
     const listed = await googleApiGet(token.accessToken, listUrl.toString());
     candidates.push(...(listed.messages ?? []));
@@ -423,6 +429,8 @@ export async function processInboundEmailForUser(user, integration, settings) {
           settings.autoReplyEnabled &&
           !classification.sensitive &&
           classification.category === "ROUTINE" &&
+          Number.isFinite(Date.parse(settings.autoReplyEnabledAt || "")) &&
+          Number(message.internalDate || 0) >= Date.parse(settings.autoReplyEnabledAt) &&
           !user.preferences?.automationPaused;
         let autoReplySent = draft.status === "SENT";
         let autoReplyUncertain = draft.status === "SEND_UNCERTAIN";
