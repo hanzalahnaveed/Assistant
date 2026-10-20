@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { extractMessageText, parseSender } from "../src/lib/email-agent/format.js";
+import { extractMessageText, parseSender } from "../src/lib/email-agent/format.mjs";
 
 const encode = (value) => Buffer.from(value, "utf8").toString("base64url");
 
