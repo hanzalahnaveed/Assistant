@@ -174,6 +174,7 @@ try {
   await expectStatus("/api/notifications", 401);
   await expectStatus("/api/email-agent/settings", 401);
   await expectStatus("/api/email-agent/inbox", 401);
+  await expectStatus("/api/email-agent/run", 401, { method: "POST" });
   await expectStatus("/api/cron/email-agent", 401, { method: "POST" });
   await expectStatus("/api/integrations/google/verify", 401, { method: "POST" });
   check(true, "protected APIs reject unauthenticated requests, including email-agent controls");
