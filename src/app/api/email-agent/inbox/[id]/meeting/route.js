@@ -56,8 +56,13 @@ export async function POST(request, context) {
     where: { id: inbound.draftId, userId: user.id },
   });
   if (!draft) return NextResponse.json({ error: "The reply draft for this email no longer exists." }, { status: 409 });
-  if (!["DRAFT", "FAILED"].includes(draft.status)) {
-    return NextResponse.json({ error: "This reply is already approved, sending, or sent. It cannot be rewritten by meeting scheduling." }, { status: 409 });
+  if (inbound.sensitive && draft.status !== "APPROVED") {
+    return NextResponse.json({
+      error: "This sensitive meeting request needs manager approval of its reply draft before the calendar invitation can be created.",
+    }, { status: 409 });
+  }
+  if (inbound.sensitive ? draft.status !== "APPROVED" : !["DRAFT", "FAILED"].includes(draft.status)) {
+    return NextResponse.json({ error: "This reply is already sending or sent and cannot be rewritten by meeting scheduling." }, { status: 409 });
   }
 
   const classification = inbound.classification && typeof inbound.classification === "object" &&
