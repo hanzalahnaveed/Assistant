@@ -32,4 +32,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           APP_BASE_URL="${APP_BASE_URL%/}"
-          curl --fail-with-body --silent --show-error             --request POST "$APP_BASE_URL/api/cron/email-agent"             --header "Authorization: Bearer $CRON_SECRET"             --header "Accept: application/json"
+          curl --fail-with-body --silent --show-error \
+            --request POST "$APP_BASE_URL/api/cron/email-agent" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Accept: application/json"
