@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { extractMessageText, parseSender } from "../src/lib/email-agent/format.mjs";
+import { extractMessageText, isAutomatedSender, parseSender } from "../src/lib/email-agent/format.mjs";
 
 const encode = (value) => Buffer.from(value, "utf8").toString("base64url");
 
@@ -7,6 +7,12 @@ assert.equal(parseSender('Jane Doe <Jane.Doe@example.com>'), "jane.doe@example.c
 assert.equal(parseSender("PERSON@example.test"), "person@example.test");
 assert.equal(parseSender("not an email"), null);
 assert.equal(parseSender(null), null);
+
+assert.equal(isAutomatedSender({}, "noreply@example.com"), true);
+assert.equal(isAutomatedSender({}, "do-not-reply@example.com"), true);
+assert.equal(isAutomatedSender({ payload: { headers: [{ name: "Auto-Submitted", value: "auto-generated" }] } }, "system@example.com"), true);
+assert.equal(isAutomatedSender({ payload: { headers: [{ name: "List-Unsubscribe", value: "<mailto:leave@example.test>" }] } }, "news@example.com"), true);
+assert.equal(isAutomatedSender({}, "colleague@example.com"), false);
 
 assert.equal(
   extractMessageText({
