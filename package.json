@@ -18,7 +18,8 @@
     "format": "npx --yes prettier@3 --write .",
     "format:check": "npx --yes prettier@3 --check .",
     "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs",
-    "test:email-agent": "node scripts/email-agent-test.mjs"
+    "test:email-agent": "node scripts/email-agent-test.mjs",
+    "email-agent:local-worker": "node scripts/email-agent-local-worker.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
