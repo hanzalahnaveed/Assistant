@@ -52,12 +52,26 @@ export async function POST(request, context) {
   if (!user) return NextResponse.json({ error: "Sign in to add schedule blocks to Google Calendar." }, { status: 401 });
   const { id } = await context.params;
   const body = await request.json().catch(() => null);
-  if (body?.action !== "CREATE_EVENTS") return NextResponse.json({ error: "Choose a valid daily schedule action." }, { status: 400 });
+  if (!["CREATE_EVENTS", "CANCEL_EVENTS", "CONFIRM_CREATED", "CONFIRM_NONE_CREATED"].includes(body?.action)) return NextResponse.json({ error: "Choose a valid daily schedule action." }, { status: 400 });
   const plan = await prisma.dailySchedulePlan.findFirst({ where: { id, userId: user.id } });
   if (!plan) return NextResponse.json({ error: "Daily schedule not found." }, { status: 404 });
-  if (plan.status !== "APPROVED") return NextResponse.json({ error: "Approve the schedule before creating calendar blocks." }, { status: 409 });
+  const action = body.action;
+  if (["CONFIRM_CREATED", "CONFIRM_NONE_CREATED"].includes(action)) {
+    if (plan.status !== "CREATE_UNCERTAIN") return NextResponse.json({ error: "This plan has no uncertain calendar creation to reconcile." }, { status: 409 });
+    const status = action === "CONFIRM_CREATED" ? "CREATED" : "APPROVED";
+    const saved = await prisma.dailySchedulePlan.update({
+      where: { id: plan.id },
+      data: { status, ...(action === "CONFIRM_NONE_CREATED" ? { calendarEvents: [] } : {}) },
+    });
+    await prisma.auditEvent.create({ data: { userId: user.id, eventType: action === "CONFIRM_CREATED" ? "DAILY_SCHEDULE_CREATE_CONFIRMED" : "DAILY_SCHEDULE_RETRY_UNLOCKED", actor: "USER", resourceId: plan.id, metadata: { calendarEventCount: Array.isArray(saved.calendarEvents) ? saved.calendarEvents.length : 0 } } }).catch(() => undefined);
+    return NextResponse.json({ plan: saved }, { headers: { "cache-control": "no-store" } });
+  }
+  const cancelling = action === "CANCEL_EVENTS";
+  if (cancelling ? plan.status !== "CREATED" : plan.status !== "APPROVED") {
+    return NextResponse.json({ error: cancelling ? "Only a created schedule can remove its calendar blocks." : "Approve the schedule before creating calendar blocks." }, { status: 409 });
+  }
   const blocks = Array.isArray(plan.blocks) ? plan.blocks : [];
-  if (!blocks.length) return NextResponse.json({ error: "This plan has no scheduled blocks to add to Google Calendar." }, { status: 400 });
+  if (!cancelling && !blocks.length) return NextResponse.json({ error: "This plan has no scheduled blocks to add to Google Calendar." }, { status: 400 });
   const integration = await prisma.integration.findFirst({
     where: { userId: user.id, provider: "GOOGLE", status: "CONNECTED" },
     orderBy: { updatedAt: "desc" },
@@ -75,6 +89,44 @@ export async function POST(request, context) {
     return NextResponse.json({ error: "Google Calendar access could not be refreshed. Reconnect Google and try again." }, { status: 403 });
   }
   if (!token) return NextResponse.json({ error: "Google Calendar access needs to be renewed. Reconnect Google and try again." }, { status: 403 });
+  if (cancelling) {
+    const originalEvents = Array.isArray(plan.calendarEvents) ? plan.calendarEvents : [];
+    const claim = await prisma.dailySchedulePlan.updateMany({
+      where: { id: plan.id, userId: user.id, status: "CREATED" },
+      data: { status: "CREATING" },
+    });
+    if (!claim.count) return NextResponse.json({ error: "This schedule changed or is already being processed." }, { status: 409 });
+    let remaining = [...originalEvents];
+    try {
+      for (const calendarEvent of originalEvents) {
+        const eventUrl = "https://www.googleapis.com/calendar/v3/calendars/primary/events/" + encodeURIComponent(calendarEvent.eventId);
+        const currentResponse = await fetch(eventUrl, {
+          headers: { authorization: "Bearer " + token.accessToken },
+          cache: "no-store",
+          signal: AbortSignal.timeout(20000),
+        });
+        if (currentResponse.status !== 404 && currentResponse.status !== 410) {
+          if (!currentResponse.ok) throw new Error("Could not verify a schedule event before cancellation.");
+          const current = await currentResponse.json().catch(() => ({}));
+          const deleteResponse = await fetch(eventUrl + "?sendUpdates=none", {
+            method: "DELETE",
+            headers: { authorization: "Bearer " + token.accessToken, ...(current.etag ? { "if-match": current.etag } : {}) },
+            cache: "no-store",
+            signal: AbortSignal.timeout(20000),
+          });
+          if (!deleteResponse.ok && deleteResponse.status !== 404 && deleteResponse.status !== 410) throw new Error("Google Calendar could not confirm cancellation of a schedule event.");
+        }
+        remaining = remaining.filter((item) => item.eventId !== calendarEvent.eventId);
+        await prisma.dailySchedulePlan.update({ where: { id: plan.id }, data: { calendarEvents: remaining } });
+      }
+      const saved = await prisma.dailySchedulePlan.update({ where: { id: plan.id }, data: { status: "DRAFT", calendarEvents: [] } });
+      await prisma.auditEvent.create({ data: { userId: user.id, eventType: "DAILY_SCHEDULE_CALENDAR_BLOCKS_REMOVED", actor: "USER", resourceId: plan.id, metadata: { cancelledCount: originalEvents.length } } }).catch(() => undefined);
+      return NextResponse.json({ plan: saved }, { headers: { "cache-control": "no-store" } });
+    } catch {
+      const saved = await prisma.dailySchedulePlan.update({ where: { id: plan.id }, data: { status: "CREATED", calendarEvents: remaining } });
+      return NextResponse.json({ error: "Some schedule blocks may remain in Google Calendar. Retry removal after refreshing the calendar; completed cancellations are tracked.", plan: saved }, { status: 502 });
+    }
+  }
   const dayStart = localDateTimeToIso(plan.localDate + "T00:00", plan.timezone);
   const dayEnd = localDateTimeToIso(shiftDate(plan.localDate, 1) + "T00:00", plan.timezone);
   if (!dayStart || !dayEnd) return NextResponse.json({ error: "The saved plan has an invalid local date or timezone." }, { status: 400 });
