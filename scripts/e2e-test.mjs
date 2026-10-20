@@ -283,6 +283,18 @@ try {
 
   await expectStatus("/api/meeting-drafts", 401);
   await expectStatus("/api/meeting-drafts", 200, {}, token);
+  const calendarRangeStart = new Date();
+  const calendarRangeEnd = new Date(calendarRangeStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const rangeQuery = new URLSearchParams({
+    start: calendarRangeStart.toISOString(),
+    end: calendarRangeEnd.toISOString(),
+  });
+  const rangedCalendar = await (await expectStatus("/api/meeting-drafts?" + rangeQuery.toString(), 200, {}, token)).json();
+  assert.equal(rangedCalendar.calendarRange.start, calendarRangeStart.toISOString());
+  assert.equal(rangedCalendar.calendarRange.end, calendarRangeEnd.toISOString());
+  await expectStatus("/api/meeting-drafts?start=not-a-date&end=also-not-a-date", 400, {}, token);
+  await expectStatus("/api/meeting-drafts?start=" + encodeURIComponent(calendarRangeStart.toISOString()) + "&end=" + encodeURIComponent(new Date(calendarRangeStart.getTime() + 40 * 24 * 60 * 60 * 1000).toISOString()), 400, {}, token);
+  check(true, "calendar API validates selected date ranges and returns the exact requested range");
   await expectStatus("/api/meeting-drafts", 400, {
     method: "POST",
     body: JSON.stringify({
