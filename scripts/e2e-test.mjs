@@ -527,6 +527,48 @@ try {
     method: "POST",
     body: JSON.stringify({ startAt: offeredMeetingStart }),
   }, token);
+  const sensitiveMeetingDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "external@example.test",
+      subject: "Re: Sensitive meeting request",
+      body: "I will review this and get back to you.",
+      goal: "Inbound reply for Gmail message e2e-sensitive-meeting-" + Date.now(),
+      status: "DRAFT",
+      replyThreadId: "e2e-sensitive-meeting-thread",
+    },
+  });
+  const sensitiveMeeting = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: "e2e-sensitive-meeting-" + Date.now(),
+      gmailThreadId: "e2e-sensitive-meeting-thread",
+      fromEmail: "external@example.test",
+      subject: "Sensitive meeting request",
+      status: "AWAITING_APPROVAL",
+      category: "MEETING",
+      sensitive: true,
+      summary: "A meeting request involving a sensitive contract matter.",
+      classification: {
+        category: "MEETING",
+        sensitive: true,
+        meeting: { durationMinutes: 30, requestText: "Discuss contract" },
+        availableSlots: [{ startAt: offeredMeetingStart, label: "Future test slot" }],
+      },
+      draftId: sensitiveMeetingDraft.id,
+    },
+  });
+  const sensitiveMeetingBlocked = await expectStatus("/api/email-agent/inbox/" + sensitiveMeeting.id + "/meeting", 409, {
+    method: "POST",
+    body: JSON.stringify({ startAt: offeredMeetingStart }),
+  }, token);
+  assert.match((await sensitiveMeetingBlocked.json()).error, /manager approval/i);
+  await prisma.emailDraft.update({ where: { id: sensitiveMeetingDraft.id }, data: { status: "APPROVED", approvedAt: new Date() } });
+  await expectStatus("/api/email-agent/inbox/" + sensitiveMeeting.id + "/meeting", 403, {
+    method: "POST",
+    body: JSON.stringify({ startAt: offeredMeetingStart }),
+  }, token);
+  check(true, "sensitive meeting scheduling requires an approved draft before checking calendar-write permission");
   check(true, "meeting scheduling validates offered slots, requires authentication and Google Calendar write permission");
   const emptyOtherQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, makeSession(await prisma.user.create({
     data: { email: "e2e-email-agent-other-" + Date.now() + "@example.test", name: "Other Email Agent User" },
