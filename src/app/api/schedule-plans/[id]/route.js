@@ -89,6 +89,7 @@ export async function POST(request, context) {
     const start = new Date(block.startAt).getTime();
     const end = new Date(block.endAt).getTime();
     for (const event of existingEvents) {
+      if (event.transparency === "transparent") continue;
       const interval = eventInterval(event, plan.timezone);
       if (interval && intervalsOverlap(start, end, interval.start, interval.end)) conflicts.push({ task: block.title, event: event.summary || "(untitled event)" });
     }
