@@ -52,7 +52,12 @@ async function getCalendarAccess(userId) {
   ].includes(scope))) {
     return { error: "Calendar event permission is missing. Reconnect Google and grant event access.", status: 403 };
   }
-  const token = await getGoogleAccessToken(userId);
+  let token;
+  try {
+    token = await getGoogleAccessToken(userId);
+  } catch {
+    return { error: "Google Calendar access could not be refreshed. Reconnect Google and try again.", status: 403 };
+  }
   if (!token) return { error: "Google Calendar access needs to be renewed. Reconnect Google and try again.", status: 403 };
   return { token };
 }
@@ -115,7 +120,7 @@ export async function PATCH(request, context) {
   const eventBody = {
     summary: value.title,
     description: value.description,
-    ...(value.location ? { location: value.location } : {}),
+    location: value.location,
     start: { dateTime: value.startAt, timeZone: value.timezone },
     end: { dateTime: value.endAt, timeZone: value.timezone },
     attendees: [...new Set(value.attendees.map((email) => email.toLowerCase()))].map((email) => ({ email })),
