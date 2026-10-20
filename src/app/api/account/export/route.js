@@ -44,7 +44,7 @@ export async function GET() {
           updatedAt: true,
         },
       },
-      tasks: { orderBy: { createdAt: "desc" } },
+      scheduleItems: { orderBy: { createdAt: "desc" } },
       conversations: {
         orderBy: { updatedAt: "desc" },
         include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -55,7 +55,6 @@ export async function GET() {
       dailyBriefings: { orderBy: { generatedAt: "desc" } },
       notifications: { orderBy: { createdAt: "desc" } },
       emailDrafts: { orderBy: { createdAt: "desc" } },
-      meetingDrafts: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -63,13 +62,15 @@ export async function GET() {
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
+  const { scheduleItems, ...accountDetails } = account;
+  const exportedAccount = { ...accountDetails, tasks: scheduleItems };
   const exportedAt = new Date();
   const filenameDate = exportedAt.toISOString().slice(0, 10);
   return NextResponse.json(
     {
       formatVersion: 1,
       exportedAt: exportedAt.toISOString(),
-      account,
+      account: exportedAccount,
     },
     {
       headers: {

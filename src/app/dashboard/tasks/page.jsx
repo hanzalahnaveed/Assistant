@@ -1,8 +1,5 @@
-import TasksClient from "@/components/client/tasks-client";
+import { redirect } from "next/navigation";
+
 export default function TasksPage() {
-  return (
-    <div className={`w-full bg-amber-500`}>
-      <TasksClient />
-    </div>
-  )
+  redirect("/dashboard/schedule");
 }

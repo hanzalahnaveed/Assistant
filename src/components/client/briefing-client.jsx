@@ -406,7 +406,7 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No open tasks. Add a task when a new commitment comes up.</p>
               )}
-              <a href="/dashboard/tasks" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open task manager ↗</a>
+              <a href="/dashboard/schedule" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open schedule ↗</a>
             </section>
 
             <section aria-labelledby="briefing-calendar" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">
@@ -429,7 +429,7 @@ export default function BriefingClient() {
               ) : (
                 <p className="mt-4 text-sm text-[#76817c]">No more calendar events scheduled for today.</p>
               )}
-              <a href="/dashboard/calendar" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open calendar tools ↗</a>
+              <a href="/dashboard/schedule" className="mt-4 inline-flex text-xs font-semibold text-[#176b52] hover:underline">Open schedule ↗</a>
             </section>
 
             <section aria-labelledby="briefing-commitments" className="rounded-2xl border border-[#e7ebe7] bg-white p-5 sm:p-6">

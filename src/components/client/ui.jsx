@@ -328,7 +328,7 @@ export default function IntegrationsClient() {
             />
             <Permission
               title="Calendar"
-              description="Read upcoming events and create approved meeting proposals"
+              description="Read upcoming events and create events after explicit confirmation"
               icon={<CalendarDays size={16} />}
             />
             <Permission
@@ -413,7 +413,7 @@ export default function IntegrationsClient() {
             {[
               ["/dashboard/briefing", "Overview", "Combines tasks with Gmail follow-ups and today's calendar."],
               ["/dashboard/email", "Email outreach", "Drafts stay local; sending needs Gmail send permission and approval."],
-              ["/dashboard/calendar", "Calendar & meetings", "Reads events; creating a meeting requires event permission and confirmation."],
+              ["/dashboard/schedule", "Schedule", "Manage tasks and calendar events; event creation requires permission and confirmation."],
               ["/dashboard", "AI assistant", "Uses available inbox and calendar context without sending or editing them."],
             ].map(([href, title, description]) => (
               <a key={href} href={href} className="rounded-xl border border-[#e8ece8] p-4 transition hover:border-[#FA8500] hover:bg-[#fffaf4]">

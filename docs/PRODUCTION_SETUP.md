@@ -24,7 +24,7 @@ Use the Google Cloud project that will own this application:
    - Local: `http://localhost:3000/api/auth/google/callback`
    - Production: `https://YOUR-REAL-APP-DOMAIN/api/auth/google/callback`
 6. Store the generated client ID and client secret only in the deployment environment. Set `GOOGLE_REDIRECT_URI` to the exact same callback URL; protocol, domain, path, and trailing slash must match.
-7. Google sign-in is optional. If enabled, test it separately from email/password signup/login. Then use the Google integration connection to grant Gmail inbox-read, Gmail send, Calendar read, and Calendar event-creation access. Authentication alone does not connect Workspace data. Email sending is exposed only in the dedicated outreach workflow and requires both draft approval and a separate send confirmation. Calendar event creation is exposed only in the meeting workspace and requires proposal approval and a separate create confirmation; creating events can send attendee invitations.
+7. Google sign-in is optional. If enabled, test it separately from email/password signup/login. Then use the Google integration connection to grant Gmail inbox-read, Gmail send, Calendar read, and Calendar event-creation access. Authentication alone does not connect Workspace data. Email sending is exposed only in the dedicated outreach workflow and requires both draft approval and a separate send confirmation. Calendar event creation is exposed from the unified Schedule workspace and requires explicit confirmation, event-write permission, an unpaused automation state, and a successful availability check; creating events can send attendee invitations.
 
 The app requests identity scopes for sign-in/sign-up and the additional `gmail.readonly`, `gmail.send`, `calendar.readonly`, and `calendar.events` scopes only for the optional Workspace integration. Existing connections must reconnect to grant `gmail.send` and `calendar.events`. Gmail sending and Calendar event creation may require additional Google verification before public launch.
 
@@ -82,9 +82,9 @@ Use credentials-based sign-up/sign-in for the core authentication checks. If Goo
 - [ ] `/api/health` responds successfully.
 - [ ] `/auth` loads and Google sign-up creates the first account.
 - [ ] Sign in with the existing account; signing in with an unregistered account should not create one.
-- [ ] Create, update, complete, and archive a task; refresh and verify persistence.
+- [ ] Create a schedule item, update its status, and verify it appears in both list and calendar views after refresh.
 - [ ] Open Assistant and send a message; confirm the configured AI provider returns a response and the conversation persists.
-- [ ] Connect Google Workspace separately; confirm Gmail messages and primary-calendar events load.
+- [ ] Connect Google Workspace separately; confirm Gmail messages and primary-calendar items load and are stored in the unified schedule.
 - [ ] Confirm Gmail inbox and Calendar reads work as expected.
 - [ ] Confirm outreach requires approval and a separate send confirmation; test sending only with a designated test recipient.
 - [ ] Open the briefing page; check task metrics and connected Workspace context.

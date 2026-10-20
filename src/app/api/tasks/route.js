@@ -16,8 +16,8 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
-  const tasks = await prisma.task.findMany({
-    where: { userId: user.id, status: { not: "CANCELLED" } },
+  const tasks = await prisma.scheduleItem.findMany({
+    where: { userId: user.id, calendarEventId: null, status: { not: "CANCELLED" } },
     orderBy: [{ status: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }],
     take: 200,
   });
@@ -41,22 +41,23 @@ export async function POST(request) {
     description: parsed.data.description || null,
     priority: parsed.data.priority ?? "MEDIUM",
     dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+    scheduledStartAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
     source,
     sourceRef,
   };
   const existingSourceTask = sourceRef
-    ? await prisma.task.findUnique({
+    ? await prisma.scheduleItem.findUnique({
         where: { userId_source_sourceRef: { userId: user.id, source, sourceRef } },
         select: { id: true },
       })
     : null;
   const task = sourceRef
-    ? await prisma.task.upsert({
+    ? await prisma.scheduleItem.upsert({
         where: { userId_source_sourceRef: { userId: user.id, source, sourceRef } },
         create: taskData,
         update: {},
       })
-    : await prisma.task.create({ data: taskData });
+    : await prisma.scheduleItem.create({ data: taskData });
   if (!existingSourceTask) {
     await prisma.auditEvent.create({
       data: {

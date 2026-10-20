@@ -1,8 +1,5 @@
-import CalendarClient from "@/components/client/calendar-client";
-export const metadata = {
-  title: "Calendar & meetings — Assistant",
-  description: "Prepare meetings and create approved events in Google Calendar.",
-};
+import { redirect } from "next/navigation";
+
 export default function CalendarPage() {
-  return <CalendarClient />;
+  redirect("/dashboard/schedule");
 }

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
-  CheckSquare,
   ClipboardCheck,
   LayoutDashboard,
   MailPlus,
@@ -21,18 +20,13 @@ const items = [
     icon: LayoutDashboard,
   },
   {
-    href: "/dashboard/tasks",
-    label: "Tasks",
-    icon: CheckSquare,
-  },
-  {
     href: "/dashboard",
     label: "AI assistant",
     icon: MessageSquareText,
   },
   {
-    href: "/dashboard/calendar",
-    label: "Calendar & Schedule",
+    href: "/dashboard/schedule",
+    label: "Schedule",
     icon: CalendarDays,
   },
   {

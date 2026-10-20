@@ -9,9 +9,8 @@ Google integration verification is available from Connections; its live checks a
 | Sidebar route | Page/client | Current user workflow | Main API dependencies |
 | --- | --- | --- | --- |
 | Overview (`/dashboard/briefing`) | `src/app/dashboard/briefing/page.jsx` → `briefing-client.jsx` | Review the daily briefing, tasks, calendar context, email follow-ups, and commitments; mark eligible tasks complete and manage follow-ups. | `/api/workspace/briefing`, task and follow-up endpoints |
-| My tasks (`/dashboard/tasks`) | `src/app/dashboard/tasks/page.jsx` → `tasks-client.jsx` | Create, search, filter, sort, edit, complete, and archive tasks; inspect due dates and priorities, switch directly to the in-progress queue, select visible active tasks, and complete multiple tasks in one operation with retry feedback for partial failures. API E2E coverage exercises invalid input, editing, due dates, status transitions, completion timestamps, and archive behavior. | `/api/tasks` |
 | AI assistant (`/dashboard`) | `src/app/dashboard/page.jsx` → `assistant-client.jsx` | Start a conversation, search/open saved conversations, send messages, and review task-action cards returned by the assistant. | `/api/chat`, `/api/chat/[id]` |
-| Calendar & meetings (`/dashboard/calendar`) | `src/app/dashboard/calendar/page.jsx` → `calendar-client.jsx` | Review and search upcoming calendar events; create, edit, approve, and cancel meeting proposals; validate title, chronological time range, IANA timezone, and attendee emails on both client and server; interpret datetime-local values in the selected timezone and reject nonexistent daylight-saving times. Creation remains a separate explicit action requiring approval, event-write scope, an unpaused automation state, and a successful availability check. | `/api/meeting-drafts`, calendar/workspace endpoints |
+| Schedule (`/dashboard/schedule`) | `src/app/dashboard/schedule/page.jsx` → `schedule-client.jsx` | Create and manage one persisted schedule-item collection; switch between a mixed list and day/week/month calendar; search, filter, edit, complete, bulk-complete, and archive local items; sync calendar-backed items with conflict checks and explicit confirmation. Existing `/dashboard/tasks` and `/dashboard/calendar` URLs redirect to Schedule. | `/api/tasks`, `/api/calendar-events`, `/api/preferences` |
 | Email outreach (`/dashboard/email`) | `src/app/dashboard/email/page.jsx` → `email-client.jsx` | Create or generate a draft, edit recipients/content, filter drafts, and use the approval/send lifecycle. | `/api/email-drafts` and draft action endpoints |
 | Action center (`/dashboard/actions`) | `src/app/dashboard/actions/page.jsx` → `actions-client.jsx` | Review and approve/reject pending actions, inspect action history, configure task automation, and pause/resume automation. | `/api/actions`, `/api/automation-rules`, preferences |
 | Connections (`/dashboard/integrations`) | `src/app/dashboard/integrations/page.jsx` → `ui.jsx` | Connect/reconnect/disconnect Google Workspace, inspect recent Gmail/calendar context, update briefing/approval preferences, export account data, and log out. | `/api/workspace/overview`, `/api/preferences`, Google OAuth and disconnect endpoints, account export/logout |
@@ -24,7 +23,7 @@ Run:
 npm run test:sidebar-routes
 ```
 
-The route check verifies that every sidebar link has a page module, mounts the expected client component, and retains key workflow markers and API wiring. It checks task bulk completion and the in-progress view, plus calendar form validation, timezone-aware date conversion wiring, server-side IANA timezone and chronological-time validation, and E2E coverage for meeting proposal create/edit/approve/cancel and safe creation denial. Run `npm run test:calendar-timezone` for executable timezone conversion checks, including UTC, Karachi, New York daylight/standard time, and nonexistent daylight-saving times. These checks do not replace a full build and authenticated Google Calendar acceptance pass.
+The route check verifies that every sidebar link has a page module, mounts the expected client component, and retains key workflow markers and API wiring. It checks embedded task bulk completion and the in-progress view, plus unified task/event creation, timezone-aware date conversion, server-side event validation and permission/pause/availability enforcement, and E2E coverage for direct event creation denial without permission. Run `npm run test:calendar-timezone` for executable timezone conversion checks, including UTC, Karachi, New York daylight/standard time, and nonexistent daylight-saving times. These checks do not replace a full build and authenticated Google Calendar acceptance pass.
 
 ## Manual acceptance pass
 
@@ -35,6 +34,6 @@ For each route, use a signed-in test account and verify:
 3. Forms reject invalid input without losing the user's work.
 4. Mutations show success/failure feedback and the resulting data remains correct after refresh.
 5. External actions remain behind the app's approval and automation-pause safeguards.
-6. A failed API request can be retried without duplicating tasks, drafts, or calendar events.
+6. A failed API request can be retried without duplicating tasks or calendar events.
 
 For Google-dependent checks, use a test Google account and verify connect, reconnect, revoked access, and disconnect states without using a production mailbox.

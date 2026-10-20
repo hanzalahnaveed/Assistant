@@ -25,14 +25,6 @@ const routes = [
     workflow: /next actions|daily briefing|priority/i,
   },
   {
-    href: "/dashboard/tasks",
-    label: "Tasks",
-    page: "src/app/dashboard/tasks/page.jsx",
-    client: "src/components/client/tasks-client.jsx",
-    endpoints: ["/api/tasks"],
-    workflow: /addTask|priorityFilter|dueFilter|sortBy/i,
-  },
-  {
     href: "/dashboard",
     label: "AI assistant",
     page: "src/app/dashboard/page.jsx",
@@ -41,12 +33,12 @@ const routes = [
     workflow: /sendMessage|openConversation|newConversation/i,
   },
   {
-    href: "/dashboard/calendar",
-    label: "Calendar & Schedule",
-    page: "src/app/dashboard/calendar/page.jsx",
-    client: "src/components/client/calendar-client.jsx",
-    endpoints: ["/api/meeting-drafts"],
-    workflow: /save|approve|cancel|proposalStatusFilter/i,
+    href: "/dashboard/schedule",
+    label: "Schedule",
+    page: "src/app/dashboard/schedule/page.jsx",
+    client: "src/components/client/schedule-client.jsx",
+    endpoints: ["/api/calendar-events", "/api/tasks"],
+    workflow: /validateForm|idempotencyKey|create calendar event/i,
   },
   {
     href: "/dashboard/email",
@@ -118,34 +110,32 @@ for (const route of routes) {
     assert.match(verificationApi, /calendarWrite/, "integration verification must report Calendar event scope");
   }
 
-  if (route.href === "/dashboard/tasks") {
-    assert.match(client, /completeSelectedTasks/, "task workflow must support completing selected tasks");
-    assert.match(client, /Select all visible active tasks/, "task workflow must support selecting visible tasks");
-    assert.match(client, /Retry the remaining selection/i, "bulk completion must report partial failures");
-    assert.match(client, /id: "in_progress"/, "task workflow must expose an in-progress view");
-    assert.match(client, /task\.status === "IN_PROGRESS"/, "in-progress view must filter by task status");
-    assert.match(client, /aria-pressed=\{view === tab\.id\}/, "task status tabs must expose their selected state");
-  }
-
-  if (route.href === "/dashboard/calendar") {
-    assert.match(client, /validateMeetingForm/, "meeting workflow must validate before saving");
-    assert.match(client, /Meeting end must be after its start/, "meeting workflow must reject invalid time ranges");
-    assert.match(client, /valid IANA timezone/, "meeting workflow must validate the selected timezone");
-    assert.match(client, /Check attendee emails/, "meeting workflow must validate attendee email addresses");
-    assert.match(client, /localDateTimeToIso/, "meeting workflow must interpret form times in the selected timezone");
-    assert.match(client, /toLocalDateTime/, "meeting edits must restore wall-clock values in the selected timezone");
+  if (route.href === "/dashboard/schedule") {
+    assert.match(client, /Add time, location, and attendees in Google Calendar/, "schedule form must offer calendar sync without a separate item category");
+    assert.match(client, /data\?\.items/, "list and calendar views must use the unified schedule-item feed");
+    assert.match(client, /scheduleEvents=\{visibleEvents\}/, "the list must render calendar-backed schedule items alongside local items");
+    assert.match(client, /window\.confirm/, "direct event creation must require explicit confirmation");
+    const tasksClient = await read("src/components/client/tasks-client.jsx");
+    assert.match(tasksClient, /completeSelectedTasks/, "embedded task workflow must support completing selected tasks");
+    assert.match(tasksClient, /Select all visible active items/, "unified schedule list must support selecting visible items");
+    assert.match(tasksClient, /Retry the remaining selection/i, "bulk completion must report partial failures");
+    assert.match(tasksClient, /id: "in_progress"/, "task workflow must expose an in-progress view");
+    assert.match(tasksClient, /task\.status === "IN_PROGRESS"/, "in-progress view must filter by task status");
+    assert.match(tasksClient, /aria-pressed=\{view === tab\.id\}/, "task status tabs must expose their selected state");
     const timezoneUtility = await read("src/lib/calendar-timezone.mjs");
     assert.match(timezoneUtility, /daylight-saving|verified/, "timezone conversion must reject nonexistent local times");
-    const createApi = await read("src/app/api/meeting-drafts/route.js");
-    const detailApi = await read("src/app/api/meeting-drafts/[id]/route.js");
-    for (const [api, label] of [[createApi, "meeting proposal creation API"], [detailApi, "meeting proposal detail API"]]) {
-      assert.match(api, /valid IANA timezone/, label + " must validate timezones server-side");
-      assert.match(api, /Meeting end must be after its start/, label + " must reject reversed meeting times");
-    }
+    const createApi = await read("src/app/api/calendar-events/route.js");
+    const schema = await read("prisma/schema.prisma");
+    assert.match(schema, /model ScheduleItem/, "tasks and calendar-backed entries must share the ScheduleItem model");
+    assert.match(schema, /calendarEventId\s+String\?/, "schedule items must retain their optional Google Calendar reference");
+    assert.match(createApi, /items: scheduleItems\.map\(scheduleItemToJson\)/, "calendar feed must return the unified persisted items");
+    assert.match(createApi, /valid IANA timezone/, "calendar event API must validate timezones server-side");
+    assert.match(createApi, /automationPaused/, "calendar event API must respect the global automation pause");
+    assert.match(createApi, /availability\.nextPageToken/, "calendar event API must fail closed when availability cannot be fully checked");
+    assert.match(createApi, /idempotencyKey/, "calendar event API must prevent duplicate creation retries");
     const e2e = await read("scripts/e2e-test.mjs");
-    assert.match(e2e, /meeting proposal API rejects invalid timezone/, "E2E must cover invalid meeting input");
-    assert.match(e2e, /meeting proposals require approval before creation/, "E2E must cover the approval and safe creation lifecycle");
-    assert.match(e2e, /meeting proposal edits persist/, "E2E must cover meeting proposal editing");
+    assert.match(e2e, /local and calendar-backed records share one persisted schedule-item feed/, "E2E must verify one shared feed contains both local and calendar-backed items");
+    assert.match(e2e, /direct calendar event creation validates input and requires permission/, "E2E must cover calendar sync validation and permission enforcement");
   }
 
   console.log(`PASS ${route.href}: ${route.label} page, client workflow, and API coverage`);

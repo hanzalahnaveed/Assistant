@@ -25,17 +25,22 @@ export async function PATCH(request, context) {
       { error: "Invalid task update.", details: parsed.error.flatten() },
       { status: 400 },
     );
-  const existing = await prisma.task.findFirst({ where: { id, userId: user.id } });
+  const existing = await prisma.scheduleItem.findFirst({
+    where: { id, userId: user.id, calendarEventId: null },
+  });
   if (!existing) return NextResponse.json({ error: "Task not found." }, { status: 404 });
   const data = {
     ...parsed.data,
     ...(parsed.data.dueAt !== undefined
-      ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
+      ? {
+          dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+          scheduledStartAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+        }
       : {}),
     ...(parsed.data.status === "DONE" ? { completedAt: existing.completedAt ?? new Date() } : {}),
     ...(parsed.data.status && parsed.data.status !== "DONE" ? { completedAt: null } : {}),
   };
-  const task = await prisma.task.update({ where: { id }, data });
+  const task = await prisma.scheduleItem.update({ where: { id }, data });
   await prisma.auditEvent.create({
     data: {
       userId: user.id,
@@ -52,10 +57,12 @@ export async function DELETE(_request, context) {
   if (!user)
     return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const { id } = await context.params;
-  const existing = await prisma.task.findFirst({ where: { id, userId: user.id } });
+  const existing = await prisma.scheduleItem.findFirst({
+    where: { id, userId: user.id, calendarEventId: null },
+  });
   if (!existing) return NextResponse.json({ error: "Task not found." }, { status: 404 });
   // Soft-cancel tasks so the user's audit history remains intact.
-  await prisma.task.update({ where: { id }, data: { status: "CANCELLED" } });
+  await prisma.scheduleItem.update({ where: { id }, data: { status: "CANCELLED" } });
   await prisma.auditEvent.create({
     data: { userId: user.id, eventType: "TASK_CANCELLED", actor: "USER", resourceId: id },
   });

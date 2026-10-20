@@ -28,7 +28,7 @@ export async function syncFollowUpCandidates(userId, candidates) {
     orderBy: [{ status: "asc" }, { lastSeenAt: "desc" }],
     take: 40,
   });
-  const sourceTasks = saved.length ? await prisma.task.findMany({
+  const sourceTasks = saved.length ? await prisma.scheduleItem.findMany({
     where: {
       userId, source: { in: ["EMAIL", "MEETING"] },
       sourceRef: { in: saved.map((item) => item.sourceId) },

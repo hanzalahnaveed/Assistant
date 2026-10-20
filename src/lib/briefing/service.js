@@ -146,8 +146,8 @@ export async function generateBriefingData(user, now = new Date()) {
   const timeZone = user.timezone || "Asia/Karachi";
   const { start: dayStart, end: dayEnd, parts: localNow } = localDayBounds(now, timeZone);
   const [tasks, preferences, integration] = await Promise.all([
-    prisma.task.findMany({
-      where: { userId: user.id, status: { in: ["TODO", "IN_PROGRESS"] } },
+    prisma.scheduleItem.findMany({
+      where: { userId: user.id, calendarEventId: null, status: { in: ["TODO", "IN_PROGRESS"] } },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "asc" }],
       take: 100,
       select: {

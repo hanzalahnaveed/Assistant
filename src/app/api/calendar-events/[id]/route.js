@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { prisma } from "@/lib/prisma";
+import { saveGoogleCalendarItem, scheduleItemToJson } from "@/lib/schedule/items";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const schema = z.object({
   allDay: z.boolean().optional().default(false),
   timezone: z.string().trim().min(1).max(100),
   attendees: z.array(z.string().trim().email().max(254)).max(50).default([]),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 }).refine((value) => {
   if (value.allDay) {
     const validDate = (date) => {
@@ -151,6 +153,7 @@ export async function PATCH(request, context) {
             : result.error?.message || "Google Calendar rejected the event update.",
       }, { status });
     }
+    await saveGoogleCalendarItem(user.id, result, value.timezone, value.priority);
     await prisma.auditEvent.create({
       data: {
         userId: user.id,
@@ -160,7 +163,12 @@ export async function PATCH(request, context) {
         metadata: { title: result.summary || value.title, startAt: result.start?.dateTime ?? value.startAt },
       },
     }).catch(() => undefined);
-    return NextResponse.json({ event: result }, { headers: { "cache-control": "no-store" } });
+    const item = await prisma.scheduleItem.findUnique({
+      where: { userId_calendarEventId: { userId: user.id, calendarEventId: id } },
+    });
+    return NextResponse.json({ event: result, item: item ? scheduleItemToJson(item) : null }, {
+      headers: { "cache-control": "no-store" },
+    });
   } catch {
     return NextResponse.json({ error: "The update outcome could not be confirmed. Refresh Google Calendar before retrying." }, { status: 502 });
   }
@@ -193,6 +201,7 @@ export async function DELETE(request, context) {
             : result.error?.message || "Google Calendar rejected the cancellation.",
       }, { status });
     }
+    await saveGoogleCalendarItem(user.id, { ...current, id, status: "cancelled" }, user.timezone);
     await prisma.auditEvent.create({
       data: { userId: user.id, eventType: "CALENDAR_EVENT_CANCELLED", actor: "USER", resourceId: id, metadata: { title: current.summary || "(untitled event)" } },
     }).catch(() => undefined);

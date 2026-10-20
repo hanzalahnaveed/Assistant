@@ -17,8 +17,7 @@
     "verify:javascript": "node scripts/verify-javascript.mjs",
     "format": "npx --yes prettier@3 --write .",
     "format:check": "npx --yes prettier@3 --check .",
-    "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs",
-    "test:schedule-planner": "node scripts/schedule-planner-test.mjs"
+    "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",

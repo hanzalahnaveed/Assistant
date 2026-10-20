@@ -121,7 +121,7 @@ export async function PATCH(request, context) {
     const taskSource =
       input.data.source && input.data.sourceRef ? input.data.source : "ASSISTANT";
     const taskSourceRef = input.data.source && input.data.sourceRef ? input.data.sourceRef : id;
-    const task = await tx.task.upsert({
+    const task = await tx.scheduleItem.upsert({
       where: {
         userId_source_sourceRef: {
           userId: user.id,

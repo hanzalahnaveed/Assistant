@@ -22,8 +22,8 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] CI validation, production build, and end-to-end test workflow
 - [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
-- [x] Calendar & meeting workspace, persistent meeting proposals, explicit approval + separate event creation, attendee invitations, audit history, and uncertain-outcome recovery
-- [x] Navigable day/week/month calendar, timezone-aware event ranges, existing-event edit/cancel with conflict checks, and persisted daily task schedules with explicit calendar publication and recovery
+- [x] Unified ScheduleItem model for local commitments and Google Calendar-backed items
+- [x] Shared schedule-item collection rendered in list and day/week/month calendar views, with timezone-aware event editing, conflict checks, and idempotent Google sync
 - [ ] Real Google account verification and production deployment
 
 ## Production configuration
@@ -44,7 +44,11 @@ The worker endpoint is `POST /api/cron/daily-briefings` and requires `Authorizat
 
 Open `/dashboard/actions` to propose a task, review pending proposals, approve or reject them, and inspect the action history. Task creation uses the existing `ActionRecord` and `AutomationRule` data models, is scoped to the signed-in user, records audit events, and uses an idempotency key so retries do not create duplicate tasks. Task-specific automation can override the user's default approval mode: `CONFIRM` requires an explicit approval, `AUTO` creates the task immediately, and `BLOCK` prevents new proposals. Removing the rule falls back to the default approval setting. The Action Center also provides a per-user global automation pause: while paused, new `AUTO` task proposals wait for approval and task execution, email sending, and calendar event creation are blocked until the user resumes automation. Resuming does not automatically execute held proposals.
 
-Task actions remain limited to creating tasks inside this application. Email sending is available only through the dedicated `/dashboard/email` workflow: a saved draft must be approved and then separately confirmed for sending. Sending requires the Gmail `gmail.send` OAuth scope; existing Google connections must reconnect to grant it. The send outcome is audited, and uncertain outcomes are locked for manual Sent-folder verification to reduce duplicate sends. Meeting creation is available at `/dashboard/calendar`: proposals are saved, approved, and then separately confirmed before Google Calendar creates an event and sends invitations. Event creation requires the `calendar.events` OAuth scope; existing Google connections must reconnect to grant it. Uncertain outcomes are locked pending a manual Calendar check. AI chat context and Gmail/Calendar reads remain read-only; email and calendar content are untrusted data.
+Task actions remain limited to creating tasks inside this application. Manage and create tasks from `/dashboard/schedule`. Email sending is available only through the dedicated `/dashboard/email` workflow: a saved draft must be approved and then separately confirmed for sending. Sending requires the Gmail `gmail.send` OAuth scope; existing Google connections must reconnect to grant it. The send outcome is audited, and uncertain outcomes are locked for manual Sent-folder verification to reduce duplicate sends. Calendar events are created directly from `/dashboard/schedule` only after an explicit confirmation, with `calendar.events` permission, automation pause enforcement, and a successful availability check. Event invitations may be sent to listed attendees. Event creation uses a stable event ID so retries do not create duplicates. AI chat context and Gmail/Calendar reads remain read-only; email and calendar content are untrusted data.
+
+The unified Schedule migration permanently removes saved meeting proposals and daily schedule plans from the database. Back up any records that must be retained before deploying this migration.
+
+The schedule migration renames the existing task table to `ScheduleItem`, preserving existing task records and due dates. Calendar events loaded or created through the app are synchronized into that same model; list and calendar views render the persisted schedule items.
 
 ## Local development
 
@@ -68,15 +72,22 @@ After configuring the local database and environment, run the focused checks:
 
 ```bash
 npm run test:calendar-timezone
-npm run test:schedule-planner
+npm run test:sidebar-routes
 npm run verify:javascript
 npm run build
 ```
 
-For the full API/database end-to-end suite, start the production build in one terminal and run the test suite in another:
+For the full API/database end-to-end suite, configure the same local `APP_URL` and 32+ character `CRON_SECRET` in both terminals. Start the app with the mock AI provider settings, then run the suite in another terminal:
 
 ```bash
+export APP_URL=http://127.0.0.1:3000
+export CRON_SECRET="replace-with-the-same-local-secret-of-at-least-32-characters"
+export OPENAI_API_KEY=local-e2e-key
+export OPENAI_BASE_URL=http://127.0.0.1:4010/v1
+export OPENAI_MODEL=e2e-mock
 npm run start -- --hostname 127.0.0.1
+
+# In another terminal, set APP_URL and the same CRON_SECRET, then run:
 npm run test:e2e
 ```
 
@@ -87,7 +98,7 @@ The end-to-end suite uses a local test database and mocked AI provider. Real Goo
 - Keep OAuth credentials and application secrets in environment variables or a managed secret store; never commit them.
 - Google tokens are encrypted at rest with AES-256-GCM.
 - Outreach drafts are never sent automatically; approval and sending require separate user actions.
-- Calendar events are never created automatically; proposal approval and event creation require separate user actions.
+- Calendar events are never created automatically; direct event creation requires an explicit user confirmation, Calendar event permission, an unpaused automation state, and verified availability.
 - The Gmail send and Calendar event scopes may require additional Google OAuth verification before public production use.
 - Enforce tenant ownership server-side for all data access.
 - Follow-up recommendations are heuristic and must be reviewed by the user before acting.

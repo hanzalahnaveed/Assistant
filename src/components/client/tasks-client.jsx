@@ -2,7 +2,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Check, Circle, LoaderCircle, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, Circle, LoaderCircle, Pencil, Save, Trash2, X } from "lucide-react";
 const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const priorityStyle = {
   LOW: "bg-slate-100 text-slate-600",
@@ -10,24 +10,26 @@ const priorityStyle = {
   HIGH: "bg-orange-50 text-orange-700",
   URGENT: "bg-rose-50 text-rose-700",
 };
-export default function TasksClient() {
+export default function TasksClient({
+  refreshKey = 0,
+  onTasksChange,
+  scheduleEvents = [],
+  searchQuery = "",
+  renderScheduleEvent,
+}) {
   const [tasks, setTasks] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
-  const [dueAt, setDueAt] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [showComposer, setShowComposer] = useState(false);
   const [view, setView] = useState("open");
-  const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [dueFilter, setDueFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DUE_ASC");
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+  useEffect(() => {
+    onTasksChange?.(tasks);
+  }, [onTasksChange, tasks]);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -36,55 +38,17 @@ export default function TasksClient() {
         cache: "no-store",
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not load tasks.");
+      if (!response.ok) throw new Error(body.error || "Could not load schedule items.");
       setTasks(body.tasks);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load tasks.");
+      setError(e instanceof Error ? e.message : "Could not load schedule items.");
     } finally {
       setLoading(false);
     }
   }, []);
   useEffect(() => {
     void load();
-  }, [load]);
-  async function addTask(event) {
-    event.preventDefault();
-    if (!title.trim()) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          description: description || null,
-          priority,
-          dueAt: dueAt ? new Date(dueAt).toISOString() : null,
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not create task.");
-      setTasks((current) => [body.task, ...current]);
-      setTitle("");
-      setDescription("");
-      setPriority("MEDIUM");
-      setDueAt("");
-      setShowComposer(false);
-      setView("open");
-      setQuery("");
-      setPriorityFilter("ALL");
-      setDueFilter("ALL");
-      setNotice("Task saved.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create task.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [load, refreshKey]);
   async function updateTask(task, patch) {
     setError("");
     try {
@@ -96,9 +60,9 @@ export default function TasksClient() {
         body: JSON.stringify(patch),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not update task.");
+      if (!response.ok) throw new Error(body.error || "Could not update this schedule item.");
       setTasks((current) => current.map((item) => (item.id === task.id ? body.task : item)));
-      setNotice("Task updated.");
+      setNotice("Schedule item updated.");
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update task.");
@@ -106,15 +70,15 @@ export default function TasksClient() {
     }
   }
   async function removeTask(task) {
-    if (!window.confirm(`Remove "${task.title}" from your active tasks?`)) return;
+    if (!window.confirm(`Remove "${task.title}" from your active schedule?`)) return;
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: "DELETE",
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not remove task.");
+      if (!response.ok) throw new Error(body.error || "Could not remove this schedule item.");
       setTasks((current) => current.filter((item) => item.id !== task.id));
-      setNotice("Task archived.");
+      setNotice("Schedule item archived.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not remove task.");
     }
@@ -143,8 +107,8 @@ export default function TasksClient() {
     }
     setSelectedTaskIds(failedIds);
     setNotice(failedIds.length
-      ? `Completed ${completedCount} of ${selectedOpenTasks.length} selected tasks. Retry the remaining selection.`
-      : `Completed ${completedCount} selected task${completedCount === 1 ? "" : "s"}.`);
+      ? `Completed ${completedCount} of ${selectedOpenTasks.length} selected items. Retry the remaining selection.`
+      : `Completed ${completedCount} selected item${completedCount === 1 ? "" : "s"}.`);
     setBulkBusy(false);
   }
   const done = tasks.filter((task) => task.status === "DONE");
@@ -159,7 +123,7 @@ export default function TasksClient() {
       (view === "completed" && task.status === "DONE") ||
       (view === "in_progress" && task.status === "IN_PROGRESS") ||
       (view === "open" && task.status !== "DONE" && task.status !== "CANCELLED");
-    const needle = query.trim().toLowerCase();
+    const needle = searchQuery.trim().toLowerCase();
     const matchesQuery =
       !needle ||
       task.title.toLowerCase().includes(needle) ||
@@ -186,28 +150,35 @@ export default function TasksClient() {
   const selectableVisibleTasks = visibleTasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
   const selectedOpenTasks = selectableVisibleTasks.filter((task) => selectedTaskIds.includes(task.id));
   const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
+  const visibleScheduleEvents = (view === "open" || view === "all" ? scheduleEvents : []).filter((event) => {
+    const due = event.dueAt || event.startAt ? new Date(event.dueAt || event.startAt) : null;
+    return (priorityFilter === "ALL" || event.priority === priorityFilter) &&
+      (dueFilter === "ALL" ||
+        (dueFilter === "OVERDUE" && due && due < todayStart) ||
+        (dueFilter === "TODAY" && due && due >= todayStart && due < tomorrowStart) ||
+        (dueFilter === "UPCOMING" && due && due >= tomorrowStart));
+  });
+  const visibleScheduleItems = [
+    ...visibleTasks.map((task) => ({ id: task.id, task, date: task.dueAt, createdAt: task.createdAt })),
+    ...visibleScheduleEvents.map((event) => ({
+      id: event.scheduleItemId || event.id,
+      event,
+      date: event.startAt,
+      createdAt: event.createdAt,
+    })),
+  ].sort((left, right) => {
+    if (sortBy === "NEWEST") return new Date(right.createdAt || 0) - new Date(left.createdAt || 0);
+    if (sortBy === "PRIORITY") {
+      const rank = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      return rank[left.task?.priority || "MEDIUM"] - rank[right.task?.priority || "MEDIUM"] ||
+        (left.date ? new Date(left.date).getTime() : Infinity) -
+        (right.date ? new Date(right.date).getTime() : Infinity);
+    }
+    return (left.date ? new Date(left.date).getTime() : Infinity) -
+      (right.date ? new Date(right.date).getTime() : Infinity);
+  });
   return (
-    <main className="flex flex-col p-4 bg-[#F8F9FA] text-[#212529]">
-        <div className="flex justify-between mb-7 items-end">
-          <div className={``}>
-            <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
-              <Check size={40} /> 
-              My tasks
-            </h1>
-            <p className="mt-2 text-sm text-[#6B7280] text-pretty">
-              Tasks are saved to your account and stay in sync across sessions.
-            </p>
-          </div>
-          <Button
-            type="primary"
-            htmlType="button"
-            onClick={() => setShowComposer((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#001d3d]"
-          >
-            {showComposer ? <X size={16} /> : <Plus size={16} />}{" "}
-            {showComposer ? "Close form" : "New task"}
-          </Button>
-        </div>
+    <section className="flex flex-col text-[#212529]">
         {error && (
           <div
             role="alert"
@@ -229,70 +200,10 @@ export default function TasksClient() {
             {notice}
           </div>
         )}
-        {showComposer && (
-          <form
-            onSubmit={addTask}
-            className="mb-7 space-y-3 rounded-[18px] border border-[#E3E7ED] bg-white p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]"
-          >
-            <h2 className="font-semibold tracking-[-0.025em]">New task details</h2>
-            <div className={`flex flex-col gap-3`}>
-              <Input
-                required
-                maxLength={200}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="What needs to get done?"
-                className="w-full rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
-              />
-              <Input.TextArea
-                maxLength={5000}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Notes (optional)"
-                rows={2}
-                className="w-full resize-y rounded-xl border border-[#dfe6dd] px-3.5 py-3 text-sm outline-none focus:border-[#176b52]"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-medium text-[#6B7280]">
-                Priority
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="mt-1.5 block w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2.5 text-sm text-[#212529]"
-                >
-                  {priorities.map((item) => (
-                    <option key={item} value={item}>
-                      {item[0] + item.slice(1).toLowerCase()}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-[#6B7280]">
-                Due date and time
-                <input
-                  type="datetime-local"
-                  value={dueAt}
-                  onChange={(e) => setDueAt(e.target.value)}
-                  className="mt-1.5 block w-full rounded-xl border border-[#dfe6dd] bg-white px-3 py-2.5 text-sm text-[#212529]"
-                />
-              </label>
-            </div>
-            <Button
-              type="primary"
-              htmlType="submit"
-              disabled={busy || !title.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#FA8500] shadow-[0_4px_10px_rgb(250_133_0/18%)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Plus size={16} />
-              {busy ? "Saving…" : "Save task"}
-            </Button>
-          </form>
-        )}
         <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">Active commitments</p>
-            <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{open.length}</div>
+            <div className="mt-2 text-2xl font-semibold tracking-[-0.045em]">{open.length + scheduleEvents.length}</div>
           </div>
           <div className="rounded-[18px] border border-[#E3E7ED] bg-white p-4 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
             <p className="text-xs text-[#6B7280] text-pretty">Overdue</p>
@@ -317,9 +228,9 @@ export default function TasksClient() {
           <div className="mb-4 flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-semibold tracking-[-0.025em]">Your task list</h2>
+                <h2 className="font-semibold tracking-[-0.025em]">Your schedule items</h2>
                 <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-                  Search, filter, and update progress without losing your place.
+                  The same schedule items appear in list and calendar views.
                 </p>
               </div>
               <Button
@@ -331,19 +242,6 @@ export default function TasksClient() {
               </Button>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
-              <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Search tasks</span>
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#87918b]"
-                />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by task or notes…"
-                  className="w-full py-2.5 pl-9 pr-3 text-sm"
-                />
-              </label>
               <select
                 aria-label="Filter by priority"
                 value={priorityFilter}
@@ -370,7 +268,7 @@ export default function TasksClient() {
                 <option value="NO_DUE">No due date</option>
               </select>
               <select
-                aria-label="Sort tasks"
+                aria-label="Sort schedule items"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="md:w-40 rounded-xl border border-[#dfe6dd] bg-white px-3 py-2 text-sm"
@@ -385,12 +283,12 @@ export default function TasksClient() {
                 <label className="flex items-center gap-2 text-xs font-medium text-[#526159]">
                   <input
                     type="checkbox"
-                    aria-label="Select all visible active tasks"
+                    aria-label="Select all visible active items"
                     checked={allVisibleSelected}
                     onChange={(event) => toggleVisibleSelection(event.target.checked)}
                     className="h-4 w-4 accent-[#FA8500]"
                   />
-                  Select visible active tasks ({selectableVisibleTasks.length})
+                  Select visible active items ({selectableVisibleTasks.length})
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
                   {selectedOpenTasks.length > 0 && (
@@ -407,12 +305,12 @@ export default function TasksClient() {
                 </div>
               </div>
             )}
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Task status filter">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Schedule item status filter">
               {[
                 {
                   id: "open",
                   label: "Active",
-                  count: open.length,
+                  count: open.length + scheduleEvents.length,
                 },
                 {
                   id: "in_progress",
@@ -426,8 +324,8 @@ export default function TasksClient() {
                 },
                 {
                   id: "all",
-                  label: "All tasks",
-                  count: tasks.length,
+                  label: "All items",
+                  count: tasks.length + scheduleEvents.length,
                 },
               ].map((tab) => (
                 <Button
@@ -446,39 +344,42 @@ export default function TasksClient() {
           {loading ? (
             <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]">
               <LoaderCircle size={16} className="animate-[spin_0.9s_linear_infinite]" />
-              Loading tasks…
+              Loading schedule items…
             </div>
-          ) : visibleTasks.length ? (
+          ) : visibleScheduleItems.length ? (
             <div className="divide-y divide-[#edf1ed]">
-              {visibleTasks.map((task) => (
+              {visibleScheduleItems.map((item) => item.task ? (
                 <TaskRow
-                  key={task.id}
-                  task={task}
+                  key={item.id}
+                  task={item.task}
                   updateTask={updateTask}
                   removeTask={removeTask}
-                  selected={selectedTaskIds.includes(task.id)}
+                  selected={selectedTaskIds.includes(item.task.id)}
                   onSelect={toggleTaskSelection}
                 />
+              ) : (
+                <div key={item.id} className="py-3">
+                  {renderScheduleEvent?.(item.event)}
+                </div>
               ))}
             </div>
           ) : (
             <div className="py-10 text-center">
               <div className="text-sm font-semibold">
-                {query || priorityFilter !== "ALL" || dueFilter !== "ALL"
-                  ? "No matching tasks"
+                {searchQuery || priorityFilter !== "ALL" || dueFilter !== "ALL"
+                  ? "No matching schedule items"
                   : view === "completed"
                     ? "Nothing completed yet"
-                    : "You’re all caught up"}
+                    : "No schedule items yet"}
               </div>
               <p className="mt-2 text-xs leading-5 text-[#6B7280] text-pretty">
-                {query || priorityFilter !== "ALL" || dueFilter !== "ALL"
+                {searchQuery || priorityFilter !== "ALL" || dueFilter !== "ALL"
                   ? "Try changing your search or filters."
-                  : "Create a task when a new commitment comes in."}
+                  : "Schedule a new item to see it here."}
               </p>
-              {(query || priorityFilter !== "ALL" || dueFilter !== "ALL") && (
+              {(searchQuery || priorityFilter !== "ALL" || dueFilter !== "ALL") && (
                 <Button
                   onClick={() => {
-                    setQuery("");
                     setPriorityFilter("ALL");
                     setDueFilter("ALL");
                   }}
@@ -490,7 +391,7 @@ export default function TasksClient() {
             </div>
           )}
         </section>
-    </main>
+    </section>
   );
 }
 function toLocalDateTimeInput(value) {
@@ -532,16 +433,16 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
     return (
       <form onSubmit={saveChanges} className="space-y-3 border-b border-[#edf1ed] py-4">
         <Input
-          aria-label="Task title"
+          aria-label="Schedule item title"
           required
           maxLength={200}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Task title"
+          placeholder="Schedule item title"
           className="w-full rounded-xl border border-[#dfe6dd] px-3 py-2.5 text-sm"
         />
         <Input.TextArea
-          aria-label="Task notes"
+          aria-label="Schedule item details"
           maxLength={5000}
           rows={3}
           value={description}
@@ -584,7 +485,7 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
         />
       )}
       <Button
-        aria-label={task.status === "DONE" ? "Reopen task" : "Complete task"}
+        aria-label={task.status === "DONE" ? "Reopen item" : "Complete item"}
         onClick={() =>
           void updateTask(task, {
             status: task.status === "DONE" ? "TODO" : "DONE",
@@ -613,7 +514,7 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
         )}
       </div>
       <select
-        aria-label="Task status"
+        aria-label="Schedule item status"
         value={task.status}
         onChange={(event) => void updateTask(task, { status: event.target.value })}
         className="rounded-lg border border-[#dfe6dd] bg-white px-2 py-1.5 text-xs"
@@ -628,7 +529,7 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
         {task.priority}
       </span>
       <select
-        aria-label="Task priority"
+        aria-label="Schedule item priority"
         value={task.priority}
         onChange={(e) =>
           void updateTask(task, {
@@ -646,8 +547,8 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
       <div className="flex items-center gap-1">
         <Button
           htmlType="button"
-          aria-label="Edit task"
-          title="Edit task"
+          aria-label="Edit schedule item"
+          title="Edit schedule item"
           onClick={() => setEditing(true)}
           className="rounded-lg p-1.5 text-[#64746a] hover:bg-[#f0f4ef]"
         >
@@ -655,7 +556,7 @@ function TaskRow({ task, updateTask, removeTask, selected, onSelect }) {
         </Button>
         <Button
           htmlType="button"
-          aria-label="Archive task"
+          aria-label="Archive schedule item"
           onClick={() => void removeTask(task)}
           className="rounded-lg p-1.5 text-[#9b6a60] hover:bg-rose-50"
         >

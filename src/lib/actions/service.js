@@ -5,7 +5,7 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
   });
   if (existing) return { action: existing, reused: true };
   if (input.source && input.sourceRef) {
-    const existingTask = await prisma.task.findUnique({
+    const existingTask = await prisma.scheduleItem.findUnique({
       where: {
         userId_source_sourceRef: {
           userId,
@@ -64,7 +64,7 @@ export async function createTaskActionProposal(userId, idempotencyKey, input) {
       }
       const taskSource = input.source && input.sourceRef ? input.source : "ASSISTANT";
       const taskSourceRef = input.source && input.sourceRef ? input.sourceRef : record.id;
-      const task = await tx.task.upsert({
+      const task = await tx.scheduleItem.upsert({
         where: {
           userId_source_sourceRef: {
             userId,

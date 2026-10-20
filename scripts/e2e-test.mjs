@@ -111,9 +111,8 @@ try {
     "/",
     "/dashboard",
     "/dashboard/integrations",
-    "/dashboard/tasks",
     "/dashboard/briefing",
-    "/dashboard/calendar",
+    "/dashboard/schedule",
     "/dashboard/email",
     "/dashboard/actions",
   ]) {
@@ -121,6 +120,9 @@ try {
     const html = await response.text();
     check(html.length > 0, path + " page renders");
   }
+  await expectStatus("/dashboard/tasks", 307);
+  await expectStatus("/dashboard/calendar", 307);
+  check(true, "legacy task and calendar URLs redirect to the unified schedule");
 
   const signInStart = await expectStatus("/api/auth/google/start?intent=signin", 307);
   const signInUrl = new URL(signInStart.headers.get("location"));
@@ -234,6 +236,7 @@ try {
   const exportBody = await exportResponse.json();
   assert.equal(exportBody.formatVersion, 1);
   assert.equal(exportBody.account.id, user.id);
+  assert.ok(Array.isArray(exportBody.account.tasks));
   const exportJson = JSON.stringify(exportBody);
   assert.equal(exportJson.includes("passwordHash"), false);
   assert.equal(exportJson.includes("accessTokenEnc"), false);
@@ -281,8 +284,8 @@ try {
   assert.equal(verificationBody.checks.calendarRead.status, "not_connected");
   check(true, "Google integration verification reports a safe not-connected state without external API calls");
 
-  await expectStatus("/api/meeting-drafts", 401);
-  await expectStatus("/api/meeting-drafts", 200, {}, token);
+  await expectStatus("/api/calendar-events", 401);
+  await expectStatus("/api/calendar-events", 200, {}, token);
   const eventEditInput = {
     title: "Calendar event permission check",
     description: "",
@@ -305,103 +308,39 @@ try {
     start: calendarRangeStart.toISOString(),
     end: calendarRangeEnd.toISOString(),
   });
-  const rangedCalendar = await (await expectStatus("/api/meeting-drafts?" + rangeQuery.toString(), 200, {}, token)).json();
+  const rangedCalendar = await (await expectStatus("/api/calendar-events?" + rangeQuery.toString(), 200, {}, token)).json();
   assert.equal(rangedCalendar.calendarRange.start, calendarRangeStart.toISOString());
   assert.equal(rangedCalendar.calendarRange.end, calendarRangeEnd.toISOString());
-  await expectStatus("/api/meeting-drafts?start=not-a-date&end=also-not-a-date", 400, {}, token);
-  await expectStatus("/api/meeting-drafts?start=" + encodeURIComponent(calendarRangeStart.toISOString()) + "&end=" + encodeURIComponent(new Date(calendarRangeStart.getTime() + 40 * 24 * 60 * 60 * 1000).toISOString()), 400, {}, token);
+  await expectStatus("/api/calendar-events?start=not-a-date&end=also-not-a-date", 400, {}, token);
+  await expectStatus("/api/calendar-events?start=" + encodeURIComponent(calendarRangeStart.toISOString()) + "&end=" + encodeURIComponent(new Date(calendarRangeStart.getTime() + 40 * 24 * 60 * 60 * 1000).toISOString()), 400, {}, token);
   check(true, "calendar API validates selected date ranges and returns the exact requested range");
-  await expectStatus("/api/meeting-drafts", 400, {
-    method: "POST",
-    body: JSON.stringify({
-      title: "Invalid timezone meeting",
-      startAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
-      timezone: "Not/A_Real_Timezone",
-      attendees: [],
-    }),
-  }, token);
-  await expectStatus("/api/meeting-drafts", 400, {
-    method: "POST",
-    body: JSON.stringify({
-      title: "Backwards meeting",
-      startAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      timezone: "UTC",
-      attendees: [],
-    }),
-  }, token);
-  await expectStatus("/api/meeting-drafts", 400, {
-    method: "POST",
-    body: JSON.stringify({
-      title: "Bad attendee meeting",
-      startAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
-      timezone: "UTC",
-      attendees: ["not-an-email"],
-    }),
-  }, token);
-  check(true, "meeting proposal API rejects invalid timezone, reversed time range, and malformed attendee emails");
-
-  const meetingStartAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
-  const meetingEndAt = new Date(meetingStartAt.getTime() + 30 * 60 * 1000);
-  const meetingInput = {
-    title: "E2E meeting proposal",
-    description: "Proposal lifecycle verification",
+  const directEventInput = {
+    idempotencyKey: crypto.randomUUID(),
+    title: "Direct calendar event",
+    description: "Direct event API validation",
     location: "Video call",
-    startAt: meetingStartAt.toISOString(),
-    endAt: meetingEndAt.toISOString(),
+    startAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
     timezone: "UTC",
-    attendees: ["Guest@example.test", "guest@example.test"],
+    attendees: ["Guest@example.test"],
   };
-  const meetingCreateResponse = await expectStatus("/api/meeting-drafts", 201, {
+  await expectStatus("/api/calendar-events", 400, {
     method: "POST",
-    body: JSON.stringify(meetingInput),
+    body: JSON.stringify({ ...directEventInput, timezone: "Not/A_Real_Timezone" }),
   }, token);
-  let meetingDraft = (await meetingCreateResponse.json()).draft;
-  assert.equal(meetingDraft.title, meetingInput.title);
-  assert.deepEqual(meetingDraft.attendees, ["guest@example.test"]);
-  assert.equal(meetingDraft.status, "DRAFT");
-  const meetingList = await (await expectStatus("/api/meeting-drafts", 200, {}, token)).json();
-  assert.ok(meetingList.drafts.some((draft) => draft.id === meetingDraft.id));
-  check(true, "meeting proposals can be created, normalize duplicate attendee emails, and appear in the calendar list");
-
-  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 400, {
-    method: "PATCH",
-    body: JSON.stringify({ ...meetingInput, timezone: "Mars/Olympus_Mons" }),
-  }, token);
-  const updatedMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
-    method: "PATCH",
-    body: JSON.stringify({
-      ...meetingInput,
-      title: "E2E updated meeting proposal",
-      description: "Edited agenda",
-      attendees: ["guest@example.test"],
-    }),
-  }, token);
-  meetingDraft = (await updatedMeetingResponse.json()).draft;
-  assert.equal(meetingDraft.title, "E2E updated meeting proposal");
-  assert.equal(meetingDraft.description, "Edited agenda");
-  assert.equal(meetingDraft.status, "DRAFT");
-  check(true, "meeting proposal edits persist and invalid timezone edits are rejected");
-
-  const approveMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
+  await expectStatus("/api/calendar-events", 400, {
     method: "POST",
-    body: JSON.stringify({ action: "APPROVE" }),
+    body: JSON.stringify({ ...directEventInput, endAt: directEventInput.startAt }),
   }, token);
-  meetingDraft = (await approveMeetingResponse.json()).draft;
-  assert.equal(meetingDraft.status, "APPROVED");
-  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 403, {
+  await expectStatus("/api/calendar-events", 400, {
     method: "POST",
-    body: JSON.stringify({ action: "CREATE" }),
+    body: JSON.stringify({ ...directEventInput, attendees: ["not-an-email"] }),
   }, token);
-  const cancelledMeetingResponse = await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 200, {
+  await expectStatus("/api/calendar-events", 403, {
     method: "POST",
-    body: JSON.stringify({ action: "CANCEL" }),
+    body: JSON.stringify(directEventInput),
   }, token);
-  assert.equal((await cancelledMeetingResponse.json()).draft.status, "CANCELLED");
-  check(true, "meeting proposals require approval before creation, deny creation without Google event scope, and support cancellation");
-
+  check(true, "direct calendar event creation validates input and requires permission");
 
   const reauthUser = await prisma.user.create({
     data: {
@@ -433,7 +372,7 @@ try {
   await prisma.user.delete({ where: { id: reauthUser.id } });
   check(true, "Workspace settings clearly expose a revoked Google connection that needs reauthorization");
 
-  await prisma.task.create({
+  await prisma.scheduleItem.create({
     data: {
       userId: user.id,
       title: "Review production incident",
@@ -452,67 +391,6 @@ try {
   assert.ok(briefing.tasks[0].reasons.includes("Overdue"));
   assert.ok(briefing.tasks[0].reasons.includes("Business-critical context"));
   check(true, "daily briefing ranks overdue business-critical tasks with explainable reasons");
-
-  const scheduleDate = new Date().toISOString().slice(0, 10);
-  const generatedScheduleResponse = await expectStatus("/api/schedule-plans", 200, {
-    method: "POST",
-    body: JSON.stringify({ localDate: scheduleDate, timezone: "UTC" }),
-  }, token);
-  let generatedSchedule = (await generatedScheduleResponse.json()).plan;
-  assert.equal(generatedSchedule.localDate, scheduleDate);
-  assert.equal(generatedSchedule.timezone, "UTC");
-  assert.ok(generatedSchedule.blocks.length >= 1);
-  assert.ok(generatedSchedule.blocks.every((block) => new Date(block.endAt) > new Date(block.startAt)));
-  assert.ok(generatedSchedule.blocks.every((block) => new Date(block.startAt).getUTCHours() >= 9 && new Date(block.endAt).getUTCHours() <= 17));
-  const loadedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
-  assert.equal(loadedSchedule.plan.id, generatedSchedule.id);
-  check(true, "daily schedule generation prioritizes open tasks and persists a timezone-aware plan");
-
-  const invalidScheduleBlock = {
-    ...generatedSchedule.blocks[0],
-    startAt: scheduleDate + "T08:00:00.000Z",
-    endAt: scheduleDate + "T09:00:00.000Z",
-  };
-  await expectStatus("/api/schedule-plans", 400, {
-    method: "PUT",
-    body: JSON.stringify({
-      localDate: scheduleDate,
-      timezone: "UTC",
-      status: "DRAFT",
-      blocks: [{ taskId: invalidScheduleBlock.taskId, startAt: invalidScheduleBlock.startAt, endAt: invalidScheduleBlock.endAt }],
-      unscheduled: [],
-    }),
-  }, token);
-  const savedScheduleResponse = await expectStatus("/api/schedule-plans", 200, {
-    method: "PUT",
-    body: JSON.stringify({
-      localDate: scheduleDate,
-      timezone: "UTC",
-      status: "APPROVED",
-      blocks: generatedSchedule.blocks.map((block) => ({ taskId: block.taskId, startAt: block.startAt, endAt: block.endAt })),
-      unscheduled: generatedSchedule.unscheduled.map((item) => ({ taskId: item.taskId, reason: item.reason })),
-    }),
-  }, token);
-  generatedSchedule = (await savedScheduleResponse.json()).plan;
-  assert.equal(generatedSchedule.status, "APPROVED");
-  const reloadedApprovedSchedule = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
-  assert.equal(reloadedApprovedSchedule.plan.status, "APPROVED");
-  assert.deepEqual(reloadedApprovedSchedule.plan.calendarEvents, []);
-  await prisma.dailySchedulePlan.update({ where: { id: generatedSchedule.id }, data: { status: "CREATE_UNCERTAIN" } });
-  const reconciledScheduleResponse = await expectStatus("/api/schedule-plans/" + generatedSchedule.id, 200, {
-    method: "POST",
-    body: JSON.stringify({ action: "CONFIRM_NONE_CREATED" }),
-  }, token);
-  const reconciledSchedule = (await reconciledScheduleResponse.json()).plan;
-  assert.equal(reconciledSchedule.status, "APPROVED");
-  assert.deepEqual(reconciledSchedule.calendarEvents, []);
-  await expectStatus("/api/schedule-plans/" + generatedSchedule.id, 403, {
-    method: "POST",
-    body: JSON.stringify({ action: "CREATE_EVENTS" }),
-  }, token);
-  const scheduleAfterDeniedCalendarWrite = await (await expectStatus("/api/schedule-plans?date=" + scheduleDate, 200, {}, token)).json();
-  assert.equal(scheduleAfterDeniedCalendarWrite.plan.status, "APPROVED");
-  check(true, "daily schedule approval persists, and calendar writes require Google event permission without changing plan state");
 
   const preferencesResponse = await expectStatus("/api/preferences", 200, {}, token);
   const preferences = (await preferencesResponse.json()).preferences;
@@ -566,7 +444,7 @@ try {
     body: JSON.stringify({ decision: "APPROVE" }),
   }, token);
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, title: "Paused automation test task" } }),
     0,
   );
   const pausedEmailDraft = await prisma.emailDraft.create({
@@ -582,19 +460,13 @@ try {
     method: "POST",
     body: JSON.stringify({ action: "SEND" }),
   }, token);
-  const pausedMeetingDraft = await prisma.meetingDraft.create({
-    data: {
-      userId: user.id,
-      title: "Pause safety test",
-      description: "This event must not be created while automation is paused.",
-      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      endAt: new Date(Date.now() + 25 * 60 * 60 * 1000),
-      status: "APPROVED",
-    },
-  });
-  await expectStatus("/api/meeting-drafts/" + pausedMeetingDraft.id, 409, {
+  await expectStatus("/api/calendar-events", 409, {
     method: "POST",
-    body: JSON.stringify({ action: "CREATE" }),
+    body: JSON.stringify({
+      ...directEventInput,
+      idempotencyKey: crypto.randomUUID(),
+      title: "Pause safety test",
+    }),
   }, token);
   await expectStatus(
     "/api/preferences",
@@ -611,7 +483,7 @@ try {
   }, token);
   assert.equal((await resumedApproval.json()).action.status, "SUCCEEDED");
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, title: "Paused automation test task" } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, title: "Paused automation test task" } }),
     1,
   );
   check(true, "global automation pause blocks task approval, email sends, and calendar creation until resumed");
@@ -645,7 +517,7 @@ try {
   }, token);
   assert.equal((await repeatedCommitmentResponse.json()).reused, true);
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: commitmentInput.sourceRef } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, source: "EMAIL", sourceRef: commitmentInput.sourceRef } }),
     0,
   );
   const approvedCommitmentResponse = await expectStatus("/api/actions/" + commitmentProposal.action.id, 200, {
@@ -653,7 +525,7 @@ try {
     body: JSON.stringify({ decision: "APPROVE" }),
   }, token);
   assert.equal((await approvedCommitmentResponse.json()).action.status, "SUCCEEDED");
-  const linkedCommitmentTask = await prisma.task.findUnique({
+  const linkedCommitmentTask = await prisma.scheduleItem.findUnique({
     where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: commitmentInput.sourceRef } },
   });
   assert.equal(linkedCommitmentTask.title, commitmentInput.title);
@@ -694,7 +566,7 @@ try {
   );
   assert.ok(concurrentApprovals.every((response) => [200, 409].includes(response.status)));
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, title: "Concurrent idempotency regression task" } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, title: "Concurrent idempotency regression task" } }),
     1,
   );
   assert.equal(
@@ -726,7 +598,7 @@ try {
   assert.ok(raceResponses.every((response) => [200, 409].includes(response.status)));
   const raceFinal = await prisma.actionRecord.findUnique({ where: { id: raceProposal.id } });
   assert.ok(["SUCCEEDED", "CANCELLED"].includes(raceFinal.status));
-  const raceTaskCount = await prisma.task.count({
+  const raceTaskCount = await prisma.scheduleItem.count({
     where: { userId: user.id, title: "Approval rejection race regression" },
   });
   assert.equal(raceTaskCount, raceFinal.status === "SUCCEEDED" ? 1 : 0);
@@ -760,7 +632,7 @@ try {
     }),
   }, token);
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, title: "Blocked commitment must not become a task" } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, title: "Blocked commitment must not become a task" } }),
     0,
   );
 
@@ -787,7 +659,7 @@ try {
   const automaticProposal = await automaticProposalResponse.json();
   assert.equal(automaticProposal.action.status, "SUCCEEDED");
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
     1,
   );
   const automaticRetry = await expectStatus("/api/actions", 200, {
@@ -806,7 +678,7 @@ try {
   }, token);
   assert.equal((await automaticRetry.json()).reused, true);
   assert.equal(
-    await prisma.task.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
+    await prisma.scheduleItem.count({ where: { userId: user.id, source: "EMAIL", sourceRef: automaticSourceRef } }),
     1,
   );
   await expectStatus("/api/preferences", 200, {
@@ -951,10 +823,45 @@ try {
   assert.equal(inProgress.status, "IN_PROGRESS");
   assert.equal(inProgress.priority, "URGENT");
   assert.equal(new Date(inProgress.dueAt).toISOString(), dueAt);
+  assert.equal(new Date(inProgress.scheduledStartAt).toISOString(), dueAt);
   assert.equal(inProgress.completedAt, null);
   const inProgressList = (await (await expectStatus("/api/tasks", 200, {}, token)).json()).tasks;
   assert.ok(inProgressList.some((task) => task.id === created.id && task.status === "IN_PROGRESS"));
-  check(true, "task title, notes, due date, priority, and in-progress status persist in the task list");
+  const calendarBackedItemStart = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  const externalEventId = "e2e-calendar-" + Date.now();
+  const calendarBackedItem = await prisma.scheduleItem.create({
+    data: {
+      userId: user.id,
+      title: "E2E Google Calendar-backed item",
+      source: "GOOGLE_CALENDAR",
+      sourceRef: externalEventId,
+      calendarEventId: externalEventId,
+      scheduledStartAt: calendarBackedItemStart,
+      scheduledEndAt: new Date(calendarBackedItemStart.getTime() + 30 * 60 * 1000),
+      dueAt: calendarBackedItemStart,
+      timezone: "UTC",
+      priority: "MEDIUM",
+    },
+  });
+  const scheduleFeed = await (await expectStatus(
+    "/api/calendar-events?" + new URLSearchParams({
+      start: new Date().toISOString(),
+      end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    }),
+    200,
+    {},
+    token,
+  )).json();
+  const sameScheduleItem = scheduleFeed.items.find((item) => item.id === created.id);
+  assert.ok(sameScheduleItem, "the calendar feed must expose the same persisted schedule item");
+  assert.equal(sameScheduleItem.title, "E2E updated task title");
+  assert.equal(new Date(sameScheduleItem.startAt).toISOString(), dueAt);
+  assert.equal(sameScheduleItem.calendarEventId, null);
+  const calendarBackedScheduleItem = scheduleFeed.items.find((item) => item.id === calendarBackedItem.id);
+  assert.ok(calendarBackedScheduleItem);
+  assert.equal(calendarBackedScheduleItem.calendarEventId, calendarBackedItem.calendarEventId);
+  assert.equal(calendarBackedScheduleItem.title, "E2E Google Calendar-backed item");
+  check(true, "local and calendar-backed records share one persisted schedule-item feed");
 
   const patchResponse = await expectStatus(
     "/api/tasks/" + created.id,
@@ -1076,14 +983,6 @@ try {
     "CONFIRM",
   );
   check(true, "cross-account mutation attempts leave the owner’s action, draft, and automation rule unchanged");
-  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 409, {
-    method: "PATCH",
-    body: JSON.stringify(meetingInput),
-  }, otherToken);
-  await expectStatus("/api/meeting-drafts/" + meetingDraft.id, 404, {
-    method: "POST",
-    body: JSON.stringify({ action: "CANCEL" }),
-  }, otherToken);
   await expectStatus(
     "/api/notifications",
     404,
@@ -1117,7 +1016,7 @@ try {
     body: JSON.stringify({ status: "DISMISSED" }),
   }, otherToken);
   check(true, "follow-up suggestions persist, can be dismissed and restored, and enforce account ownership");
-  check(true, "task, conversation, action, email draft, automation rule, meeting, follow-up, and notification ownership prevents cross-account access");
+  check(true, "task, conversation, action, email draft, automation rule, follow-up, and notification ownership prevents cross-account access");
   await prisma.user.delete({ where: { id: otherUser.id } });
 
   const disconnectResponse = await expectStatus(
