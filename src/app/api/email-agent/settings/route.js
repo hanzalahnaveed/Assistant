@@ -60,7 +60,7 @@ export async function PATCH(request) {
     settings.autoReplyEnabled = false;
     settings.autoReplyEnabledAt = null;
   }
-  if (parsed.data.autoReplyEnabled === true && !saved.autoReplyEnabled) settings.autoReplyEnabledAt = now;
+  if (settings.enabled && parsed.data.autoReplyEnabled === true && !saved.autoReplyEnabled) settings.autoReplyEnabledAt = now;
   if (parsed.data.autoReplyEnabled === false) settings.autoReplyEnabledAt = null;
   if (settings.autoReplyEnabled && !settings.enabled) {
     return NextResponse.json({
