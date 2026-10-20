@@ -52,6 +52,22 @@ function format(value, timezone) {
         minute: "2-digit",
       });
 }
+async function readApiResponse(response) {
+  const raw = await response.text();
+  if (!raw.trim()) {
+    throw new Error(`The server returned an empty response (HTTP ${response.status}). Check the local server terminal for an API error, then retry.`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(`The server returned a non-JSON response (HTTP ${response.status}). The local API may have crashed or returned an HTML error page.`);
+    }
+    throw new Error(`The server returned invalid JSON (HTTP ${response.status}). Check the local server terminal for the underlying API error.`);
+  }
+}
+
 function dateKey(date) {
   return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
 }
@@ -204,7 +220,7 @@ export default function CalendarClient() {
       const r = await fetch("/api/meeting-drafts?" + query.toString(), {
         cache: "no-store",
       });
-      const d = await r.json();
+      const d = await readApiResponse(r);
       if (!r.ok) throw Error(d.error || "Could not load meetings.");
       setData(d);
     } catch (e) {
@@ -220,7 +236,7 @@ export default function CalendarClient() {
     let cancelled = false;
     fetch("/api/preferences", { cache: "no-store" })
       .then(async (response) => {
-        const body = await response.json();
+        const body = await readApiResponse(response);
         if (!response.ok) return;
         const timezone = body.preferences?.timezone;
         if (timezone && !cancelled) {
@@ -306,7 +322,7 @@ export default function CalendarClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const d = await r.json();
+      const d = await readApiResponse(r);
       if (!r.ok) throw Error(d.error || "Could not save meeting.");
       setNotice(updatingCalendarEvent ? "Google Calendar event updated. Refresh the calendar if the event no longer matches this view." : "Meeting proposal saved. Review it before approving.");
       setEditingEventId("");
@@ -352,7 +368,7 @@ export default function CalendarClient() {
           action,
         }),
       });
-      const d = await r.json();
+      const d = await readApiResponse(r);
       if (!r.ok) throw Error(d.error || "Meeting action failed.");
       setNotice(
         action === "CREATE"
@@ -394,7 +410,7 @@ export default function CalendarClient() {
     setNotice("");
     try {
       const response = await fetch("/api/calendar-events/" + encodeURIComponent(event.id), { method: "DELETE" });
-      const body = await response.json().catch(() => ({}));
+      const body = await readApiResponse(response).catch(() => ({}));
       if (!response.ok) throw Error(body.error || "Could not cancel the calendar event.");
       if (editingEventId === event.id) fresh();
       setNotice("Calendar event cancelled.");
@@ -424,7 +440,7 @@ export default function CalendarClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const body = await response.json();
+      const body = await readApiResponse(response);
       if (body.plan) setSchedule(body.plan);
       if (!response.ok) throw Error(body.error || "Could not update calendar schedule status.");
       setSchedule(body.plan);
@@ -454,7 +470,7 @@ export default function CalendarClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "CREATE_EVENTS" }),
       });
-      const body = await response.json();
+      const body = await readApiResponse(response);
       if (body.plan) setSchedule(body.plan);
       if (!response.ok) throw Error(body.error || "Could not add schedule blocks to Google Calendar.");
       setSchedule(body.plan);
@@ -473,7 +489,7 @@ export default function CalendarClient() {
     setScheduleError("");
     try {
       const response = await fetch("/api/schedule-plans?date=" + encodeURIComponent(scheduleDate), { cache: "no-store" });
-      const body = await response.json();
+      const body = await readApiResponse(response);
       if (!response.ok) throw Error(body.error || "Could not load your daily schedule.");
       setSchedule(body.plan);
       setScheduleWarnings(body.plan?.warnings || []);
@@ -498,7 +514,7 @@ export default function CalendarClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ localDate: scheduleDate, timezone: defaultTimezone }),
       });
-      const body = await response.json();
+      const body = await readApiResponse(response);
       if (!response.ok) throw Error(body.error || "Could not generate a schedule.");
       setSchedule(body.plan);
       setScheduleWarnings(body.warnings || []);
@@ -549,7 +565,7 @@ export default function CalendarClient() {
           unscheduled: (schedule.unscheduled || []).map((item) => ({ taskId: item.taskId, reason: item.reason || "Not scheduled." })),
         }),
       });
-      const body = await response.json();
+      const body = await readApiResponse(response);
       if (!response.ok) {
         const conflictText = body.conflicts?.map((conflict) => conflict.task + " conflicts with " + conflict.event).join("; ");
         throw Error(conflictText ? body.error + " " + conflictText : body.error || "Could not save your schedule.");
