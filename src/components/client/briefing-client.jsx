@@ -232,8 +232,7 @@ export default function BriefingClient() {
   const metrics = data?.metrics;
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] text-[#18211f]">
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
+    <main className="min-h-screen bg-[#f8faf7] text-[#18211f] p-4">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="mb-2 text-xs font-semibold uppercase tracking-[.14em] text-[#176b52]">
@@ -520,7 +519,6 @@ export default function BriefingClient() {
             </section>
           </div>
         )}
-      </div>
     </main>
   );
 }

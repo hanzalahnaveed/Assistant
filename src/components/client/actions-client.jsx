@@ -228,7 +228,7 @@ export default function ActionsClient() {
   const pending = actions.filter((action) => action.status === "PENDING");
   const history = actions.filter((action) => action.status !== "PENDING");
   return (
-    <main className="flex flex-col p-10 gap-5 bg-[#F8F9FA] text-[#212529]">
+    <main className="flex flex-col p-4 gap-5 bg-[#F8F9FA] text-[#212529]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">

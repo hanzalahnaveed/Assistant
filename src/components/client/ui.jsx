@@ -203,8 +203,7 @@ export default function IntegrationsClient() {
     }
   }
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-[#212529]">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-[26px] min-[761px]:pt-[clamp(26px,4vw,48px)] pb-14">
+    <main className="min-h-screen bg-[#F8F9FA] text-[#212529] p-4">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-[clamp(1.8rem,3vw,2.5rem)] text-[#233044] font-semibold tracking-[-0.045em] leading-[1.13]">
@@ -636,7 +635,6 @@ export default function IntegrationsClient() {
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-[#87918b]">
           <span>OAuth credentials stay server-side and stored tokens are encrypted at rest.</span>
         </div>
-      </div>
     </main>
   );
 }

@@ -82,7 +82,7 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f]">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f] m-4">
       <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-white/60 bg-white/95 p-6 shadow-xl sm:p-9">
         <header>
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#4b749f]">Personal AI Assistant</p>

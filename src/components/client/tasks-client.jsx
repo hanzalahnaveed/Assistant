@@ -187,7 +187,7 @@ export default function TasksClient() {
   const selectedOpenTasks = selectableVisibleTasks.filter((task) => selectedTaskIds.includes(task.id));
   const allVisibleSelected = selectableVisibleTasks.length > 0 && selectableVisibleTasks.every((task) => selectedTaskIds.includes(task.id));
   return (
-    <main className="flex flex-col p-10 bg-[#F8F9FA] text-[#212529]">
+    <main className="flex flex-col p-4 bg-[#F8F9FA] text-[#212529]">
         <div className="mb-7">
           <h1 className="flex items-center gap-2 text-[#233044] text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.045em] leading-[1.13]">
             <Check size={40} /> 
