@@ -16,18 +16,31 @@ if (!secret || secret.length < 32) {
 
 let stopping = false;
 let activeRequest = null;
+let wakeSleep = null;
+
+function stop() {
+  stopping = true;
+  activeRequest?.abort();
+  wakeSleep?.();
+}
 
 process.once("SIGINT", () => {
-  stopping = true;
-  activeRequest?.abort();
+  stop();
   console.log("\nStopping local email-agent worker…");
 });
-process.once("SIGTERM", () => {
-  stopping = true;
-  activeRequest?.abort();
-});
+process.once("SIGTERM", stop);
 
-const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const sleep = (milliseconds) => new Promise((resolve) => {
+  const timer = setTimeout(() => {
+    wakeSleep = null;
+    resolve();
+  }, milliseconds);
+  wakeSleep = () => {
+    clearTimeout(timer);
+    wakeSleep = null;
+    resolve();
+  };
+});
 
 console.log("Local email-agent worker started for " + baseUrl);
 console.log("Polling every " + Math.round(intervalMs / 1000) + " seconds. Press Ctrl+C to stop.");
