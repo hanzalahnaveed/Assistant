@@ -88,6 +88,28 @@ function formatEventTime(event, fallbackTimezone) {
   const timezone = event.timezone || fallbackTimezone;
   return format(event.startAt, timezone) + " – " + format(event.endAt, timezone);
 }
+function eventOverlapsDate(event, date, timezone) {
+  const dayStartIso = localDateTimeToIso(date + "T00:00", timezone);
+  const dayEndIso = localDateTimeToIso(shiftDateKey(date, 1) + "T00:00", timezone);
+  if (!dayStartIso || !dayEndIso) return false;
+  let start;
+  let end;
+  if (event.allDay || /^\d{4}-\d{2}-\d{2}$/.test(event.startAt || "")) {
+    const startIso = localDateTimeToIso(event.startAt + "T00:00", timezone);
+    const endIso = localDateTimeToIso(event.endAt + "T00:00", timezone);
+    if (!startIso || !endIso) return false;
+    start = new Date(startIso).getTime();
+    end = new Date(endIso).getTime();
+  } else {
+    start = new Date(event.startAt).getTime();
+    end = new Date(event.endAt).getTime();
+  }
+  return Number.isFinite(start) && Number.isFinite(end) && start < new Date(dayEndIso).getTime() && end > new Date(dayStartIso).getTime();
+}
+function formatDateLabel(date, timezone) {
+  const instant = localDateTimeToIso(date + "T12:00", timezone);
+  return new Intl.DateTimeFormat(undefined, { timeZone: timezone, weekday: "short", month: "short", day: "numeric" }).format(new Date(instant || date + "T12:00:00Z"));
+}
 function fromForm(f) {
   return {
     title: f.title,
@@ -197,6 +219,11 @@ export default function CalendarClient() {
     !eventNeedle || [event.title, event.description, event.location, ...(event.attendees || [])]
       .some((value) => (value || "").toLowerCase().includes(eventNeedle))
   );
+  const rangeDays = Math.max(1, Math.round((Date.UTC(...currentRange.endDate.split("-").map(Number).map((value, index) => index === 1 ? value - 1 : value)) - Date.UTC(...currentRange.startDate.split("-").map(Number).map((value, index) => index === 1 ? value - 1 : value))) / 86400000));
+  const calendarDates = Array.from({ length: rangeDays }, (_, index) => shiftDateKey(currentRange.startDate, index));
+  function eventsForDate(date) {
+    return visibleEvents.filter((event) => eventOverlapsDate(event, date, defaultTimezone));
+  }
   const visibleDrafts = (data?.drafts || []).filter((draft) => {
     const matchesSearch = !needle || [draft.title, draft.description, draft.location, ...(draft.attendees || [])]
       .some((value) => (value || "").toLowerCase().includes(needle));
@@ -490,6 +517,39 @@ export default function CalendarClient() {
     }
   }
 
+  function renderCalendarEvent(e) {
+    return (
+      <article key={e.id} className="min-w-0 rounded-xl bg-[#f7f9f6] p-3.5">
+        <div className="break-words text-sm font-semibold">{e.title}</div>
+        <div className="mt-1 flex items-start gap-2 text-xs text-[#6B7280]">
+          <Clock3 size={13} className="mt-0.5 shrink-0" />
+          <span>{formatEventTime(e, defaultTimezone)}</span>
+        </div>
+        {e.location && <div className="mt-1 break-words text-xs text-[#87918b]">{e.location}</div>}
+        {e.attendees.length > 0 && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-[#6B7280]">
+            <Users size={13} /> {e.attendees.length} attendees
+          </div>
+        )}
+        {e.link && (
+          <a className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#FA8500]" href={e.link} target="_blank" rel="noreferrer">
+            Open event <ExternalLink size={12} />
+          </a>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {!e.allDay && (
+            <Button onClick={() => void editCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#dfe6dd] px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+              <Pencil size={12} /> Edit
+            </Button>
+          )}
+          <Button onClick={() => void cancelCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#e7d8d2] px-3 py-1.5 text-xs font-semibold text-[#994b36] disabled:opacity-50">
+            <Trash2 size={12} /> Cancel event
+          </Button>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#212529] pl-[58px] min-[421px]:pl-[72px] min-[761px]:pl-[252px]">
       <WorkspaceHeader />
@@ -709,46 +769,23 @@ export default function CalendarClient() {
             {loading ? (
               <Loading />
             ) : visibleEvents.length ? (
-              <div className="space-y-2">
-                {visibleEvents.map((e) => (
-                  <article key={e.id} className="rounded-xl bg-[#f7f9f6] p-3.5 min-w-0">
-                    <div className="text-sm font-semibold">{e.title}</div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
-                      <Clock3 size={13} />
-                      {formatEventTime(e, defaultTimezone)}
-                    </div>
-                    {e.location && <div className="mt-1 text-xs text-[#87918b]">{e.location}</div>}
-                    {e.attendees.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-[#6B7280]">
-                        <Users size={13} />
-                        {e.attendees.length} attendees
-                      </div>
-                    )}
-                    {e.link && (
-                      <a
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#FA8500]"
-                        href={e.link}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Open event <ExternalLink size={12} />
-                      </a>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {!e.allDay && (
-                        <Button onClick={() => void editCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#dfe6dd] px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
-                          <Pencil size={12} /> Edit
-                        </Button>
-                      )}
-                      <Button onClick={() => void cancelCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#e7d8d2] px-3 py-1.5 text-xs font-semibold text-[#994b36] disabled:opacity-50">
-                        <Trash2 size={12} /> Cancel event
-                      </Button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              calendarView === "day" ? (
+                <div className="space-y-2">{eventsForDate(calendarDate).map(renderCalendarEvent)}</div>
+              ) : (
+                <div className={calendarView === "week" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"}>
+                  {calendarDates.map((date) => {
+                    const dayEvents = eventsForDate(date);
+                    return (
+                      <section key={date} className="min-w-0 rounded-xl border border-[#e5ebe3] bg-white p-2">
+                        <h3 className="mb-2 text-xs font-semibold text-[#46544b]">{formatDateLabel(date, defaultTimezone)}</h3>
+                        {dayEvents.length ? <div className="space-y-2">{dayEvents.map(renderCalendarEvent)}</div> : <p className="py-3 text-center text-[11px] text-[#a0a8a0]">No events</p>}
+                      </section>
+                    );
+                  })}
+                </div>
+              )
             ) : (
-              <Empty text={eventQuery ? "No calendar events match your search." : "No upcoming events found. Create a proposal for your next meeting."} />
+              <Empty text={eventQuery ? "No calendar events match your search." : "No events in this date range. Create a proposal for your next meeting."} />
             )}
           </section>
           <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
