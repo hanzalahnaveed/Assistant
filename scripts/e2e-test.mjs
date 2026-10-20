@@ -172,8 +172,11 @@ try {
   await expectStatus("/api/workspace/briefing", 401);
   await expectStatus("/api/preferences", 401);
   await expectStatus("/api/notifications", 401);
+  await expectStatus("/api/email-agent/settings", 401);
+  await expectStatus("/api/email-agent/inbox", 401);
+  await expectStatus("/api/cron/email-agent", 401, { method: "POST" });
   await expectStatus("/api/integrations/google/verify", 401, { method: "POST" });
-  check(true, "protected APIs reject unauthenticated requests");
+  check(true, "protected APIs reject unauthenticated requests, including email-agent controls");
 
   const credentialsEmail = "credentials-" + Date.now() + "@example.test";
   const credentialsPassword = "test-password-long-enough-42";
@@ -414,6 +417,64 @@ try {
   assert.equal(updatedPreferences.dailyBriefingEnabled, false);
   assert.equal(updatedPreferences.briefingHour, 9);
   check(true, "briefing preferences persist across API requests");
+
+  const emailAgentSettingsInitial = await (await expectStatus("/api/email-agent/settings", 200, {}, token)).json();
+  assert.equal(emailAgentSettingsInitial.settings.enabled, false);
+  assert.equal(emailAgentSettingsInitial.settings.autoReplyEnabled, false);
+  const unsafeEmailAutoReply = await expectStatus("/api/email-agent/settings", 400, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled: false, autoReplyEnabled: true }),
+  }, token);
+  assert.match((await unsafeEmailAutoReply.json()).error, /Enable the email agent/);
+  const emailAgentSettingsUpdated = await expectStatus("/api/email-agent/settings", 200, {
+    method: "PATCH",
+    body: JSON.stringify({
+      enabled: true,
+      autoReplyEnabled: false,
+      tone: "warm",
+      style: "concise",
+      signature: "Best regards,\\nE2E User",
+    }),
+  }, token);
+  const savedEmailAgentSettings = (await emailAgentSettingsUpdated.json()).settings;
+  assert.equal(savedEmailAgentSettings.enabled, true);
+  assert.equal(savedEmailAgentSettings.autoReplyEnabled, false);
+  assert.equal(savedEmailAgentSettings.tone, "warm");
+  assert.equal(savedEmailAgentSettings.style, "concise");
+  assert.equal(savedEmailAgentSettings.signature, "Best regards,\\nE2E User");
+  const persistedEmailAgentSettings = (await (await expectStatus("/api/email-agent/settings", 200, {}, token)).json()).settings;
+  assert.equal(persistedEmailAgentSettings.tone, "warm");
+  assert.equal(persistedEmailAgentSettings.enabled, true);
+  await expectStatus("/api/email-agent/settings", 400, {
+    method: "PATCH",
+    body: JSON.stringify({ tone: "ignore-all-safety-rules" }),
+  }, token);
+  const inboundTestMessage = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: "e2e-inbound-" + Date.now(),
+      gmailThreadId: "e2e-thread-" + Date.now(),
+      fromEmail: "external@example.test",
+      subject: "Sensitive contract question",
+      status: "AWAITING_APPROVAL",
+      category: "SENSITIVE",
+      sensitive: true,
+      summary: "Sender asks about a contract change.",
+      classification: { category: "SENSITIVE", sensitive: true, reason: "Contract-related request" },
+    },
+  });
+  const inboundQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json()).messages;
+  assert.ok(inboundQueue.some((message) => message.id === inboundTestMessage.id && message.sensitive));
+  const emptyOtherQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, makeSession(await prisma.user.create({
+    data: { email: "e2e-email-agent-other-" + Date.now() + "@example.test", name: "Other Email Agent User" },
+  })))).json()).messages;
+  assert.equal(emptyOtherQueue.some((message) => message.id === inboundTestMessage.id), false);
+  await prisma.user.deleteMany({ where: { email: { startsWith: "e2e-email-agent-other-" } } });
+  await expectStatus("/api/email-agent/settings", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled: false, autoReplyEnabled: false }),
+  }, token);
+  check(true, "email-agent settings persist per user, auto-send cannot be enabled while the agent is off, and inbound review data is tenant-isolated");
 
   await expectStatus(
     "/api/preferences",
