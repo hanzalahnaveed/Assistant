@@ -4,7 +4,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
 import { createTaskActionProposal } from "@/lib/actions/service";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
-import { extractMessageText, parseSender } from "@/lib/email-agent/format.mjs";
+import { extractMessageText, isAutomatedSender, parseSender } from "@/lib/email-agent/format.mjs";
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -300,7 +300,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
     listUrl.searchParams.set("maxResults", "100");
     const enabledAt = Date.parse(settings.enabledAt || "");
     const after = Number.isFinite(enabledAt) ? Math.floor(enabledAt / 1000) : Math.floor(Date.now() / 1000);
-    listUrl.searchParams.set("q", "in:inbox after:" + after + " -from:me -category:promotions -category:social");
+    listUrl.searchParams.set("q", "in:inbox newer_than:7d after:" + after + " -from:me -category:promotions -category:social");
     if (pageToken) listUrl.searchParams.set("pageToken", pageToken);
     const listed = await googleApiGet(token.accessToken, listUrl.toString());
     candidates.push(...(listed.messages ?? []));
@@ -319,7 +319,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
         select: { id: true, status: true, updatedAt: true },
       });
       if (existing) {
-        if (["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "REPLIED", "SEND_UNCERTAIN"].includes(existing.status)) {
+        if (["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "REPLIED", "SEND_UNCERTAIN", "SKIPPED"].includes(existing.status)) {
           counts.skipped++;
           continue;
         }
@@ -347,9 +347,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
       const fromHeader = header(message, "From");
       const sender = parseSender(fromHeader);
       const subject = header(message, "Subject").trim().slice(0, 250) || "(no subject)";
-      if (!sender || sender === user.email.toLowerCase() || (message.labelIds ?? []).includes("SENT")) {
+      if (!sender || sender === user.email.toLowerCase() || isAutomatedSender(message, sender) || (message.labelIds ?? []).includes("SENT")) {
         counts.skipped++;
-        if (record) await prisma.inboundEmail.update({ where: { id: record.id }, data: { status: "FAILED", lastError: "Sender was not eligible for automated reply." } }).catch(() => undefined);
+        if (record) await prisma.inboundEmail.update({ where: { id: record.id }, data: { status: "SKIPPED", lastError: "Automated, bulk, or non-replyable sender was skipped." } }).catch(() => undefined);
         continue;
       }
       if (!record) {
