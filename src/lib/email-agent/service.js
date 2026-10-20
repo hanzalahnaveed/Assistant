@@ -286,16 +286,28 @@ async function sendAutomatedReply({ userId, integration, draft, sourceMessageId 
     error.httpStatus = response.status;
     throw error;
   }
-  const sent = await prisma.emailDraft.updateMany({
-    where: { id: draft.id, userId, status: "DRAFT" },
-    data: {
-      status: "SENT",
-      sentAt: new Date(),
-      providerMessageId: result.id ?? null,
-      lastError: null,
-    },
-  });
-  if (!sent.count) throw new Error("Reply status changed before send confirmation was recorded.");
+  let sent;
+  try {
+    sent = await prisma.emailDraft.updateMany({
+      where: { id: draft.id, userId, status: "DRAFT" },
+      data: {
+        status: "SENT",
+        sentAt: new Date(),
+        providerMessageId: result.id ?? null,
+        lastError: null,
+      },
+    });
+  } catch (cause) {
+    const error = new Error("Gmail accepted the reply but the send status could not be saved. Check Gmail Sent before retrying.");
+    error.uncertain = true;
+    error.cause = cause;
+    throw error;
+  }
+  if (!sent.count) {
+    const error = new Error("Gmail accepted the reply but the draft state changed. Check Gmail Sent before retrying.");
+    error.uncertain = true;
+    throw error;
+  }
   await prisma.auditEvent.create({
     data: {
       userId,
