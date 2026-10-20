@@ -42,6 +42,12 @@ export function extractMessageText(message) {
     .trim();
 }
 
+export function parseMessageId(value) {
+  if (typeof value !== "string" || /[\r\n]/.test(value)) return null;
+  const candidate = value.trim();
+  return /^<[^<>\s]+>$/.test(candidate) ? candidate : null;
+}
+
 export function parseSender(value) {
   if (typeof value !== "string") return null;
   const match = value.match(/<\s*([^<>\s]+@[^<>\s]+)\s*>/);
