@@ -445,6 +445,14 @@ try {
   const persistedEmailAgentSettings = (await (await expectStatus("/api/email-agent/settings", 200, {}, token)).json()).settings;
   assert.equal(persistedEmailAgentSettings.tone, "warm");
   assert.equal(persistedEmailAgentSettings.enabled, true);
+  assert.ok(Number.isFinite(Date.parse(persistedEmailAgentSettings.enabledAt)));
+  const emailAutoReplyOptIn = await expectStatus("/api/email-agent/settings", 200, {
+    method: "PATCH",
+    body: JSON.stringify({ autoReplyEnabled: true }),
+  }, token);
+  const autoReplySettings = (await emailAutoReplyOptIn.json()).settings;
+  assert.equal(autoReplySettings.autoReplyEnabled, true);
+  assert.ok(Number.isFinite(Date.parse(autoReplySettings.autoReplyEnabledAt)));
   await expectStatus("/api/email-agent/settings", 400, {
     method: "PATCH",
     body: JSON.stringify({ tone: "ignore-all-safety-rules" }),
