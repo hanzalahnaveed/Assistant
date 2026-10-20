@@ -179,7 +179,7 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
   return parsed.data;
 }
 
-async function getAvailableSlots(userId, timezone, now = new Date()) {
+async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = new Date()) {
   const integration = await prisma.integration.findFirst({
     where: { userId, provider: "GOOGLE", status: "CONNECTED" },
     orderBy: { updatedAt: "desc" },
@@ -205,9 +205,6 @@ async function getAvailableSlots(userId, timezone, now = new Date()) {
     })
     .filter((event) => Number.isFinite(event.start) && Number.isFinite(event.end) && event.end > event.start);
   const slots = [];
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
-  });
   const partsFor = (date) => Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
@@ -215,7 +212,10 @@ async function getAvailableSlots(userId, timezone, now = new Date()) {
   );
   for (let day = 0; day < 7 && slots.length < 5; day++) {
     const date = new Date(now.getTime() + day * 24 * 60 * 60 * 1000);
-    const localDate = formatter.format(date);
+    const dateParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(date).map((part) => [part.type, part.value]));
+    const localDate = dateParts.year + "-" + dateParts.month + "-" + dateParts.day;
     const weekday = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(date);
     if (weekday === "Sat" || weekday === "Sun") continue;
     for (const hour of [9, 10, 11, 13, 14, 15, 16]) {
@@ -225,7 +225,7 @@ async function getAvailableSlots(userId, timezone, now = new Date()) {
         const startIso = localDateTimeToIso(localDate + "T" + hh + ":" + mm, timezone);
         if (!startIso) continue;
         const start = new Date(startIso).getTime();
-        const finish = start + 30 * 60 * 1000;
+        const finish = start + durationMinutes * 60 * 1000;
         if (start < now.getTime() + 60 * 60 * 1000) continue;
         if (busy.some((event) => start < event.end && finish > event.start)) continue;
         const parts = partsFor(new Date(start));
@@ -413,7 +413,11 @@ export async function processInboundEmailForUser(user, integration, settings) {
           sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [],
         });
         if (probe.category === "MEETING") {
-          availableSlots = await getAvailableSlots(user.id, user.timezone || "Asia/Karachi").catch(() => []);
+          availableSlots = await getAvailableSlots(
+            user.id,
+            user.timezone || "Asia/Karachi",
+            probe.meeting?.durationMinutes || 30,
+          ).catch(() => []);
         }
         const classification = availableSlots.length
           ? await askModel({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
