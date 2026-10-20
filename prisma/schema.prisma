@@ -258,12 +258,39 @@ model EmailDraft {
   approvedAt        DateTime?
   sentAt            DateTime?
   providerMessageId String?
+  replyThreadId     String?
+  replyMessageId    String?
   lastError         String?          @db.Text
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status, updatedAt])
+}
+
+model InboundEmail {
+  id             String   @id @default(cuid())
+  userId         String
+  gmailMessageId String
+  gmailThreadId  String
+  fromEmail      String
+  subject        String
+  receivedAt     DateTime?
+  status         String   @default("RECEIVED")
+  category       String   @default("OTHER")
+  sensitive      Boolean  @default(false)
+  summary        String?  @db.Text
+  classification Json     @default("{}")
+  draftId        String?
+  processedAt    DateTime?
+  lastError      String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gmailMessageId])
+  @@index([userId, status, receivedAt])
+  @@index([userId, createdAt])
 }
 
 model FollowUp {
