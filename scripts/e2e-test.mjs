@@ -423,7 +423,7 @@ try {
   assert.equal(emailAgentSettingsInitial.settings.autoReplyEnabled, false);
   const unsafeEmailAutoReply = await expectStatus("/api/email-agent/settings", 400, {
     method: "PATCH",
-    body: JSON.stringify({ enabled: false, autoReplyEnabled: true }),
+    body: JSON.stringify({ autoReplyEnabled: true }),
   }, token);
   assert.match((await unsafeEmailAutoReply.json()).error, /Enable the email agent/);
   const emailAgentSettingsUpdated = await expectStatus("/api/email-agent/settings", 200, {
