@@ -362,6 +362,36 @@ export default function CalendarClient() {
     }
   }
 
+  async function createCalendarBlocks() {
+    if (!schedule?.id || schedule.status !== "APPROVED") return;
+    if (!data?.canCreateEvents) {
+      setScheduleError("Connect Google Calendar and grant calendar event permission before creating schedule blocks.");
+      return;
+    }
+    if (!window.confirm("Create one Google Calendar event for each scheduled task block? This will not invite attendees, but it will write events to your primary calendar.")) return;
+    setScheduleBusy(true);
+    setScheduleError("");
+    setScheduleNotice("");
+    try {
+      const response = await fetch("/api/schedule-plans/" + encodeURIComponent(schedule.id), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "CREATE_EVENTS" }),
+      });
+      const body = await response.json();
+      if (body.plan) setSchedule(body.plan);
+      if (!response.ok) throw Error(body.error || "Could not add schedule blocks to Google Calendar.");
+      setSchedule(body.plan);
+      setScheduleWarnings(body.plan?.warnings || []);
+      setScheduleNotice("Approved schedule blocks were created in Google Calendar.");
+      await load();
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Could not add schedule blocks to Google Calendar.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
+
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
     setScheduleError("");
@@ -541,7 +571,7 @@ export default function CalendarClient() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <input aria-label="Schedule date" type="date" value={scheduleDate} onChange={(event) => event.target.value && setScheduleDate(event.target.value)} disabled={scheduleBusy || scheduleLoading} className="rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs" />
-              <Button onClick={() => void generateSchedule()} disabled={scheduleBusy || scheduleLoading} className="rounded-xl bg-[#FA8500] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <Button onClick={() => void generateSchedule()} disabled={scheduleBusy || scheduleLoading || ["CREATED", "CREATING", "CREATE_UNCERTAIN"].includes(schedule?.status)} className="rounded-xl bg-[#FA8500] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 {scheduleBusy ? "Working…" : "Generate draft"}
               </Button>
             </div>
@@ -559,8 +589,15 @@ export default function CalendarClient() {
                   {" · "}<span className="font-semibold">{schedule.status}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => void saveSchedule("DRAFT")} disabled={scheduleBusy} className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-xs font-semibold">Save draft</Button>
-                  <Button onClick={() => void saveSchedule("APPROVED")} disabled={scheduleBusy || schedule.status === "APPROVED"} className="rounded-xl bg-[#233044] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Approve plan</Button>
+                  {schedule.status === "DRAFT" && (
+                    <>
+                      <Button onClick={() => void saveSchedule("DRAFT")} disabled={scheduleBusy} className="rounded-xl border border-[#dfe6dd] px-3 py-2 text-xs font-semibold">Save draft</Button>
+                      <Button onClick={() => void saveSchedule("APPROVED")} disabled={scheduleBusy} className="rounded-xl bg-[#233044] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Approve plan</Button>
+                    </>
+                  )}
+                  {schedule.status === "APPROVED" && (
+                    <Button onClick={() => void createCalendarBlocks()} disabled={scheduleBusy || !data?.canCreateEvents} className="rounded-xl bg-[#FA8500] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Add blocks to Google Calendar</Button>
+                  )}
                 </div>
               </div>
               {schedule.blocks?.length ? (
@@ -572,7 +609,7 @@ export default function CalendarClient() {
                         <p className="mt-1 text-xs text-[#6B7280]">{block.priority || "MEDIUM"} priority · 60-minute focus block</p>
                       </div>
                       <label className="text-xs text-[#6B7280]">Start
-                        <input aria-label={"Start time for " + block.title} type="datetime-local" value={toLocalDateTime(block.startAt, schedule.timezone || defaultTimezone)} onChange={(event) => updateScheduleBlock(block.taskId, "startAt", event.target.value)} disabled={scheduleBusy || schedule.status === "APPROVED"} className="mt-1 w-full rounded-lg border border-[#dfe6dd] bg-white px-2 py-2 text-xs disabled:bg-[#f0f2f0]" />
+                        <input aria-label={"Start time for " + block.title} type="datetime-local" value={toLocalDateTime(block.startAt, schedule.timezone || defaultTimezone)} onChange={(event) => updateScheduleBlock(block.taskId, "startAt", event.target.value)} disabled={scheduleBusy || schedule.status !== "DRAFT"} className="mt-1 w-full rounded-lg border border-[#dfe6dd] bg-white px-2 py-2 text-xs disabled:bg-[#f0f2f0]" />
                       </label>
                       <label className="text-xs text-[#6B7280]">End
                         <input aria-label={"End time for " + block.title} type="datetime-local" value={toLocalDateTime(block.endAt, schedule.timezone || defaultTimezone)} onChange={(event) => updateScheduleBlock(block.taskId, "endAt", event.target.value)} disabled={scheduleBusy || schedule.status === "APPROVED"} className="mt-1 w-full rounded-lg border border-[#dfe6dd] bg-white px-2 py-2 text-xs disabled:bg-[#f0f2f0]" />
@@ -582,6 +619,24 @@ export default function CalendarClient() {
                   ))}
                 </div>
               ) : <Empty text="No tasks are scheduled yet. Generate a draft after adding open tasks." />}
+              {schedule.status === "CREATE_UNCERTAIN" && (
+                <p role="alert" className="mt-4 rounded-lg border border-[#f0d6cc] bg-[#fff5f0] p-3 text-sm text-[#994b36]">
+                  Calendar creation has an uncertain or partial outcome. Do not retry automatically. Inspect Google Calendar and use the recorded links below to reconcile what was created.
+                </p>
+              )}
+              {schedule.calendarEvents?.length > 0 && (
+                <div className="mt-4 rounded-xl border border-[#d8e9dd] bg-[#f4faf5] p-4">
+                  <h3 className="text-sm font-semibold text-[#24543f]">Calendar events created</h3>
+                  <ul className="mt-2 space-y-2">
+                    {schedule.calendarEvents.map((event) => (
+                      <li key={event.eventId} className="text-xs leading-5">
+                        {event.htmlLink ? <a href={event.htmlLink} target="_blank" rel="noreferrer" className="font-semibold text-[#24543f] underline">{event.title} <ExternalLink size={11} className="inline" /></a> : <span className="font-semibold">{event.title}</span>}
+                        <span className="ml-2 text-[#6B7280]">{format(event.startAt, schedule.timezone)} – {format(event.endAt, schedule.timezone)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {schedule.unscheduled?.length > 0 && (
                 <div className="mt-5 rounded-xl bg-[#fffaf0] p-4">
                   <h3 className="text-sm font-semibold text-[#76551e]">Needs another time</h3>
