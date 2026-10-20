@@ -25,6 +25,7 @@ const blank = {
   location: "",
   startAt: "",
   endAt: "",
+  allDay: false,
   timezone: "Asia/Karachi",
   attendees: "",
 };
@@ -120,8 +121,9 @@ function fromForm(f) {
     title: f.title,
     description: f.description,
     location: f.location,
-    startAt: localDateTimeToIso(f.startAt, f.timezone),
-    endAt: localDateTimeToIso(f.endAt, f.timezone),
+    startAt: f.allDay ? f.startAt : localDateTimeToIso(f.startAt, f.timezone),
+    endAt: f.allDay ? f.endAt : localDateTimeToIso(f.endAt, f.timezone),
+    allDay: Boolean(f.allDay),
     timezone: f.timezone,
     attendees: f.attendees
       .split(/[;,\n]/)
@@ -136,15 +138,22 @@ function validateMeetingForm(f) {
   let endIso;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: f.timezone }).format(new Date());
-    startIso = localDateTimeToIso(f.startAt, f.timezone);
-    endIso = localDateTimeToIso(f.endAt, f.timezone);
+    if (f.allDay) {
+      const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+      if (!validDate(f.startAt) || !validDate(f.endAt)) return "Choose valid all-day start and end dates.";
+      startIso = localDateTimeToIso(f.startAt + "T00:00", f.timezone);
+      endIso = localDateTimeToIso(f.endAt + "T00:00", f.timezone);
+    } else {
+      startIso = localDateTimeToIso(f.startAt, f.timezone);
+      endIso = localDateTimeToIso(f.endAt, f.timezone);
+    }
   } catch {
     return "Enter a valid IANA timezone, such as Asia/Karachi or America/New_York.";
   }
   if (!startIso || !endIso) {
-    return "Choose valid start and end times in the selected timezone. Times skipped by daylight-saving changes are not valid.";
+    return f.allDay ? "Choose valid all-day dates in the selected timezone." : "Choose valid start and end times in the selected timezone. Times skipped by daylight-saving changes are not valid.";
   }
-  if (new Date(endIso) <= new Date(startIso)) return "Meeting end must be after its start.";
+  if (new Date(endIso) <= new Date(startIso)) return f.allDay ? "All-day end date must be after its start date." : "Meeting end must be after its start.";
   const attendees = f.attendees.split(/[;,\n]/).map((email) => email.trim()).filter(Boolean);
   if (attendees.length > 50) return "A meeting can have at most 50 attendee emails.";
   if (attendees.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
@@ -357,18 +366,15 @@ export default function CalendarClient() {
     }
   }
   async function editCalendarEvent(event) {
-    if (event.allDay) {
-      setError("All-day event editing is not available in this form yet. Open the event in Google Calendar to edit it.");
-      return;
-    }
     setSelected("");
     setEditingEventId(event.id);
     setForm({
       title: event.title || "",
       description: event.description || "",
       location: event.location || "",
-      startAt: toLocalDateTime(event.startAt, event.timezone || defaultTimezone),
-      endAt: toLocalDateTime(event.endAt, event.timezone || defaultTimezone),
+      startAt: event.allDay ? event.startAt : toLocalDateTime(event.startAt, event.timezone || defaultTimezone),
+      endAt: event.allDay ? event.endAt : toLocalDateTime(event.endAt, event.timezone || defaultTimezone),
+      allDay: Boolean(event.allDay),
       timezone: event.timezone || defaultTimezone,
       attendees: (event.attendees || []).join(", "),
     });
@@ -573,11 +579,9 @@ export default function CalendarClient() {
           </a>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          {!e.allDay && (
-            <Button onClick={() => void editCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#dfe6dd] px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
-              <Pencil size={12} /> Edit
-            </Button>
-          )}
+          <Button onClick={() => void editCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#dfe6dd] px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+            <Pencil size={12} /> Edit
+          </Button>
           <Button onClick={() => void cancelCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#e7d8d2] px-3 py-1.5 text-xs font-semibold text-[#994b36] disabled:opacity-50">
             <Trash2 size={12} /> Cancel event
           </Button>
@@ -891,7 +895,7 @@ export default function CalendarClient() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Start">
                   <input
-                    type="datetime-local"
+                    type={form.allDay ? "date" : "datetime-local"}
                     required
                     disabled={!editable || busy}
                     value={form.startAt}
@@ -901,7 +905,7 @@ export default function CalendarClient() {
                 </Field>
                 <Field label="End">
                   <input
-                    type="datetime-local"
+                    type={form.allDay ? "date" : "datetime-local"}
                     required
                     disabled={!editable || busy}
                     value={form.endAt}
