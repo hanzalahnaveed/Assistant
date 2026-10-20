@@ -12,9 +12,11 @@ import {
   ExternalLink,
   LoaderCircle,
   Plus,
+  Pencil,
   RefreshCw,
   Save,
   ShieldCheck,
+  Trash2,
   Users,
 } from "lucide-react";
 const blank = {
@@ -135,6 +137,7 @@ export default function CalendarClient() {
   const [defaultTimezone, setDefaultTimezone] = useState(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi",
   );
+  const [editingEventId, setEditingEventId] = useState("");
   const [calendarDate, setCalendarDate] = useState(() => dateKey(new Date()));
   const [calendarView, setCalendarView] = useState("week");
   const currentRange = calendarRange(calendarDate, calendarView, defaultTimezone);
@@ -203,6 +206,7 @@ export default function CalendarClient() {
   });
   const editable = !chosen || chosen.status === "DRAFT" || chosen.status === "FAILED";
   function selectDraft(d) {
+    setEditingEventId("");
     setSelected(d.id);
     setForm({
       title: d.title,
@@ -217,6 +221,7 @@ export default function CalendarClient() {
     setNotice("");
   }
   function fresh() {
+    setEditingEventId("");
     setSelected("");
     setForm({
       ...blank,
@@ -240,21 +245,25 @@ export default function CalendarClient() {
       setError(validationError);
       return;
     }
+    if (editingEventId && !window.confirm("Update this Google Calendar event? Google may notify its attendees.")) return;
     setBusy(true);
     try {
       const payload = fromForm(form);
-      const r = await fetch(selected ? "/api/meeting-drafts/" + selected : "/api/meeting-drafts", {
-        method: selected ? "PATCH" : "POST",
-        headers: {
-          "content-type": "application/json",
-        },
+      const updatingCalendarEvent = Boolean(editingEventId);
+      const endpoint = editingEventId
+        ? "/api/calendar-events/" + encodeURIComponent(editingEventId)
+        : selected ? "/api/meeting-drafts/" + selected : "/api/meeting-drafts";
+      const r = await fetch(endpoint, {
+        method: editingEventId || selected ? "PATCH" : "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
       const d = await r.json();
       if (!r.ok) throw Error(d.error || "Could not save meeting.");
-      setNotice("Meeting proposal saved. Review it before approving.");
+      setNotice(updatingCalendarEvent ? "Google Calendar event updated. Refresh the calendar if the event no longer matches this view." : "Meeting proposal saved. Review it before approving.");
+      setEditingEventId("");
       await load();
-      selectDraft(d.draft);
+      if (d.draft) selectDraft(d.draft);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save meeting.");
     } finally {
@@ -313,6 +322,46 @@ export default function CalendarClient() {
       setBusy(false);
     }
   }
+  async function editCalendarEvent(event) {
+    if (event.allDay) {
+      setError("All-day event editing is not available in this form yet. Open the event in Google Calendar to edit it.");
+      return;
+    }
+    setSelected("");
+    setEditingEventId(event.id);
+    setForm({
+      title: event.title || "",
+      description: event.description || "",
+      location: event.location || "",
+      startAt: toLocalDateTime(event.startAt, event.timezone || defaultTimezone),
+      endAt: toLocalDateTime(event.endAt, event.timezone || defaultTimezone),
+      timezone: event.timezone || defaultTimezone,
+      attendees: (event.attendees || []).join(", "),
+    });
+    setError("");
+    setNotice("");
+  }
+
+  async function cancelCalendarEvent(event) {
+    if (!window.confirm("Cancel event: " + event.title + "? Google may notify attendees.")) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/calendar-events/" + encodeURIComponent(event.id), { method: "DELETE" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw Error(body.error || "Could not cancel the calendar event.");
+      if (editingEventId === event.id) fresh();
+      setNotice("Calendar event cancelled.");
+      await load();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not cancel the calendar event.");
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
     setScheduleError("");
@@ -628,6 +677,16 @@ export default function CalendarClient() {
                         Open event <ExternalLink size={12} />
                       </a>
                     )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {!e.allDay && (
+                        <Button onClick={() => void editCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#dfe6dd] px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+                          <Pencil size={12} /> Edit
+                        </Button>
+                      )}
+                      <Button onClick={() => void cancelCalendarEvent(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-[#e7d8d2] px-3 py-1.5 text-xs font-semibold text-[#994b36] disabled:opacity-50">
+                        <Trash2 size={12} /> Cancel event
+                      </Button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -638,9 +697,9 @@ export default function CalendarClient() {
           <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-semibold tracking-[-0.025em]">Meeting proposal</h2>
+                <h2 className="font-semibold tracking-[-0.025em]">{editingEventId ? "Edit calendar event" : "Meeting proposal"}</h2>
                 <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-                  Save → approve → separately confirm creation
+                  {editingEventId ? "Update an existing event. Attendees may be notified." : "Save → approve → separately confirm creation"}
                 </p>
               </div>
               <Button
@@ -735,7 +794,7 @@ export default function CalendarClient() {
                   className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6dd] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
                   <Save size={15} />
-                  {busy ? "Saving…" : "Save proposal"}
+                  {busy ? "Saving…" : editingEventId ? "Update calendar event" : "Save proposal"}
                 </Button>
               )}
             </form>
