@@ -23,6 +23,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] CI validation, production build, and end-to-end test workflow
 - [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
 - [x] Calendar & meeting workspace, persistent meeting proposals, explicit approval + separate event creation, attendee invitations, audit history, and uncertain-outcome recovery
+- [x] Navigable day/week/month calendar, timezone-aware event ranges, existing-event edit/cancel with conflict checks, and persisted daily task schedules with explicit calendar publication and recovery
 - [ ] Real Google account verification and production deployment
 
 ## Production configuration
@@ -60,6 +61,26 @@ Requirements: Node.js 20+, PostgreSQL 15+, Google Cloud OAuth client (for live W
 4. Set `OPENAI_API_KEY`; configure `OPENAI_MODEL` and `OPENAI_BASE_URL` if needed.
 5. Optionally configure Google OAuth and enable Gmail/Calendar APIs if you want Google sign-in or Workspace data. The redirect URI must exactly match `GOOGLE_REDIRECT_URI`.
 6. Run `npm run dev` and open `http://localhost:3000/auth` to create an account with email and password.
+
+### Local verification
+
+After configuring the local database and environment, run the focused checks:
+
+```bash
+npm run test:calendar-timezone
+npm run test:schedule-planner
+npm run verify:javascript
+npm run build
+```
+
+For the full API/database end-to-end suite, start the production build in one terminal and run the test suite in another:
+
+```bash
+npm run start -- --hostname 127.0.0.1
+npm run test:e2e
+```
+
+The end-to-end suite uses a local test database and mocked AI provider. Real Google Calendar event creation/edit/cancellation still requires your own Google OAuth credentials and granted Calendar event scope. No hosted deployment is needed for local development.
 
 ## Security principles
 
