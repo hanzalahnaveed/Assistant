@@ -68,6 +68,9 @@ enum MeetingDraftStatus {
 enum SchedulePlanStatus {
   DRAFT
   APPROVED
+  CREATING
+  CREATED
+  CREATE_UNCERTAIN
 }
 
 model User {
@@ -305,8 +308,9 @@ model DailySchedulePlan {
   status      SchedulePlanStatus @default(DRAFT)
   blocks      Json              @default("[]")
   unscheduled Json              @default("[]")
-  warnings    Json              @default("[]")
-  generatedAt DateTime          @default(now())
+  warnings      Json              @default("[]")
+  calendarEvents Json              @default("[]")
+  generatedAt   DateTime          @default(now())
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
