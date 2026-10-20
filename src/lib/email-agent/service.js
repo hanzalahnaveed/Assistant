@@ -64,6 +64,11 @@ function header(message, name) {
   return message.payload?.headers?.find((item) => item.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
 
+function safeMessageId(message) {
+  const value = header(message, "Message-ID").replace(/[\\r\\n]/g, "").trim();
+  return /^<[^<>\\s]+>$/.test(value) ? value : null;
+}
+
 function decodeModelJson(content) {
   try {
     return JSON.parse(content);
@@ -421,7 +426,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
             goal: draftGoal,
             status: "DRAFT",
             replyThreadId: message.threadId,
-            replyMessageId: header(message, "Message-ID") || null,
+            replyMessageId: safeMessageId(message),
           },
         });
         const autoEligible = !existingDraft &&
