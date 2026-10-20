@@ -2,6 +2,8 @@
 
 
 import { Button, Input } from "antd";
+import EmailAgentSettings from "@/components/client/email-agent-settings";
+import InboundEmailQueue from "@/components/client/inbound-email-queue";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -207,6 +209,23 @@ export default function EmailClient() {
             <MailPlus size={16} /> New email
           </Button>
         </div>
+        <EmailAgentSettings />
+        <InboundEmailQueue
+          onOpenDraft={(draftId) => {
+            const draft = drafts.find((item) => item.id === draftId);
+            if (draft) {
+              choose(draft);
+              return;
+            }
+            void (async () => {
+              await load();
+              const response = await fetch("/api/email-drafts", { cache: "no-store" });
+              const data = await response.json().catch(() => ({}));
+              const found = data.drafts?.find((item) => item.id === draftId);
+              if (found) choose(found);
+            })();
+          }}
+        />
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <Stat label="Saved drafts" value={drafts.filter((d) => d.status === "DRAFT").length} />
           <Stat label="Awaiting your action" value={pending} />
