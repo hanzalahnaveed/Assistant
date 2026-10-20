@@ -9,6 +9,7 @@ const statusLabels = {
   DRAFTED: "Draft ready",
   AWAITING_APPROVAL: "Manager review",
   MEETING_REVIEW: "Meeting review",
+  MEETING_BOOKED_REVIEW: "Meeting booked · reply review",
   TASK_REVIEW: "Task review",
   REPLIED: "Replied",
   SEND_UNCERTAIN: "Check Sent folder",
@@ -19,6 +20,7 @@ export default function InboundEmailQueue({ onOpenDraft }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [meetingBusy, setMeetingBusy] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -35,6 +37,31 @@ export default function InboundEmailQueue({ onOpenDraft }) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function createMeeting(message, slot) {
+    if (!window.confirm(
+      "Create this Google Calendar event and send the calendar invitation to " +
+      message.fromEmail +
+      "? The email reply will remain a draft for you to review and send."
+    )) return;
+    setMeetingBusy(message.id + ":" + slot.startAt);
+    setError("");
+    try {
+      const response = await fetch("/api/email-agent/inbox/" + message.id + "/meeting", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ startAt: slot.startAt }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not create the meeting.");
+      await load();
+      if (data.draft?.id) onOpenDraft(data.draft.id);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not create the meeting.");
+    } finally {
+      setMeetingBusy("");
+    }
+  }
 
   return (
     <section className="mb-5 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%)]">
@@ -59,6 +86,33 @@ export default function InboundEmailQueue({ onOpenDraft }) {
               </div>
               {message.summary && <p className="mt-2 text-sm leading-5 text-[#4B5563]">{message.summary}</p>}
               {message.lastError && <p className="mt-2 text-xs text-amber-900">{message.lastError}</p>}
+              {message.category === "MEETING" && !message.classification?.meetingEventId && (
+                <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+                  <p className="text-xs leading-5 text-[#374151]">Choose a free slot to create a calendar event and generate a Google Meet link. The calendar invitation is sent to the sender; your email reply stays in drafts until you approve and send it.</p>
+                  {Array.isArray(message.classification?.availableSlots) && message.classification.availableSlots.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {message.classification.availableSlots.map((slot) => (
+                        <button
+                          key={slot.startAt}
+                          type="button"
+                          disabled={Boolean(meetingBusy)}
+                          onClick={() => void createMeeting(message, slot)}
+                          className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-900 disabled:opacity-50"
+                        >
+                          {meetingBusy === message.id + ":" + slot.startAt ? "Creating…" : slot.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : <p className="mt-2 text-xs text-[#6B7280]">No free slots were found. Review the draft and ask the sender for another time.</p>}
+                </div>
+              )}
+              {message.classification?.meetingEventId && (
+                <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-sm">
+                  <p className="font-semibold text-emerald-900">Meeting created; reply still needs review</p>
+                  {message.classification.meetingLink && <p className="mt-1"><a href={message.classification.meetingLink} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-800 underline">Open Google Meet</a></p>}
+                  {message.classification.calendarEventLink && <p className="mt-1"><a href={message.classification.calendarEventLink} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-800 underline">Open calendar event</a></p>}
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 {message.draftId ? <button type="button" onClick={() => onOpenDraft(message.draftId)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#B45F00] hover:underline">Review reply draft <ExternalLink size={12} /></button> : <span className="text-xs text-[#6B7280]">No reply draft available</span>}
                 {message.status === "REPLIED" && <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 size={13} />Reply sent</span>}
