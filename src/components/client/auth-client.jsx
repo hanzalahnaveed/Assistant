@@ -82,8 +82,8 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#698cbf] to-[#4b749f] m-4">
-      <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-white/60 bg-white/95 p-6 shadow-xl sm:p-9">
+    <main className="flex h-[100vh] items-center justify-center bg-linear-to-br from-[#698cbf] to-[#4b749f] p-4">
+      <section className="flex p-4 w-full max-w-md flex-col gap-4 rounded-2xl border border-white/60 bg-white/95 shadow-xl">
         <header>
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-[#4b749f]">Personal AI Assistant</p>
           <h1 className="text-3xl font-semibold tracking-tight text-[#17212b]">
@@ -94,7 +94,7 @@ export default function AuthPage() {
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#e3e8ee] bg-[#f5f7fa] p-1" role="tablist" aria-label="Account access">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border-2 border-[#4B749F] bg-[#f5f7fa] p-1" role="tablist" aria-label="Account access">
           <button type="button" role="tab" aria-selected={mode === "signin"} onClick={() => changeMode("signin")}
             className={`min-h-11 rounded-lg px-3 text-sm font-medium transition ${mode === "signin" ? "bg-white text-[#234e78] shadow-sm" : "text-[#657487] hover:text-[#234e78]"}`}>
             Sign in
@@ -108,7 +108,7 @@ export default function AuthPage() {
         {error && <Alert type="error" showIcon message="Unable to continue" description={error} role="alert" />}
         {success && <Alert type="success" showIcon message={success} role="status" />}
 
-        <form className="flex flex-col gap-4" onSubmit={submitCredentials} noValidate={false}>
+        <form className="flex flex-col gap-2" onSubmit={submitCredentials} noValidate={false}>
           {mode === "signup" && (
             <label className="flex flex-col gap-2 text-sm font-medium text-[#273444]">
               Your name
@@ -152,7 +152,6 @@ export default function AuthPage() {
         >
           Continue with Google
         </Button>
-        <p className="text-center text-xs leading-5 text-[#7b8795]">Your account is protected with secure password hashing and a private session.</p>
       </section>
     </main>
   );
