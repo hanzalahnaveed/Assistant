@@ -1,0 +1,4 @@
+ALTER TYPE "SchedulePlanStatus" ADD VALUE 'CREATING';
+ALTER TYPE "SchedulePlanStatus" ADD VALUE 'CREATED';
+ALTER TYPE "SchedulePlanStatus" ADD VALUE 'CREATE_UNCERTAIN';
+ALTER TABLE "DailySchedulePlan" ADD COLUMN "calendarEvents" JSONB NOT NULL DEFAULT '[]';
