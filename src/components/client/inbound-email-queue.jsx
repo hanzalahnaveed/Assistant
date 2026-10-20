@@ -12,6 +12,7 @@ const statusLabels = {
   MEETING_BOOKED_REVIEW: "Meeting booked · reply review",
   TASK_REVIEW: "Task review",
   REPLIED: "Replied",
+  SKIPPED: "Skipped",
   SKIPPED: "Skipped automated sender",
   SEND_UNCERTAIN: "Check Sent folder",
   FAILED: "Needs attention",
@@ -38,6 +39,11 @@ export default function InboundEmailQueue({ onOpenDraft }) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const refresh = () => { void load(); };
+    window.addEventListener("email-agent-refresh", refresh);
+    return () => window.removeEventListener("email-agent-refresh", refresh);
+  }, [load]);
 
   async function createMeeting(message, slot) {
     if (!window.confirm(
