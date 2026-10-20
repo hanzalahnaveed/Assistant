@@ -2,7 +2,7 @@ import { loadEnvConfig } from "@next/env";
 
 loadEnvConfig(process.cwd());
 
-const baseUrl = (process.env.APP_URL || process.env.APP_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+const baseUrl = (process.env.EMAIL_AGENT_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const secret = process.env.CRON_SECRET;
 const requestedInterval = Number(process.env.EMAIL_AGENT_POLL_INTERVAL_MS || 60000);
 const intervalMs = Number.isFinite(requestedInterval)
