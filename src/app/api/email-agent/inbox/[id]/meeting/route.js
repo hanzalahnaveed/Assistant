@@ -52,6 +52,13 @@ export async function POST(request, context) {
     return NextResponse.json({ error: "This email was not classified as a meeting request." }, { status: 409 });
   }
   if (!inbound.draftId) return NextResponse.json({ error: "Create a reply draft before scheduling the meeting." }, { status: 409 });
+  const draft = await prisma.emailDraft.findFirst({
+    where: { id: inbound.draftId, userId: user.id },
+  });
+  if (!draft) return NextResponse.json({ error: "The reply draft for this email no longer exists." }, { status: 409 });
+  if (!["DRAFT", "FAILED"].includes(draft.status)) {
+    return NextResponse.json({ error: "This reply is already approved, sending, or sent. It cannot be rewritten by meeting scheduling." }, { status: 409 });
+  }
 
   const classification = inbound.classification && typeof inbound.classification === "object" &&
     !Array.isArray(inbound.classification) ? inbound.classification : {};
@@ -172,10 +179,6 @@ export async function POST(request, context) {
     }, { status: 502 });
   }
 
-  const draft = await prisma.emailDraft.findFirst({
-    where: { id: inbound.draftId, userId: user.id },
-  });
-  if (!draft) return NextResponse.json({ error: "The reply draft for this email no longer exists." }, { status: 409 });
   const meetingDetails = [
     "[Assistant meeting details]",
     "Meeting scheduled for " + (slot.label || start.toISOString()) + ".",
