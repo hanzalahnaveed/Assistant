@@ -48,6 +48,42 @@ function format(value) {
         minute: "2-digit",
       });
 }
+function dateKey(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+function shiftDateKey(value, amount) {
+  const parts = value.split("-").map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + amount));
+  return date.getUTCFullYear() + "-" + String(date.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date.getUTCDate()).padStart(2, "0");
+}
+function calendarRange(date, view, timezone) {
+  let startDate = date;
+  let endDate;
+  if (view === "day") {
+    endDate = shiftDateKey(date, 1);
+  } else if (view === "week") {
+    const parts = date.split("-").map(Number);
+    const weekday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
+    startDate = shiftDateKey(date, -((weekday + 6) % 7));
+    endDate = shiftDateKey(startDate, 7);
+  } else {
+    const parts = date.split("-").map(Number);
+    startDate = parts[0] + "-" + String(parts[1]).padStart(2, "0") + "-01";
+    endDate = shiftDateKey(startDate, new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate());
+  }
+  return { startDate, endDate, start: localDateTimeToIso(startDate + "T00:00", timezone), end: localDateTimeToIso(endDate + "T00:00", timezone) };
+}
+function rangeLabel(range, timezone) {
+  const formatter = new Intl.DateTimeFormat(undefined, { timeZone: timezone, month: "short", day: "numeric", year: "numeric" });
+  const start = new Date(range.start);
+  const end = new Date(new Date(range.end).getTime() - 1);
+  if (range.startDate === range.endDate || shiftDateKey(range.startDate, 1) === range.endDate) return formatter.format(start);
+  return formatter.format(start) + " – " + formatter.format(end);
+}
+function formatEventTime(event) {
+  if (event.allDay) return "All day · " + event.startAt;
+  return format(event.startAt) + " – " + format(event.endAt);
+}
 function fromForm(f) {
   return {
     title: f.title,
@@ -99,13 +135,20 @@ export default function CalendarClient() {
   const [defaultTimezone, setDefaultTimezone] = useState(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi",
   );
+  const [calendarDate, setCalendarDate] = useState(() => dateKey(new Date()));
+  const [calendarView, setCalendarView] = useState("week");
+  const currentRange = calendarRange(calendarDate, calendarView, defaultTimezone);
   const [calendarQuery, setCalendarQuery] = useState("");
   const [eventQuery, setEventQuery] = useState("");
   const [proposalStatusFilter, setProposalStatusFilter] = useState("ACTIVE");
   const load = useCallback(async () => {
     setError("");
+    setLoading(true);
     try {
-      const r = await fetch("/api/meeting-drafts", {
+      const range = calendarRange(calendarDate, calendarView, defaultTimezone);
+      if (!range.start || !range.end) throw Error("Could not calculate the selected calendar range in this timezone.");
+      const query = new URLSearchParams({ start: range.start, end: range.end });
+      const r = await fetch("/api/meeting-drafts?" + query.toString(), {
         cache: "no-store",
       });
       const d = await r.json();
@@ -116,7 +159,7 @@ export default function CalendarClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [calendarDate, calendarView, defaultTimezone]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -324,7 +367,7 @@ export default function CalendarClient() {
           </div>
         )}
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          <Stat label="Upcoming events" value={data?.events.length || 0} />
+          <Stat label="Events in range" value={data?.events.length || 0} />
           <Stat
             label="Meeting proposals"
             value={
@@ -339,14 +382,50 @@ export default function CalendarClient() {
         <div className="grid items-start gap-5 xl:grid-cols-[.9fr_1.1fr]">
           <section className="rounded-[18px] border border-[#E3E7ED] p-5 sm:p-6 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)] bg-white">
             <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold tracking-[-0.025em]">Upcoming calendar</h2>
+              <div className="min-w-0">
+                <h2 className="font-semibold tracking-[-0.025em]">Calendar</h2>
                 <p className="mt-1 text-xs text-[#6B7280] text-pretty">
-                  Next 30 days · primary Google Calendar
+                  {rangeLabel(currentRange, defaultTimezone)} · {calendarView} view · {defaultTimezone}
                 </p>
               </div>
-              <CalendarDays size={18} className="text-[#FA8500]" />
+              <CalendarDays size={18} className="shrink-0 text-[#FA8500]" />
             </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Button
+                aria-label="Previous calendar range"
+                onClick={() => setCalendarDate((date) => {
+                  if (calendarView === "day") return shiftDateKey(date, -1);
+                  if (calendarView === "week") return shiftDateKey(date, -7);
+                  const parts = date.split("-").map(Number);
+                  return shiftDateKey(date, -new Date(Date.UTC(parts[0], parts[1] - 1, 1)).getUTCDate());
+                })}
+                disabled={loading || busy}
+                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
+              >Previous</Button>
+              <Button onClick={() => setCalendarDate(dateKey(new Date()))} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs">Today</Button>
+              <Button
+                aria-label="Next calendar range"
+                onClick={() => setCalendarDate((date) => {
+                  if (calendarView === "day") return shiftDateKey(date, 1);
+                  if (calendarView === "week") return shiftDateKey(date, 7);
+                  const parts = date.split("-").map(Number);
+                  return shiftDateKey(date, new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate());
+                })}
+                disabled={loading || busy}
+                className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
+              >Next</Button>
+              <select aria-label="Calendar view" value={calendarView} onChange={(event) => setCalendarView(event.target.value)} disabled={loading || busy} className="rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs">
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+              </select>
+              <input aria-label="Choose calendar date" type="date" value={calendarDate} onChange={(event) => event.target.value && setCalendarDate(event.target.value)} disabled={loading || busy} className="min-w-0 rounded-lg border border-[#dfe6dd] bg-white px-3 py-2 text-xs" />
+            </div>
+            {data?.eventsTruncated && (
+              <p role="status" className="mb-3 rounded-lg bg-[#fff8e8] p-3 text-xs text-[#76551e]">
+                This range contains many events. Showing up to 1,250; narrow the date range to see fewer events.
+              </p>
+            )}
             <Input
               aria-label="Search calendar events"
               value={eventQuery}
@@ -363,7 +442,7 @@ export default function CalendarClient() {
                     <div className="text-sm font-semibold">{e.title}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
                       <Clock3 size={13} />
-                      {format(e.startAt)}
+                      {formatEventTime(e)}
                     </div>
                     {e.location && <div className="mt-1 text-xs text-[#87918b]">{e.location}</div>}
                     {e.attendees.length > 0 && (
