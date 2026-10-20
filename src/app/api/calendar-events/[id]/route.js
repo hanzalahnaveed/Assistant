@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
+import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -26,6 +27,17 @@ const schema = z.object({
     return false;
   }
 }, { message: "Enter a valid IANA timezone.", path: ["timezone"] });
+
+function eventInterval(event, timezone) {
+  if (event.start?.date && event.end?.date) {
+    const start = localDateTimeToIso(event.start.date + "T00:00", timezone);
+    const end = localDateTimeToIso(event.end.date + "T00:00", timezone);
+    return start && end ? { start: new Date(start).getTime(), end: new Date(end).getTime() } : null;
+  }
+  const start = new Date(event.start?.dateTime ?? "").getTime();
+  const end = new Date(event.end?.dateTime ?? "").getTime();
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? { start, end } : null;
+}
 
 async function getCalendarAccess(userId) {
   const integration = await prisma.integration.findFirst({
@@ -76,6 +88,29 @@ export async function PATCH(request, context) {
   }
   if (current.status === "cancelled") return NextResponse.json({ error: "This calendar event has already been cancelled." }, { status: 404 });
   const value = parsed.data;
+  const availabilityUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  availabilityUrl.searchParams.set("timeMin", value.startAt);
+  availabilityUrl.searchParams.set("timeMax", value.endAt);
+  availabilityUrl.searchParams.set("singleEvents", "true");
+  availabilityUrl.searchParams.set("orderBy", "startTime");
+  availabilityUrl.searchParams.set("maxResults", "250");
+  let availability;
+  try {
+    availability = await googleApiGet(access.token.accessToken, availabilityUrl.toString());
+  } catch {
+    return NextResponse.json({ error: "Could not verify calendar availability. No event update was applied." }, { status: 502 });
+  }
+  const proposedStart = new Date(value.startAt).getTime();
+  const proposedEnd = new Date(value.endAt).getTime();
+  const conflicts = (availability.items ?? []).filter((event) => {
+    if (event.id === id || event.status === "cancelled" || event.transparency === "transparent") return false;
+    const interval = eventInterval(event, value.timezone);
+    return interval && proposedStart < interval.end && proposedEnd > interval.start;
+  });
+  if (conflicts.length) return NextResponse.json({
+    error: "This time overlaps another calendar event. Review availability and choose a different time.",
+    conflicts: conflicts.slice(0, 5).map((event) => ({ title: event.summary || "(untitled event)", start: event.start?.dateTime ?? event.start?.date ?? null, end: event.end?.dateTime ?? event.end?.date ?? null })),
+  }, { status: 409 });
   const eventBody = {
     summary: value.title,
     description: value.description,
