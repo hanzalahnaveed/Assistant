@@ -261,13 +261,21 @@ async function sendAutomatedReply({ userId, integration, draft, sourceMessageId 
     headers.join("\r\n") + "\r\n\r\n" + draft.body.replace(/\r?\n/g, "\r\n"),
     "utf8",
   ).toString("base64url");
-  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-    method: "POST",
-    headers: { authorization: "Bearer " + token.accessToken, "content-type": "application/json" },
-    body: JSON.stringify({ raw, threadId: draft.replyThreadId }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(25000),
-  });
+  let response;
+  try {
+    response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: { authorization: "Bearer " + token.accessToken, "content-type": "application/json" },
+      body: JSON.stringify({ raw, threadId: draft.replyThreadId }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(25000),
+    });
+  } catch (cause) {
+    const error = new Error("The Gmail send outcome is uncertain. Check Gmail Sent before retrying.");
+    error.uncertain = true;
+    error.cause = cause;
+    throw error;
+  }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const uncertain = response.status >= 500;
@@ -416,7 +424,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
             const messageText = error instanceof Error ? error.message : "Automated reply failed.";
             await prisma.emailDraft.updateMany({
               where: { id: draft.id, userId: user.id, status: "DRAFT" },
-              data: { lastError: messageText },
+              data: error?.uncertain
+                ? { status: "SEND_UNCERTAIN", lastError: messageText }
+                : { lastError: messageText },
             });
           }
         }
@@ -426,7 +436,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
             status: classification.sensitive ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" ? "MEETING_REVIEW" :
               classification.category === "TASK" ? "TASK_REVIEW" :
-              autoReplySent ? "REPLIED" : "DRAFTED",
+              autoReplySent ? "REPLIED" :
+              autoEligible && draft.status === "DRAFT" ? "DRAFTED" :
+              "DRAFTED",
             category: classification.category,
             sensitive: classification.sensitive,
             summary: classification.summary,
