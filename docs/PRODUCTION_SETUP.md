@@ -85,8 +85,8 @@ Enable the feature from the Email & outreach page after connecting a Google acco
 
 1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`.
 2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. Set `OPENAI_API_KEY` in your local `.env`.
-3. In **Email & outreach → Inbound email agent**, enable the agent but leave **Auto-send routine replies** off for the first pass.
-4. Send a harmless test email to the connected account. For continuous local polling, start the worker in a second terminal:
+3. In **Email & outreach → Inbound email agent**, enable the agent and save settings. For the first pass, leave **Auto-send routine replies** off. Use **Process inbox now** to run one immediate check and see processing counts without starting the poller. The agent intentionally considers messages received after it was enabled; send a fresh test email after saving the setting.
+4. For continuous local polling, start the worker in a second terminal:
 
    ```bash
    npm run email-agent:local-worker
@@ -99,7 +99,7 @@ Enable the feature from the Email & outreach page after connecting a Google acco
      -H "Authorization: Bearer $CRON_SECRET"
    ```
 
-5. Refresh the inbound activity queue. Verify the message summary/category, generated draft, and reply threading. Test sending only after reviewing the draft manually. For meeting requests, choose a slot only when you are ready for a real calendar invitation to be sent to the test sender.
+5. Send a harmless test email to the connected account, then refresh the inbound activity queue. Verify the message summary/category, generated draft, and reply threading. Test sending only after reviewing the draft manually. For meeting requests, choose a slot only when you are ready for a real calendar invitation to be sent to the test sender.
 6. Run local checks with `npm run test:email-agent`, `npm run test:e2e`, and `npm run verify:javascript`.
 
 The scheduled GitHub Actions worker targets `APP_BASE_URL`; it does not run against your localhost. Do not expose a local server or use a personal production inbox just to test the worker.
