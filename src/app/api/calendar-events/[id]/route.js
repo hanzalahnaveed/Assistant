@@ -12,16 +12,22 @@ const schema = z.object({
   title: z.string().trim().min(1).max(250),
   description: z.string().max(10000).optional().default(""),
   location: z.string().trim().max(500).optional().default(""),
-  startAt: z.string().datetime({ offset: true }),
-  endAt: z.string().datetime({ offset: true }),
+  startAt: z.string().min(1).max(40),
+  endAt: z.string().min(1).max(40),
+  allDay: z.boolean().optional().default(false),
   timezone: z.string().trim().min(1).max(100),
   attendees: z.array(z.string().trim().email().max(254)).max(50).default([]),
-}).refine((value) => new Date(value.endAt) > new Date(value.startAt), {
-  message: "Event end must be after its start.",
-  path: ["endAt"],
 }).refine((value) => {
+  if (value.allDay) {
+    const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+    return validDate(value.startAt) && validDate(value.endAt) && value.endAt > value.startAt;
+  }
+  const start = new Date(value.startAt).getTime();
+  const end = new Date(value.endAt).getTime();
+  return Number.isFinite(start) && Number.isFinite(end) && end > start;
+}, { message: "Event end must be after its start, using valid date/time values.", path: ["endAt"] }).refine((value) => {
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value.timezone }).format(new Date(value.startAt));
+    new Intl.DateTimeFormat("en-US", { timeZone: value.timezone }).format(new Date());
     return true;
   } catch {
     return false;
@@ -93,9 +99,12 @@ export async function PATCH(request, context) {
   }
   if (current.status === "cancelled") return NextResponse.json({ error: "This calendar event has already been cancelled." }, { status: 404 });
   const value = parsed.data;
+  const availabilityStart = value.allDay ? localDateTimeToIso(value.startAt + "T00:00", value.timezone) : value.startAt;
+  const availabilityEnd = value.allDay ? localDateTimeToIso(value.endAt + "T00:00", value.timezone) : value.endAt;
+  if (!availabilityStart || !availabilityEnd) return NextResponse.json({ error: "The all-day date is invalid in the selected timezone." }, { status: 400 });
   const availabilityUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-  availabilityUrl.searchParams.set("timeMin", value.startAt);
-  availabilityUrl.searchParams.set("timeMax", value.endAt);
+  availabilityUrl.searchParams.set("timeMin", availabilityStart);
+  availabilityUrl.searchParams.set("timeMax", availabilityEnd);
   availabilityUrl.searchParams.set("singleEvents", "true");
   availabilityUrl.searchParams.set("orderBy", "startTime");
   availabilityUrl.searchParams.set("maxResults", "250");
@@ -106,8 +115,8 @@ export async function PATCH(request, context) {
     return NextResponse.json({ error: "Could not verify calendar availability. No event update was applied." }, { status: 502 });
   }
   if (availability.nextPageToken) return NextResponse.json({ error: "There are too many events to verify this time safely. Open Google Calendar and choose a less crowded time." }, { status: 409 });
-  const proposedStart = new Date(value.startAt).getTime();
-  const proposedEnd = new Date(value.endAt).getTime();
+  const proposedStart = new Date(availabilityStart).getTime();
+  const proposedEnd = new Date(availabilityEnd).getTime();
   const conflicts = (availability.items ?? []).filter((event) => {
     if (event.id === id || event.status === "cancelled" || event.transparency === "transparent") return false;
     const interval = eventInterval(event, value.timezone);
@@ -121,8 +130,8 @@ export async function PATCH(request, context) {
     summary: value.title,
     description: value.description,
     location: value.location,
-    start: { dateTime: value.startAt, timeZone: value.timezone },
-    end: { dateTime: value.endAt, timeZone: value.timezone },
+    start: value.allDay ? { date: value.startAt } : { dateTime: value.startAt, timeZone: value.timezone },
+    end: value.allDay ? { date: value.endAt } : { dateTime: value.endAt, timeZone: value.timezone },
     attendees: [...new Set(value.attendees.map((email) => email.toLowerCase()))].map((email) => ({ email })),
   };
   try {
