@@ -4,7 +4,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
 import { createTaskActionProposal } from "@/lib/actions/service";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
-import { extractMessageText, isAutomatedSender, parseSender } from "@/lib/email-agent/format.mjs";
+import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -65,8 +65,7 @@ function header(message, name) {
 }
 
 function safeMessageId(message) {
-  const value = header(message, "Message-ID").replace(/[\\r\\n]/g, "").trim();
-  return /^<[^<>\\s]+>$/.test(value) ? value : null;
+  return parseMessageId(header(message, "Message-ID"));
 }
 
 function decodeModelJson(content) {
