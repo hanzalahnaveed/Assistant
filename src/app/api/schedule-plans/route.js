@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
-import { buildDailySchedule } from "@/lib/schedule/planner";
+import { buildDailySchedule } from "@/lib/schedule/planner.mjs";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
