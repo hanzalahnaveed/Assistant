@@ -75,7 +75,13 @@ In GitHub → repository Settings → Secrets and variables → Actions, add:
 
 Run the workflow manually once using Actions → Scheduled daily briefings → Run workflow. It should return successfully. The worker only generates a briefing when a user's enabled briefing hour matches that user's timezone; a successful run with `generated: 0` can be expected outside a configured user's briefing hour. The worker creates in-app briefing/notification records; it does not send email or push notifications.
 
-## 6. End-to-end smoke test
+## 6. Scheduled inbound email agent
+
+The worker endpoint is `POST /api/cron/email-agent`. The workflow `.github/workflows/email-agent.yml` runs every five minutes and reuses the repository variable `APP_BASE_URL` and repository secret `CRON_SECRET` configured for daily briefings. It safely skips when those settings are missing.
+
+Enable the feature from the Email & outreach page after connecting a Google account and configuring the AI provider. Email-agent settings are stored per user. Both the agent and routine auto-replies default to off. Sensitive email, meeting requests, and task-related replies are kept for review; task creation follows the existing automation policy. Calendar availability suggestions are advisory and do not create events. Do not enable auto-send until the test account, recipient handling, and review queue have been verified.
+
+## 7. End-to-end smoke test
 
 Use credentials-based sign-up/sign-in for the core authentication checks. If Google OAuth is configured, also use a real Google test account and verify its optional flow:
 
@@ -92,6 +98,6 @@ Use credentials-based sign-up/sign-in for the core authentication checks. If Goo
 - [ ] Verify the authenticated session protects all workspace routes.
 - [ ] Review deployment logs for OAuth, database, or AI-provider errors.
 
-## 7. What this repository cannot configure on your behalf
+## 8. What this repository cannot configure on your behalf
 
 Google Cloud OAuth clients, consent-screen publication/verification, billing/API access, hosting projects/domains, database instances, and secret values are owned by your external accounts. The GitHub repository connection does not grant access to those accounts or their secrets. Do not commit real credentials. Once those account-side resources and credentials exist, put the values in the appropriate secret manager and complete the smoke test above.
