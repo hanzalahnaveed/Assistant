@@ -174,6 +174,7 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
     decodeModelJson(data.choices?.[0]?.message?.content || ""),
   );
   if (!parsed.success) throw new Error("The AI provider returned incomplete or invalid email fields.");
+  if (parsed.data.category === "SENSITIVE") parsed.data.sensitive = true;
   if (parsed.data.sensitive && parsed.data.category === "ROUTINE") parsed.data.category = "SENSITIVE";
   return parsed.data;
 }
@@ -355,7 +356,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
         const probe = await askModel({
           sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [],
         });
-        if (probe.category === "MEETING" && !probe.sensitive) {
+        if (probe.category === "MEETING") {
           availableSlots = await getAvailableSlots(user.id, user.timezone || "Asia/Karachi").catch(() => []);
         }
         const classification = availableSlots.length
@@ -405,10 +406,12 @@ export async function processInboundEmailForUser(user, integration, settings) {
           !classification.sensitive &&
           classification.category === "ROUTINE" &&
           !user.preferences?.automationPaused;
+        let autoReplySent = false;
         if (autoEligible) {
           try {
             await sendAutomatedReply({ userId: user.id, integration, draft, sourceMessageId: message.id });
             counts.sent++;
+            autoReplySent = true;
           } catch (error) {
             const messageText = error instanceof Error ? error.message : "Automated reply failed.";
             await prisma.emailDraft.updateMany({
@@ -423,7 +426,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
             status: classification.sensitive ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" ? "MEETING_REVIEW" :
               classification.category === "TASK" ? "TASK_REVIEW" :
-              autoEligible && counts.sent > 0 ? "REPLIED" : "DRAFTED",
+              autoReplySent ? "REPLIED" : "DRAFTED",
             category: classification.category,
             sensitive: classification.sensitive,
             summary: classification.summary,
@@ -454,7 +457,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
               category: classification.category,
               sensitive: classification.sensitive,
               autoReplyEligible: autoEligible,
-              autoReplySent: autoEligible && counts.sent > 0,
+              autoReplySent,
               draftId: draft.id,
             },
           },
