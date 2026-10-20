@@ -139,7 +139,11 @@ function validateMeetingForm(f) {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: f.timezone }).format(new Date());
     if (f.allDay) {
-      const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(date + "T00:00:00.000Z").toISOString().slice(0, 10) === date;
+      const validDate = (date) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+        const parsed = new Date(date + "T00:00:00.000Z");
+        return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+      };
       if (!validDate(f.startAt) || !validDate(f.endAt)) return "Choose valid all-day start and end dates.";
       startIso = localDateTimeToIso(f.startAt + "T00:00", f.timezone);
       endIso = localDateTimeToIso(f.endAt + "T00:00", f.timezone);
