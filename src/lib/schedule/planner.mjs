@@ -33,6 +33,7 @@ export function buildDailySchedule({ tasks, events = [], localDate, timezone }) 
   const workEnd = new Date(workEndIso).getTime();
   const busy = events
     .filter((event) => event.transparency !== "transparent")
+    .filter((event) => event.transparency !== "transparent")
     .map((event) => intervalForEvent(event, timezone))
     .filter((interval) => interval && interval.end > dayStart && interval.start < dayEnd)
     .map((interval) => ({ start: Math.max(interval.start, dayStart), end: Math.min(interval.end, dayEnd) }))
