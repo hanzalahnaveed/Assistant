@@ -1,4 +1,4 @@
-import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
+import { localDateTimeToIso } from "../calendar-timezone.mjs";
 
 const priorityWeight = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 
