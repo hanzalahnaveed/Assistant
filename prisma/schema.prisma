@@ -74,6 +74,7 @@ model User {
   dailyBriefings  DailyBriefing[]
   notifications   Notification[]
   emailDrafts     EmailDraft[]
+  inboundEmails   InboundEmail[]
   followUps       FollowUp[]
 }
 
