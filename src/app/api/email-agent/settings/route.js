@@ -57,6 +57,7 @@ export async function PATCH(request) {
   if (parsed.data.enabled === true && !saved.enabled) settings.enabledAt = now;
   if (parsed.data.enabled === false) {
     settings.enabledAt = null;
+    settings.autoReplyEnabled = false;
     settings.autoReplyEnabledAt = null;
   }
   if (parsed.data.autoReplyEnabled === true && !saved.autoReplyEnabled) settings.autoReplyEnabledAt = now;
