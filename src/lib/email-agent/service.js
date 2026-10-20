@@ -166,7 +166,7 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
       ],
     }),
     cache: "no-store",
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(20000),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error?.message || "AI provider could not draft the reply.");
@@ -321,12 +321,23 @@ export async function processInboundEmailForUser(user, integration, settings) {
   }
   const token = await getGoogleAccessToken(user.id);
   if (!token) return { ...counts, skipped: 1, reason: "Google connection needs reconnecting." };
-  const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-  listUrl.searchParams.set("maxResults", "25");
-  listUrl.searchParams.set("q", "in:inbox newer_than:7d -from:me -category:promotions -category:social");
-  const listed = await googleApiGet(token.accessToken, listUrl.toString());
-  counts.scanned = (listed.messages ?? []).length;
-  for (const item of (listed.messages ?? []).slice(0, 25)) {
+  const candidates = [];
+  let pageToken = null;
+  for (let page = 0; page < 5; page++) {
+    const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+    listUrl.searchParams.set("maxResults", "100");
+    listUrl.searchParams.set("q", "in:inbox newer_than:7d -from:me -category:promotions -category:social");
+    if (pageToken) listUrl.searchParams.set("pageToken", pageToken);
+    const listed = await googleApiGet(token.accessToken, listUrl.toString());
+    candidates.push(...(listed.messages ?? []));
+    pageToken = listed.nextPageToken ?? null;
+    if (!pageToken) break;
+  }
+  counts.scanned = candidates.length;
+  // Keep each serverless invocation bounded; later scheduled runs continue through older pages.
+  let newlyClaimed = 0;
+  for (const item of candidates) {
+    if (newlyClaimed >= 2) break;
     let record;
     try {
       const existing = await prisma.inboundEmail.findUnique({
@@ -356,6 +367,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           status: "PROCESSING",
         },
       });
+      newlyClaimed++;
       const body = extractMessageText(message);
       if (!body) throw new Error("Message body was empty or could not be decoded.");
       let availableSlots = [];
