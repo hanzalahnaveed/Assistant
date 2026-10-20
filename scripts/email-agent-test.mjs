@@ -10,7 +10,7 @@ assert.equal(parseSender(null), null);
 
 assert.equal(parseMessageId("<message-123@example.test>"), "<message-123@example.test>");
 assert.equal(parseMessageId("<message id@example.test>"), null);
-assert.equal(parseMessageId("<message@example.test>\\r\\nBcc: victim@example.test"), null);
+assert.equal(parseMessageId("<message@example.test>\r\nBcc: victim@example.test"), null);
 assert.equal(parseMessageId("not-a-message-id"), null);
 
 assert.equal(isAutomatedSender({}, "noreply@example.com"), true);
