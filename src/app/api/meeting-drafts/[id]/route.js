@@ -239,7 +239,7 @@ export async function POST(request, context) {
   const meetingStartDate = localDateKey(draft.startAt);
   const meetingEndDate = localDateKey(new Date(draft.endAt.getTime() - 1));
   const conflicts = (availability.items ?? []).filter((event) => {
-    if (event.status === "cancelled") return false;
+    if (event.status === "cancelled" || event.transparency === "transparent") return false;
     if (event.start?.dateTime && event.end?.dateTime) {
       const existingStart = new Date(event.start.dateTime);
       const existingEnd = new Date(event.end.dateTime);
