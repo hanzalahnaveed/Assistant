@@ -65,6 +65,11 @@ enum MeetingDraftStatus {
   CANCELLED
 }
 
+enum SchedulePlanStatus {
+  DRAFT
+  APPROVED
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -86,6 +91,7 @@ model User {
   emailDrafts  EmailDraft[]
   meetingDrafts MeetingDraft[]
   followUps     FollowUp[]
+  schedulePlans DailySchedulePlan[]
 }
 
 model UserPreference {
@@ -290,6 +296,23 @@ model MeetingDraft {
   @@index([userId, updatedAt])
 }
 
+
+model DailySchedulePlan {
+  id          String            @id @default(cuid())
+  userId      String
+  localDate   String
+  timezone    String            @default("Asia/Karachi")
+  status      SchedulePlanStatus @default(DRAFT)
+  blocks      Json              @default("[]")
+  unscheduled Json              @default("[]")
+  generatedAt DateTime          @default(now())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, localDate])
+  @@index([userId, updatedAt])
+}
 
 model FollowUp {
   id          String         @id @default(cuid())
