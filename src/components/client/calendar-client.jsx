@@ -59,6 +59,11 @@ function shiftDateKey(value, amount) {
   const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + amount));
   return date.getUTCFullYear() + "-" + String(date.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date.getUTCDate()).padStart(2, "0");
 }
+function shiftMonthKey(value, amount) {
+  const parts = value.split("-").map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1 + amount, 1));
+  return date.getUTCFullYear() + "-" + String(date.getUTCMonth() + 1).padStart(2, "0") + "-01";
+}
 function calendarRange(date, view, timezone) {
   let startDate = date;
   let endDate;
@@ -777,8 +782,7 @@ export default function CalendarClient() {
                 onClick={() => setCalendarDate((date) => {
                   if (calendarView === "day") return shiftDateKey(date, -1);
                   if (calendarView === "week") return shiftDateKey(date, -7);
-                  const parts = date.split("-").map(Number);
-                  return shiftDateKey(date, -new Date(Date.UTC(parts[0], parts[1] - 1, 0)).getUTCDate());
+                  return shiftMonthKey(date, -1);
                 })}
                 disabled={loading || busy}
                 className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
@@ -789,8 +793,7 @@ export default function CalendarClient() {
                 onClick={() => setCalendarDate((date) => {
                   if (calendarView === "day") return shiftDateKey(date, 1);
                   if (calendarView === "week") return shiftDateKey(date, 7);
-                  const parts = date.split("-").map(Number);
-                  return shiftDateKey(date, new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate());
+                  return shiftMonthKey(date, 1);
                 })}
                 disabled={loading || busy}
                 className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
