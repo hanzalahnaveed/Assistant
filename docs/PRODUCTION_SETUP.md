@@ -86,7 +86,13 @@ Enable the feature from the Email & outreach page after connecting a Google acco
 1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`.
 2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. Set `OPENAI_API_KEY` in your local `.env`.
 3. In **Email & outreach → Inbound email agent**, enable the agent but leave **Auto-send routine replies** off for the first pass.
-4. Send a harmless test email to the connected account, then trigger one worker run from a terminal:
+4. Send a harmless test email to the connected account. For continuous local polling, start the worker in a second terminal:
+
+   ```bash
+   npm run email-agent:local-worker
+   ```
+
+   It loads your local Next.js environment files and polls every 60 seconds by default. Set `EMAIL_AGENT_POLL_INTERVAL_MS` to adjust the interval (minimum 15 seconds, maximum 5 minutes). To run a single worker pass instead, use:
 
    ```bash
    curl --fail-with-body -sS -X POST http://localhost:3000/api/cron/email-agent \
