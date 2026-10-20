@@ -11,6 +11,7 @@ const statusLabels = {
   MEETING_REVIEW: "Meeting review",
   TASK_REVIEW: "Task review",
   REPLIED: "Replied",
+  SEND_UNCERTAIN: "Check Sent folder",
   FAILED: "Needs attention",
 };
 
