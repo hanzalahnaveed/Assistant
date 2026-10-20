@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
-  DEFAULT_EMAIL_AGENT_SETTINGS,
   getEmailAgentSettings,
 } from "@/lib/email-agent/service";
 
