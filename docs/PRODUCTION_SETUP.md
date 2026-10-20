@@ -81,6 +81,23 @@ The worker endpoint is `POST /api/cron/email-agent`. The workflow `.github/workf
 
 Enable the feature from the Email & outreach page after connecting a Google account and configuring the AI provider. Email-agent settings are stored per user. Both the agent and routine auto-replies default to off, and polling is limited to messages received after the agent was enabled. Sensitive email and meeting/task replies are kept for review; task creation follows the existing automation policy, while sensitive messages do not trigger task side effects before review. For a meeting request, the account owner must explicitly choose a proposed slot. The worker rechecks availability, creates an idempotent Calendar event with a Meet request, and sends the calendar invitation to the sender; the reply draft receives the resulting link but still requires separate approval and send confirmation. Do not enable auto-send until the test account, recipient handling, and review queue have been verified.
 
+### Local development check
+
+1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`.
+2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. Set `OPENAI_API_KEY` in your local `.env`.
+3. In **Email & outreach → Inbound email agent**, enable the agent but leave **Auto-send routine replies** off for the first pass.
+4. Send a harmless test email to the connected account, then trigger one worker run from a terminal:
+
+   ```bash
+   curl --fail-with-body -sS -X POST http://localhost:3000/api/cron/email-agent \
+     -H "Authorization: Bearer $CRON_SECRET"
+   ```
+
+5. Refresh the inbound activity queue. Verify the message summary/category, generated draft, and reply threading. Test sending only after reviewing the draft manually. For meeting requests, choose a slot only when you are ready for a real calendar invitation to be sent to the test sender.
+6. Run local checks with `npm run test:email-agent`, `npm run test:e2e`, and `npm run verify:javascript`.
+
+The scheduled GitHub Actions worker targets `APP_BASE_URL`; it does not run against your localhost. Do not expose a local server or use a personal production inbox just to test the worker.
+
 ## 7. End-to-end smoke test
 
 Use credentials-based sign-up/sign-in for the core authentication checks. If Google OAuth is configured, also use a real Google test account and verify its optional flow:
