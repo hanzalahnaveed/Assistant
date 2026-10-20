@@ -423,7 +423,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           ? await askModel({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
           : probe;
         let taskProposal = null;
-        if (classification.category === "TASK" && classification.task) {
+        if (classification.category === "TASK" && classification.task && !classification.sensitive) {
           try {
             taskProposal = await createTaskActionProposal(
               user.id,
