@@ -397,7 +397,7 @@ export default function CalendarClient() {
                   if (calendarView === "day") return shiftDateKey(date, -1);
                   if (calendarView === "week") return shiftDateKey(date, -7);
                   const parts = date.split("-").map(Number);
-                  return shiftDateKey(date, -new Date(Date.UTC(parts[0], parts[1] - 1, 1)).getUTCDate());
+                  return shiftDateKey(date, -new Date(Date.UTC(parts[0], parts[1] - 1, 0)).getUTCDate());
                 })}
                 disabled={loading || busy}
                 className="rounded-lg border border-[#dfe6dd] px-3 py-2 text-xs"
