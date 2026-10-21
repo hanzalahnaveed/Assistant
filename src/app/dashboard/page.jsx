@@ -1,4 +1,5 @@
-import AssistantClient from "@/components/client/assistant-client";
+import { redirect } from "next/navigation";
+
 export default function AssistantPage() {
-  return <AssistantClient />;
+  redirect("/dashboard/schedule");
 }
