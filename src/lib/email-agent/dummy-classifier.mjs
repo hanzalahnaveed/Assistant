@@ -62,9 +62,10 @@ export function generateDummyClassification({ subject = "", sender = "", body = 
 }
 
 export function normalizeIntent({ intent, category, subject = "", body = "" } = {}) {
-  if (INTENTS.includes(intent)) return intent;
+  if (INTENTS.includes(intent) && intent !== "OTHER") return intent;
   const fromText = classifyIntent({ subject, body });
   if (fromText !== "OTHER") return fromText;
+  if (intent === "OTHER") return "OTHER";
   if (category === "MEETING") return "MEETING_REQUEST";
   if (category === "TASK") return "TASK_DELEGATION";
   return "OTHER";
@@ -74,5 +75,5 @@ export function isAutomaticReplyAllowed(classification = {}) {
   return classification.mode === "LIVE" &&
     classification.category === "ROUTINE" &&
     classification.sensitive !== true &&
-    !["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION"].includes(classification.intent);
+    classification.intent === "OTHER";
 }
