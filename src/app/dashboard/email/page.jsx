@@ -1,8 +1,10 @@
 import EmailClient from "@/components/client/email-client";
+
 export const metadata = {
-  title: "Email & outreach — Assistant",
-  description: "Draft, review, approve, and send outreach emails with explicit user control.",
+  title: "Email inbox — Assistant",
+  description: "Process incoming email, review replies, and track extracted tasks.",
 };
+
 export default function EmailPage() {
   return <EmailClient />;
 }
