@@ -2,7 +2,6 @@ import "server-only";
 import { z } from "zod";
 import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
-import { createTaskActionProposal } from "@/lib/actions/service";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
 import { generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
@@ -395,24 +394,38 @@ export async function processInboundEmailForUser(user, integration, settings) {
         const classification = availableSlots.length
           ? await askModel({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
           : probe;
-        let taskProposal = null;
-        if ((classification.category === "TASK" || classification.intent === "TASK_DELEGATION") && classification.task && !classification.sensitive && classification.mode === "LIVE") {
-          try {
-            taskProposal = await createTaskActionProposal(
-              user.id,
-              "email-agent:" + message.id,
-              {
-                title: classification.task.title,
-                description: classification.task.description,
-                priority: classification.task.priority,
-                dueAt: classification.task.dueAt,
-                source: "EMAIL",
-                sourceRef: message.id,
+        let createdTask = null;
+        if ((classification.category === "TASK" || classification.intent === "TASK_DELEGATION") && classification.task) {
+          const existingTask = await prisma.scheduleItem.findUnique({
+            where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: message.id } },
+            select: { id: true },
+          });
+          const taskDueAt = classification.task.dueAt ? new Date(classification.task.dueAt) : null;
+          createdTask = await prisma.scheduleItem.upsert({
+            where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: message.id } },
+            create: {
+              userId: user.id,
+              title: classification.task.title,
+              description: classification.task.description || null,
+              priority: classification.task.priority || "MEDIUM",
+              dueAt: taskDueAt,
+              scheduledStartAt: taskDueAt,
+              source: "EMAIL",
+              sourceRef: message.id,
+              timezone: user.timezone || "Asia/Karachi",
+            },
+            update: {},
+          });
+          if (!existingTask) {
+            await prisma.auditEvent.create({
+              data: {
+                userId: user.id,
+                eventType: "TASK_CREATED",
+                actor: "ASSISTANT",
+                resourceId: createdTask.id,
+                metadata: { source: "EMAIL", sourceRef: message.id, intent: classification.intent },
               },
-            );
-          } catch (error) {
-            if (!(error instanceof Error && error.name === "ActionBlockedError")) throw error;
-            taskProposal = { blocked: true };
+            }).catch(() => undefined);
           }
         }
         const bodyText = classification.replyBody;
@@ -420,7 +433,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           "\nClassification: " + classification.category +
           "\nSensitivity: " + (classification.sensitive ? "sensitive; approval required" : "not flagged sensitive") +
           "\nReason: " + classification.reason +
-          (taskProposal ? "\nTask action: " + (taskProposal.action?.status || (taskProposal.blocked ? "BLOCKED" : "proposed")) : "") +
+          (createdTask ? "\nTask created: " + createdTask.id : "") +
           (availableSlots.length ? "\nAvailability checked against primary calendar. Proposed times: " + availableSlots.map((slot) => slot.label).join(", ") : "");
         const existingDraft = await prisma.emailDraft.findFirst({
           where: { userId: user.id, goal: { contains: "Inbound reply for Gmail message " + message.id } },
@@ -471,7 +484,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
             status: autoReplyUncertain ? "SEND_UNCERTAIN" :
               classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
-              classification.category === "TASK" || classification.intent === "TASK_DELEGATION" ? "TASK_REVIEW" :
+              createdTask ? "TASK_CREATED" :
               autoReplySent ? "REPLIED" :
               autoEligible && draft.status === "DRAFT" ? "DRAFTED" :
               "DRAFTED",
@@ -480,6 +493,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
             summary: classification.summary,
             classification: {
               category: classification.category,
+              taskId: createdTask?.id || null,
               intent: classification.intent,
               mode: classification.mode,
               sensitive: classification.sensitive,
@@ -488,10 +502,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
               task: classification.task,
               meeting: classification.meeting,
               availableSlots,
-              taskProposal: taskProposal ? {
-                status: taskProposal.action?.status || (taskProposal.blocked ? "BLOCKED" : "PROPOSED"),
-                actionId: taskProposal.action?.id || null,
-              } : null,
+              taskCreated: Boolean(createdTask),
             },
             draftId: draft.id,
             processedAt: new Date(),
