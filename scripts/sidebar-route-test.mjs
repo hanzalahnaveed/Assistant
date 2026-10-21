@@ -17,24 +17,8 @@ const exists = async (relativePath) => {
 
 const routes = [
   {
-    href: "/dashboard/briefing",
-    label: "Briefing",
-    page: "src/app/dashboard/briefing/page.jsx",
-    client: "src/components/client/briefing-client.jsx",
-    endpoints: ["/api/workspace/briefing"],
-    workflow: /next actions|daily briefing|priority/i,
-  },
-  {
-    href: "/dashboard",
-    label: "AI assistant",
-    page: "src/app/dashboard/page.jsx",
-    client: "src/components/client/assistant-client.jsx",
-    endpoints: ["/api/chat"],
-    workflow: /sendMessage|openConversation|newConversation/i,
-  },
-  {
     href: "/dashboard/schedule",
-    label: "Schedule",
+    label: "Tasks & calendar",
     page: "src/app/dashboard/schedule/page.jsx",
     client: "src/components/client/schedule-client.jsx",
     endpoints: ["/api/calendar-events", "/api/tasks"],
@@ -42,23 +26,15 @@ const routes = [
   },
   {
     href: "/dashboard/email",
-    label: "Email outreach",
+    label: "Email",
     page: "src/app/dashboard/email/page.jsx",
-    client: "src/components/client/email-client.jsx",
-    endpoints: ["/api/email-drafts"],
-    workflow: /save|generate|statusFilter|approve|send/i,
-  },
-  {
-    href: "/dashboard/actions",
-    label: "Action center",
-    page: "src/app/dashboard/actions/page.jsx",
-    client: "src/components/client/actions-client.jsx",
-    endpoints: ["/api/actions", "/api/automation-rules"],
-    workflow: /automationPaused|approve|reject|ruleMode/i,
+    client: "src/components/client/inbound-email-queue.jsx",
+    endpoints: ["/api/email-agent/inbox", "/api/email-drafts"],
+    workflow: /draftAction|Approve reply|Send reply/i,
   },
   {
     href: "/dashboard/integrations",
-    label: "Integrations",
+    label: "Connections",
     page: "src/app/dashboard/integrations/page.jsx",
     client: "src/components/client/ui.jsx",
     endpoints: [
