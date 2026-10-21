@@ -4,7 +4,7 @@ const patterns = {
   decline: /\b(decline|can't attend|cannot attend|unable to attend|won't make it|reject the invitation|not available for this meeting)\b/i,
   reschedule: /\b(reschedule|move (?:the )?meeting|change (?:the )?meeting time|different time|another time|postpone|push (?:the )?meeting)\b/i,
   meeting: /\b(meeting|schedule a call|book a call|calendar invite|invitation|availability|free\s+(?:on|at|tomorrow|this))\b/i,
-  task: /\b(please|could you|can you|would you|action item|follow up|follow-up|prepare|send|review|complete|finish|update|create|deliver|submit)\b/i,
+  task: /\b(action item|follow[- ]up|please\s+(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check)|(?:could|can|would)\s+you\s+(?:please\s+)?(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check))\b/i,
   highPriority: /\b(urgent|asap|immediately|critical|today|eod)\b/i,
 };
 
