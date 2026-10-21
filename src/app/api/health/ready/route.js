@@ -10,10 +10,10 @@ const requiredConfiguration = [
 ];
 
 export async function GET() {
-  const dummyClassifier = process.env.EMAIL_AGENT_CLASSIFIER_MODE?.toLowerCase() === "dummy";
+  const dummyClassifier = process.env.EMAIL_AGENT_CLASSIFIER_MODE?.toLowerCase() === "dummy" || !process.env.GROQ_API_KEY;
   const requiredKeys = dummyClassifier
     ? requiredConfiguration
-    : [...requiredConfiguration, "OPENAI_API_KEY"];
+    : [...requiredConfiguration, "GROQ_API_KEY"];
   const missingConfiguration = requiredKeys.filter((key) => {
     const value = process.env[key];
     return !value || value.trim().length === 0;
@@ -34,7 +34,7 @@ export async function GET() {
       service: "assistant",
       checks: {
         database,
-        classifier: dummyClassifier ? "dummy" : "live",
+        classifier: dummyClassifier ? "dummy" : "groq",
         configuration: missingConfiguration.length === 0 ? "ok" : "missing",
         missingConfiguration,
       },
