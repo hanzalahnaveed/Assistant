@@ -19,7 +19,8 @@
     "format:check": "npx --yes prettier@3 --check .",
     "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs",
     "test:email-agent": "node scripts/email-agent-test.mjs",
-    "email-agent:local-worker": "node scripts/email-agent-local-worker.mjs"
+    "email-agent:local-worker": "node scripts/email-agent-local-worker.mjs",
+    "test:email-agent-dummy": "node scripts/email-agent-dummy-classifier-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
