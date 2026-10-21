@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createTaskActionProposal } from "@/lib/actions/service";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
-import { generateDummyClassification, normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
+import { generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -385,7 +385,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
         const probe = await askModel({
           sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [],
         });
-        if (probe.category === "MEETING") {
+        if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
           availableSlots = await getAvailableSlots(
             user.id,
             user.timezone || "Asia/Karachi",
@@ -396,7 +396,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           ? await askModel({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
           : probe;
         let taskProposal = null;
-        if (classification.category === "TASK" && classification.task && !classification.sensitive && classification.mode !== "DUMMY") {
+        if ((classification.category === "TASK" || classification.intent === "TASK_DELEGATION") && classification.task && !classification.sensitive && classification.mode === "LIVE") {
           try {
             taskProposal = await createTaskActionProposal(
               user.id,
@@ -443,9 +443,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
         const autoEligible = !existingDraft &&
           draft.status === "DRAFT" &&
           settings.autoReplyEnabled &&
-          classification.mode === "LIVE" &&
-          !classification.sensitive &&
-          classification.category === "ROUTINE" &&
+          isAutomaticReplyAllowed(classification) &&
           Number.isFinite(Date.parse(settings.autoReplyEnabledAt || "")) &&
           Number(message.internalDate || 0) >= Date.parse(settings.autoReplyEnabledAt) &&
           !user.preferences?.automationPaused;
@@ -471,9 +469,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
           where: { id: record.id },
           data: {
             status: autoReplyUncertain ? "SEND_UNCERTAIN" :
-              classification.sensitive ? "AWAITING_APPROVAL" :
-              classification.category === "MEETING" ? "MEETING_REVIEW" :
-              classification.category === "TASK" ? "TASK_REVIEW" :
+              classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
+              classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
+              classification.category === "TASK" || classification.intent === "TASK_DELEGATION" ? "TASK_REVIEW" :
               autoReplySent ? "REPLIED" :
               autoEligible && draft.status === "DRAFT" ? "DRAFTED" :
               "DRAFTED",
