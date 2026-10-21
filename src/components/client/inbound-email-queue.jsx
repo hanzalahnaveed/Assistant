@@ -1,38 +1,40 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, RefreshCw, ShieldAlert } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, RefreshCw, Save, Send, ShieldAlert } from "lucide-react";
 
 const statusLabels = {
-  RECEIVED: "Received",
-  PROCESSING: "Processing",
-  DRAFTED: "Draft ready",
-  AWAITING_APPROVAL: "Manager review",
-  MEETING_REVIEW: "Meeting review",
-  MEETING_BOOKED_REVIEW: "Meeting booked · reply review",
-  TASK_REVIEW: "Task review",
-  REPLIED: "Replied",
-  SKIPPED: "Skipped",
-  SKIPPED: "Skipped automated sender",
-  SEND_UNCERTAIN: "Check Sent folder",
-  FAILED: "Needs attention",
+  RECEIVED: "New", PROCESSING: "Processing", DRAFTED: "Reply ready",
+  AWAITING_APPROVAL: "Needs review", MEETING_REVIEW: "Meeting request",
+  MEETING_BOOKED_REVIEW: "Meeting booked", TASK_REVIEW: "Task created",
+  TASK_CREATED: "Task created", REPLIED: "Replied", SKIPPED: "Skipped",
+  SEND_UNCERTAIN: "Check Gmail Sent", FAILED: "Needs attention",
 };
 
-export default function InboundEmailQueue({ onOpenDraft }) {
+export default function InboundEmailQueue() {
   const [messages, setMessages] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [edits, setEdits] = useState({});
   const [meetingBusy, setMeetingBusy] = useState("");
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const response = await fetch("/api/email-agent/inbox", { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not load inbound email activity.");
-      setMessages(data.messages || []);
+      const [inboxResponse, draftsResponse] = await Promise.all([
+        fetch("/api/email-agent/inbox", { cache: "no-store" }),
+        fetch("/api/email-drafts", { cache: "no-store" }),
+      ]);
+      const [inboxData, draftData] = await Promise.all([inboxResponse.json(), draftsResponse.json()]);
+      if (!inboxResponse.ok) throw new Error(inboxData.error || "Could not load inbox.");
+      if (!draftsResponse.ok) throw new Error(draftData.error || "Could not load reply drafts.");
+      setMessages(inboxData.messages || []);
+      setDrafts(draftData.drafts || []);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load inbound email activity.");
+      setError(reason instanceof Error ? reason.message : "Could not load inbox.");
     } finally {
       setLoading(false);
     }
@@ -45,89 +47,134 @@ export default function InboundEmailQueue({ onOpenDraft }) {
     return () => window.removeEventListener("email-agent-refresh", refresh);
   }, [load]);
 
+  function getDraft(message) {
+    return drafts.find((draft) => draft.id === message.draftId);
+  }
+  function getEdit(draft) {
+    return edits[draft.id] || { subject: draft.subject, body: draft.body };
+  }
+  function setEdit(draft, key, value) {
+    setEdits((current) => ({ ...current, [draft.id]: { ...getEdit(draft), [key]: value } }));
+  }
+
+  async function draftAction(draft, action) {
+    if (action === "SEND" && !window.confirm("Send this reply to " + draft.toEmail + "?")) return;
+    setBusyId(draft.id);
+    setError("");
+    setNotice("");
+    try {
+      if (action === "SAVE" || action === "APPROVE") {
+        const current = getEdit(draft);
+        const saveResponse = await fetch("/api/email-drafts/" + draft.id, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ toEmail: draft.toEmail, ccEmail: draft.ccEmail || "", subject: current.subject, body: current.body, goal: draft.goal || "" }),
+        });
+        const saved = await saveResponse.json();
+        if (!saveResponse.ok) throw new Error(saved.error || "Could not save reply.");
+      }
+      if (action !== "SAVE") {
+        const response = await fetch("/api/email-drafts/" + draft.id, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not update reply.");
+      }
+      setNotice(action === "SAVE" ? "Reply draft saved." : action === "APPROVE" ? "Reply approved. Send it when ready." : "Reply sent.");
+      setEdits((current) => { const next = { ...current }; delete next[draft.id]; return next; });
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not update reply.");
+      await load();
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function createMeeting(message, slot) {
-    if (!window.confirm(
-      "Create this Google Calendar event and send the calendar invitation to " +
-      message.fromEmail +
-      "? The email reply will remain a draft for you to review and send."
-    )) return;
-    setMeetingBusy(message.id + ":" + slot.startAt);
+    if (!window.confirm("Create the calendar event and send an invitation to " + message.fromEmail + "?")) return;
+    setMeetingBusy(message.id);
     setError("");
     try {
       const response = await fetch("/api/email-agent/inbox/" + message.id + "/meeting", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ startAt: slot.startAt }),
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ startAt: slot.startAt }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not create the meeting.");
+      if (!response.ok) throw new Error(data.error || "Could not create meeting.");
+      setNotice("Meeting added to your calendar.");
       await load();
-      if (data.draft?.id) onOpenDraft(data.draft.id);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not create the meeting.");
+      setError(reason instanceof Error ? reason.message : "Could not create meeting.");
     } finally {
       setMeetingBusy("");
     }
   }
 
+  const pendingCount = messages.filter((message) => ["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "FAILED"].includes(message.status)).length;
+
   return (
-    <section className="mb-5 rounded-[18px] border border-[#E3E7ED] bg-white p-5 shadow-[0_2px_4px_rgb(35_48_68/5%)]">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div><h2 className="font-semibold text-[#233044]">Inbound email activity</h2><p className="mt-1 text-sm text-[#6B7280]">Recent messages processed by the agent, including items awaiting approval.</p></div>
-        <button type="button" aria-label="Refresh inbound email activity" onClick={() => void load()} disabled={loading} className="rounded-lg border border-[#E3E7ED] p-2 text-[#6B7280] disabled:opacity-50"><RefreshCw size={15} /></button>
+    <section className="rounded-2xl border border-[#E3E7ED] bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="text-lg font-semibold text-[#233044]">Inbox activity</h2><p className="mt-1 text-sm text-[#6B7280]">{pendingCount} item{pendingCount === 1 ? "" : "s"} need attention</p></div>
+        <button type="button" onClick={() => void load()} disabled={loading} className="rounded-lg border p-2 text-[#6B7280] disabled:opacity-50" aria-label="Refresh inbox"><RefreshCw size={15} /></button>
       </div>
       {error && <p role="alert" className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><AlertCircle size={16} />{error}</p>}
-      {loading ? <p className="py-4 text-sm text-[#6B7280]">Loading inbox activity…</p> : messages.length ? (
-        <div className="space-y-2">
-          {messages.map((message) => (
-            <article key={message.id} className="rounded-xl border border-[#E8EBF0] p-3.5">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-semibold text-[#233044]">{message.subject || "(no subject)"}</h3><p className="mt-1 truncate text-xs text-[#6B7280]">{message.fromEmail}{message.receivedAt ? " · " + new Date(message.receivedAt).toLocaleString() : ""}</p></div>
-                <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-[11px] font-medium text-[#4B5563]">{statusLabels[message.status] || message.status}</span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="rounded-full bg-[#F3F5F7] px-2 py-1 text-[11px]">{message.category}</span>
-                {message.sensitive && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900"><ShieldAlert size={12} />Sensitive</span>}
-                {message.category === "MEETING" && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px]"><CalendarClock size={12} />Scheduling</span>}
-                {message.category === "TASK" && <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-[11px]"><ListTodo size={12} />Task request</span>}
-              </div>
-              {message.summary && <p className="mt-2 text-sm leading-5 text-[#4B5563]">{message.summary}</p>}
-              {message.lastError && <p className="mt-2 text-xs text-amber-900">{message.lastError}</p>}
-              {message.category === "MEETING" && !message.classification?.meetingEventId && (
-                <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
-                  <p className="text-xs leading-5 text-[#374151]">Choose a free slot to create a calendar event and generate a Google Meet link. The calendar invitation is sent to the sender; your email reply stays in drafts until you approve and send it.</p>
-                  {Array.isArray(message.classification?.availableSlots) && message.classification.availableSlots.length ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {message.classification.availableSlots.map((slot) => (
-                        <button
-                          key={slot.startAt}
-                          type="button"
-                          disabled={Boolean(meetingBusy)}
-                          onClick={() => void createMeeting(message, slot)}
-                          className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-900 disabled:opacity-50"
-                        >
-                          {meetingBusy === message.id + ":" + slot.startAt ? "Creating…" : slot.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : <p className="mt-2 text-xs text-[#6B7280]">No free slots were found. Review the draft and ask the sender for another time.</p>}
+      {notice && <p role="status" className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 size={16} />{notice}</p>}
+      {loading ? <p className="py-8 text-sm text-[#6B7280]">Loading inbox…</p> : messages.length ? (
+        <div className="space-y-3">
+          {messages.map((message) => {
+            const draft = getDraft(message);
+            const classification = message.classification || {};
+            const task = classification.task;
+            return (
+              <article key={message.id} className="rounded-xl border border-[#E8EBF0] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1"><h3 className="break-words font-semibold text-[#233044]">{message.subject || "(no subject)"}</h3><p className="mt-1 text-xs text-[#6B7280]">{message.fromEmail}{message.receivedAt ? " · " + new Date(message.receivedAt).toLocaleString() : ""}</p></div>
+                  <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1 text-xs">{statusLabels[message.status] || message.status}</span>
                 </div>
-              )}
-              {message.classification?.meetingEventId && (
-                <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-sm">
-                  <p className="font-semibold text-emerald-900">Meeting created; reply still needs review</p>
-                  {message.classification.meetingLink && <p className="mt-1"><a href={message.classification.meetingLink} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-800 underline">Open Google Meet</a></p>}
-                  {message.classification.calendarEventLink && <p className="mt-1"><a href={message.classification.calendarEventLink} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-800 underline">Open calendar event</a></p>}
+                {message.summary && <p className="mt-3 text-sm leading-6 text-[#4B5563]">{message.summary}</p>}
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1">{classification.intent?.replaceAll("_", " ") || message.category}</span>
+                  {message.sensitive && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-amber-900"><ShieldAlert size={12} />Needs approval</span>}
                 </div>
-              )}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                {message.draftId ? <button type="button" onClick={() => onOpenDraft(message.draftId)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#B45F00] hover:underline">Review reply draft <ExternalLink size={12} /></button> : <span className="text-xs text-[#6B7280]">No reply draft available</span>}
-                {message.status === "REPLIED" && <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 size={13} />Reply sent</span>}
-              </div>
-            </article>
-          ))}
+                {classification.taskId && <div className="mt-3 flex items-center gap-2 rounded-lg bg-violet-50 p-3 text-sm text-violet-950"><ListTodo size={16} /><span>Task added: {task?.title || "View in Tasks & calendar"}</span><a href="/dashboard/schedule" className="ml-auto inline-flex items-center gap-1 font-semibold underline">Open task <ExternalLink size={12} /></a></div>}
+                {task && !classification.taskId && message.status !== "FAILED" && <p className="mt-3 rounded-lg bg-violet-50 p-3 text-sm text-violet-950">Task identified: {task.title}</p>}
+                {(message.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent)) && !classification.meetingEventId && (
+                  <div className="mt-3 rounded-lg bg-blue-50 p-3">
+                    <p className="text-sm font-medium text-blue-950"><CalendarClock size={15} className="mr-1 inline" />Meeting request</p>
+                    {Array.isArray(classification.availableSlots) && classification.availableSlots.length ? <div className="mt-2 flex flex-wrap gap-2">{classification.availableSlots.map((slot) => <button key={slot.startAt} type="button" disabled={Boolean(meetingBusy)} onClick={() => void createMeeting(message, slot)} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50">{meetingBusy === message.id ? "Creating…" : slot.label}</button>)}</div> : <p className="mt-1 text-xs text-blue-900">No available times were found. Reply to ask for another time.</p>}
+                  </div>
+                )}
+                {draft && <ReplyDraftCard draft={draft} busy={busyId === draft.id} value={getEdit(draft)} onChange={(key, value) => setEdit(draft, key, value)} onAction={(action) => void draftAction(draft, action)} />}
+                {message.lastError && <p className="mt-3 text-sm text-amber-900">{message.lastError}</p>}
+              </article>
+            );
+          })}
         </div>
-      ) : <p className="py-5 text-center text-sm text-[#6B7280]">No inbound messages processed yet. Enable the agent and run the email worker to start.</p>}
+      ) : <p className="py-10 text-center text-sm text-[#6B7280]">No inbox messages processed yet. Enable the agent and choose “Check inbox now”.</p>}
     </section>
+  );
+}
+
+function ReplyDraftCard({ draft, busy, value, onChange, onAction }) {
+  const editable = ["DRAFT", "FAILED"].includes(draft.status);
+  return (
+    <div className="mt-4 rounded-xl border border-[#E3E7ED] bg-[#FAFBFC] p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-2"><h4 className="text-sm font-semibold">Reply draft</h4><span className="text-xs text-[#6B7280]">{draft.status === "SENT" ? "Sent" : draft.status === "APPROVED" ? "Approved" : draft.status === "SEND_UNCERTAIN" ? "Check Gmail Sent" : draft.status}</span></div>
+      {draft.lastError && <p className="mb-3 text-xs text-amber-900">{draft.lastError}</p>}
+      {editable ? <div className="space-y-2">
+        <label className="block text-xs font-medium">Subject<input value={value.subject} onChange={(event) => onChange("subject", event.target.value)} maxLength={250} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm" /></label>
+        <label className="block text-xs font-medium">Reply<textarea value={value.body} onChange={(event) => onChange("body", event.target.value)} rows={5} maxLength={30000} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm leading-6" /></label>
+      </div> : <p className="whitespace-pre-wrap text-sm leading-6 text-[#374151]">{draft.body}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {editable && <button type="button" disabled={busy || !value.subject.trim() || !value.body.trim()} onClick={() => onAction("SAVE")} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50"><Save size={13} />Save</button>}
+        {draft.status === "DRAFT" && <button type="button" disabled={busy || !value.subject.trim() || !value.body.trim()} onClick={() => onAction("APPROVE")} className="rounded-lg bg-[#FA8500] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Working…" : "Approve reply"}</button>}
+        {draft.status === "APPROVED" && <button type="button" disabled={busy} onClick={() => onAction("SEND")} className="inline-flex items-center gap-1 rounded-lg bg-[#FA8500] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Send size={13} />{busy ? "Sending…" : "Send reply"}</button>}
+        {draft.status === "SENT" && <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800"><CheckCircle2 size={13} />Sent</span>}
+        {draft.status === "SEND_UNCERTAIN" && <p className="text-xs text-amber-900">Check Gmail Sent before retrying to avoid sending a duplicate.</p>}
+      </div>
+    </div>
   );
 }
