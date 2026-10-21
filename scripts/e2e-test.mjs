@@ -109,7 +109,6 @@ try {
   for (const path of [
     "/auth",
     "/",
-    "/dashboard",
     "/dashboard/integrations",
     "/dashboard/briefing",
     "/dashboard/schedule",
@@ -120,9 +119,11 @@ try {
     const html = await response.text();
     check(html.length > 0, path + " page renders");
   }
+  const dashboardRedirect = await expectStatus("/dashboard", 307);
+  assert.equal(new URL(dashboardRedirect.headers.get("location"), baseUrl).pathname, "/dashboard/schedule");
   await expectStatus("/dashboard/tasks", 307);
   await expectStatus("/dashboard/calendar", 307);
-  check(true, "legacy task and calendar URLs redirect to the unified schedule");
+  check(true, "dashboard entry and legacy task/calendar URLs redirect to the unified schedule");
 
   const signInStart = await expectStatus("/api/auth/google/start?intent=signin", 307);
   const signInUrl = new URL(signInStart.headers.get("location"));
