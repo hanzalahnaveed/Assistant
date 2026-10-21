@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
+
 const requiredConfiguration = [
   "DATABASE_URL",
   "APP_URL",
   "AUTH_SECRET",
-  "OPENAI_API_KEY",
   "CRON_SECRET",
 ];
+
 export async function GET() {
-  const missingConfiguration = requiredConfiguration.filter((key) => {
+  const dummyClassifier = process.env.EMAIL_AGENT_CLASSIFIER_MODE?.toLowerCase() === "dummy";
+  const requiredKeys = dummyClassifier
+    ? requiredConfiguration
+    : [...requiredConfiguration, "OPENAI_API_KEY"];
+  const missingConfiguration = requiredKeys.filter((key) => {
     const value = process.env[key];
     return !value || value.trim().length === 0;
   });
@@ -29,6 +34,7 @@ export async function GET() {
       service: "assistant",
       checks: {
         database,
+        classifier: dummyClassifier ? "dummy" : "live",
         configuration: missingConfiguration.length === 0 ? "ok" : "missing",
         missingConfiguration,
       },
