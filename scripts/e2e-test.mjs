@@ -484,6 +484,62 @@ try {
   });
   const inboundQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json()).messages;
   assert.ok(inboundQueue.some((message) => message.id === inboundTestMessage.id && message.sensitive));
+  const replyDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "external@example.test",
+      subject: "Re: Routine request",
+      body: "Initial reply text.",
+      goal: "Inbound reply for Gmail message e2e-reply-" + Date.now(),
+      status: "DRAFT",
+      replyThreadId: "e2e-reply-thread",
+      replyMessageId: "<e2e-reply-message@example.test>",
+    },
+  });
+  const draftsList = (await (await expectStatus("/api/email-drafts", 200, {}, token)).json()).drafts;
+  assert.ok(draftsList.some((draft) => draft.id === replyDraft.id));
+  const savedReplyResponse = await expectStatus("/api/email-drafts/" + replyDraft.id, 200, {
+    method: "PATCH",
+    body: JSON.stringify({
+      toEmail: "external@example.test",
+      ccEmail: "",
+      subject: "Re: Updated routine request",
+      body: "Reviewed reply text.",
+      goal: replyDraft.goal,
+    }),
+  }, token);
+  const savedReply = (await savedReplyResponse.json()).draft;
+  assert.equal(savedReply.subject, "Re: Updated routine request");
+  assert.equal(savedReply.body, "Reviewed reply text.");
+  const approvedReplyResponse = await expectStatus("/api/email-drafts/" + replyDraft.id, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  }, token);
+  assert.equal((await approvedReplyResponse.json()).draft.status, "APPROVED");
+  await expectStatus("/api/email-drafts/" + replyDraft.id, 409, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  }, token);
+  await expectStatus("/api/email-drafts/" + replyDraft.id, 403, {
+    method: "POST",
+    body: JSON.stringify({ action: "SEND" }),
+  }, token);
+  check(true, "reply drafts can be listed, edited, approved once, and cannot send without explicit Gmail send permission");
+  const cancellableReply = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "external@example.test",
+      subject: "Re: Cancel test",
+      body: "This reply should not be sent.",
+      status: "DRAFT",
+    },
+  });
+  const cancelledReplyResponse = await expectStatus("/api/email-drafts/" + cancellableReply.id, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "CANCEL" }),
+  }, token);
+  assert.equal((await cancelledReplyResponse.json()).draft.status, "CANCELLED");
+  check(true, "unsent reply drafts can be cancelled and are locked against later edits");
   const offeredMeetingStart = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
   const meetingReplyDraft = await prisma.emailDraft.create({
     data: {
@@ -958,6 +1014,29 @@ try {
   const listed = (await listResponse.json()).tasks;
   assert.ok(listed.some((task) => task.id === created.id));
   check(true, "task list returns the saved task");
+
+  const emailSourceRef = "e2e-email-task-source-" + Date.now();
+  const emailTaskInput = {
+    title: "Review incoming client request",
+    description: "Task extracted from an inbound email.",
+    priority: "HIGH",
+    source: "EMAIL",
+    sourceRef: emailSourceRef,
+  };
+  const emailTaskFirst = await expectStatus("/api/tasks", 201, {
+    method: "POST",
+    body: JSON.stringify(emailTaskInput),
+  }, token);
+  const emailTaskId = (await emailTaskFirst.json()).task.id;
+  const emailTaskDuplicate = await expectStatus("/api/tasks", 200, {
+    method: "POST",
+    body: JSON.stringify(emailTaskInput),
+  }, token);
+  assert.equal((await emailTaskDuplicate.json()).task.id, emailTaskId);
+  assert.equal(await prisma.scheduleItem.count({
+    where: { userId: user.id, source: "EMAIL", sourceRef: emailSourceRef },
+  }), 1);
+  check(true, "email-derived tasks are idempotent and duplicate processing cannot create duplicate tasks");
 
   await expectStatus("/api/tasks/" + created.id, 400, {
     method: "PATCH",
