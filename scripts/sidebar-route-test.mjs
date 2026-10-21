@@ -28,9 +28,9 @@ const routes = [
     href: "/dashboard/email",
     label: "Email",
     page: "src/app/dashboard/email/page.jsx",
-    client: "src/components/client/inbound-email-queue.jsx",
-    endpoints: ["/api/email-agent/inbox", "/api/email-drafts"],
-    workflow: /draftAction|Approve reply|Send reply/i,
+    client: "src/components/client/email-client.jsx",
+    endpoints: [],
+    workflow: /InboundEmailQueue|EmailAgentSettings/i,
   },
   {
     href: "/dashboard/integrations",
@@ -72,6 +72,14 @@ for (const route of routes) {
   assert.match(client, route.workflow, `${route.href} must retain its key interactive workflow`);
   for (const endpoint of route.endpoints) {
     assert.ok(client.includes(endpoint), `${route.href} must call ${endpoint}`);
+  }
+
+  if (route.href === "/dashboard/email") {
+    const inbox = await read("src/components/client/inbound-email-queue.jsx");
+    assert.match(inbox, /draftAction|Approve reply|Send reply/i, "inbox must offer per-message reply actions");
+    assert.ok(inbox.includes("/api/email-agent/inbox"), "email inbox must load processed incoming messages");
+    assert.ok(inbox.includes("/api/email-drafts"), "email inbox must load reply drafts");
+    assert.match(inbox, /classification\.taskId/, "email-derived tasks must link to the shared task list");
   }
 
   if (route.href === "/dashboard/integrations") {
