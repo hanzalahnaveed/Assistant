@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyIntent, generateDummyClassification, normalizeIntent } from "../src/lib/email-agent/dummy-classifier.mjs";
+import { classifyIntent, generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent } from "../src/lib/email-agent/dummy-classifier.mjs";
 
 assert.equal(classifyIntent({ subject: "Please schedule a meeting", body: "Are you free next week?" }), "MEETING_REQUEST");
 assert.equal(classifyIntent({ subject: "Move our meeting", body: "Can we reschedule to Friday?" }), "RESCHEDULE");
@@ -7,6 +7,10 @@ assert.equal(classifyIntent({ subject: "Calendar invite", body: "I cannot attend
 assert.equal(classifyIntent({ subject: "Action required", body: "Please review the proposal and send feedback." }), "TASK_DELEGATION");
 assert.equal(classifyIntent({ subject: "Hello", body: "Just sharing an update." }), "OTHER");
 assert.equal(normalizeIntent({ category: "TASK" }), "TASK_DELEGATION");
+assert.equal(isAutomaticReplyAllowed({ mode: "DUMMY", category: "ROUTINE", sensitive: false, intent: "OTHER" }), false);
+assert.equal(isAutomaticReplyAllowed({ mode: "LIVE", category: "ROUTINE", sensitive: false, intent: "OTHER" }), true);
+assert.equal(isAutomaticReplyAllowed({ mode: "LIVE", category: "ROUTINE", sensitive: false, intent: "DECLINE_INVITE" }), false);
+assert.equal(isAutomaticReplyAllowed({ mode: "LIVE", category: "TASK", sensitive: false, intent: "TASK_DELEGATION" }), false);
 
 const meeting = generateDummyClassification({
   subject: "Schedule a meeting", sender: "colleague@example.com",
