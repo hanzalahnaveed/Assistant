@@ -69,3 +69,10 @@ export function normalizeIntent({ intent, category, subject = "", body = "" } = 
   if (category === "TASK") return "TASK_DELEGATION";
   return "OTHER";
 }
+
+export function isAutomaticReplyAllowed(classification = {}) {
+  return classification.mode === "LIVE" &&
+    classification.category === "ROUTINE" &&
+    classification.sensitive !== true &&
+    !["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION"].includes(classification.intent);
+}
