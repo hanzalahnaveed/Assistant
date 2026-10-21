@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createTaskActionProposal } from "@/lib/actions/service";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
+import { generateDummyClassification, normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -41,6 +42,8 @@ const classificationSchema = z.object({
     durationMinutes: z.number().int().min(15).max(240),
     requestText: z.string().trim().max(1000),
   }).nullable(),
+  intent: z.enum(["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION", "OTHER"]).optional(),
+  mode: z.enum(["DUMMY", "LIVE"]).optional(),
 });
 
 export function getEmailAgentSettings(preferencesJson) {
@@ -77,8 +80,12 @@ function decodeModelJson(content) {
 }
 
 async function askModel({ subject, sender, body, settings, timezone, availableSlots }) {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Email automation needs OPENAI_API_KEY. No reply was sent.");
+  const dummyMode = process.env.EMAIL_AGENT_CLASSIFIER_MODE?.toLowerCase() === "dummy" ||
+    !process.env.OPENAI_API_KEY;
+  if (dummyMode) {
+    return classificationSchema.parse(generateDummyClassification({
+      subject, sender, body, settings, timezone, availableSlots,
+    }));
   }
   const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
   const response = await fetch(base + "/chat/completions", {
@@ -106,7 +113,8 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
             "For a task request, identify a task only when the sender clearly requests a concrete action; otherwise set task=null.",
             "Use the requested tone and style. Be honest, helpful, concise, and do not invent facts or commitments.",
             "Append the configured signature only if it is non-empty and appropriate.",
-            "Return keys: category, sensitive, reason, summary, replySubject, replyBody, task, meeting.",
+            "Return keys: category, sensitive, reason, summary, replySubject, replyBody, task, meeting, intent.",
+            "intent must be MEETING_REQUEST, RESCHEDULE, DECLINE_INVITE, TASK_DELEGATION, or OTHER.",
             "task is null or {title, description, priority, dueAt}; dueAt must be ISO datetime or null.",
             "meeting is null or {durationMinutes, requestText}.",
           ].join(" "),
@@ -135,7 +143,11 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
   if (!parsed.success) throw new Error("The AI provider returned incomplete or invalid email fields.");
   if (parsed.data.category === "SENSITIVE") parsed.data.sensitive = true;
   if (parsed.data.sensitive && parsed.data.category === "ROUTINE") parsed.data.category = "SENSITIVE";
-  return parsed.data;
+  return {
+    ...parsed.data,
+    intent: normalizeIntent({ intent: parsed.data.intent, category: parsed.data.category, subject, body }),
+    mode: "LIVE",
+  };
 }
 
 async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = new Date()) {
@@ -431,6 +443,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
         const autoEligible = !existingDraft &&
           draft.status === "DRAFT" &&
           settings.autoReplyEnabled &&
+          classification.mode === "LIVE" &&
           !classification.sensitive &&
           classification.category === "ROUTINE" &&
           Number.isFinite(Date.parse(settings.autoReplyEnabledAt || "")) &&
@@ -469,8 +482,11 @@ export async function processInboundEmailForUser(user, integration, settings) {
             summary: classification.summary,
             classification: {
               category: classification.category,
+              intent: classification.intent,
+              mode: classification.mode,
               sensitive: classification.sensitive,
               reason: classification.reason,
+              summary: classification.summary,
               task: classification.task,
               meeting: classification.meeting,
               availableSlots,
@@ -492,6 +508,8 @@ export async function processInboundEmailForUser(user, integration, settings) {
             resourceId: record.id,
             metadata: {
               category: classification.category,
+              intent: classification.intent,
+              mode: classification.mode,
               sensitive: classification.sensitive,
               autoReplyEligible: autoEligible,
               autoReplySent,
