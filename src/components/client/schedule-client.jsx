@@ -495,6 +495,14 @@ export default function ScheduleClient() {
         </div>
       )}
 
+      <section aria-label="Schedule key performance indicators" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "All schedule items", value: tasks.length + calendarItems.length },
+          { label: "Overdue tasks", value: tasks.filter((task) => task.status !== "DONE" && task.dueAt && new Date(task.dueAt) < new Date(new Date().setHours(0, 0, 0, 0))).length },
+          { label: "Due today", value: tasks.filter((task) => task.status !== "DONE" && task.dueAt && new Date(task.dueAt).toDateString() === new Date().toDateString()).length },
+          { label: "Calendar events", value: calendarItems.length },
+        ].map((metric) => <div key={metric.label} className="rounded-2xl border border-[#E3E7ED] bg-white p-4 shadow-sm"><p className="text-xs font-medium text-[#6B7280]">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-[#233044]">{metric.value}</p></div>)}
+      </section>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E3E7ED] bg-white p-3 shadow-[0_2px_4px_rgb(35_48_68/5%),0_12px_34px_rgb(35_48_68/7%)]">
         <div className="flex gap-2" role="group" aria-label="Schedule view">
           {[
