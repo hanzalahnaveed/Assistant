@@ -31,7 +31,10 @@ export default function InboundEmailQueue() {
       const [inboxData, draftData] = await Promise.all([inboxResponse.json(), draftsResponse.json()]);
       if (!inboxResponse.ok) throw new Error(inboxData.error || "Could not load inbox.");
       if (!draftsResponse.ok) throw new Error(draftData.error || "Could not load reply drafts.");
-      setMessages(inboxData.messages || []);
+      setMessages((inboxData.messages || []).filter((message) => {
+        const draft = (draftData.drafts || []).find((item) => item.id === message.draftId);
+        return draft && ["DRAFT", "APPROVED", "SENT", "SEND_UNCERTAIN"].includes(draft.status);
+      }));
       setDrafts(draftData.drafts || []);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load inbox.");
