@@ -52,7 +52,7 @@ export async function PATCH(request) {
   });
   const root = asObject(current.preferencesJson);
   const saved = getEmailAgentSettings(root);
-  const settings = { ...saved, ...parsed.data };
+  const settings = { ...saved, ...parsed.data, autoReplyEnabled: false, autoReplyEnabledAt: null };
   const now = new Date().toISOString();
   if (parsed.data.enabled === true && !saved.enabled) settings.enabledAt = now;
   if (parsed.data.enabled === false) {
