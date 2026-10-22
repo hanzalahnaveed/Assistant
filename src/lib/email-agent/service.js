@@ -4,7 +4,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
-import { normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
+
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -68,6 +68,20 @@ function header(message, name) {
 
 function safeMessageId(message) {
   return parseMessageId(header(message, "Message-ID"));
+}
+
+function normalizeIntent({ intent, category, subject = "", body = "" } = {}) {
+  const allowed = ["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION", "OTHER"];
+  if (allowed.includes(intent) && intent !== "OTHER") return intent;
+  const text = (subject + " " + body).slice(0, 24000);
+  if (/\b(decline|can't attend|cannot attend|unable to attend|won't make it|reject the invitation|not available for this meeting)\b/i.test(text)) return "DECLINE_INVITE";
+  if (/\b(reschedule|move (?:the )?meeting|change (?:the )?meeting time|different time|another time|postpone|push (?:the )?meeting)\b/i.test(text)) return "RESCHEDULE";
+  if (/\b(meeting|schedule a call|book a call|calendar invite|invitation|availability|free\s+(?:on|at|tomorrow|this))\b/i.test(text)) return "MEETING_REQUEST";
+  if (/\b(action item|follow[- ]up|please\s+(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check)|(?:could|can|would)\s+you\s+(?:please\s+)?(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check))\b/i.test(text)) return "TASK_DELEGATION";
+  if (intent === "OTHER") return "OTHER";
+  if (category === "MEETING") return "MEETING_REQUEST";
+  if (category === "TASK") return "TASK_DELEGATION";
+  return "OTHER";
 }
 
 function decodeModelJson(content) {
@@ -207,88 +221,6 @@ async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = n
     }
   }
   return slots;
-}
-
-async function sendAutomatedReply({ userId, integration, draft, sourceMessageId }) {
-  if (!integration.scopes.includes(EMAIL_SEND_SCOPE)) {
-    throw new Error("Automatic reply is enabled, but Gmail send permission is missing. Draft left for review.");
-  }
-  const token = await getGoogleAccessToken(userId);
-  if (!token) throw new Error("Google connection needs reconnecting. Draft left for review.");
-  const headers = [
-    "To: " + draft.toEmail,
-    "Subject: " + draft.subject.replace(/[\r\n]+/g, " "),
-    ...(draft.replyMessageId ? ["In-Reply-To: " + draft.replyMessageId, "References: " + draft.replyMessageId] : []),
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 8bit",
-  ];
-  const raw = Buffer.from(
-    headers.join("\r\n") + "\r\n\r\n" + draft.body.replace(/\r?\n/g, "\r\n"),
-    "utf8",
-  ).toString("base64url");
-  let response;
-  try {
-    response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-      method: "POST",
-      headers: { authorization: "Bearer " + token.accessToken, "content-type": "application/json" },
-      body: JSON.stringify({ raw, threadId: draft.replyThreadId }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(25000),
-    });
-  } catch (cause) {
-    const error = new Error("The Gmail send outcome is uncertain. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    error.cause = cause;
-    throw error;
-  }
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const uncertain = response.status >= 500;
-    const error = new Error(uncertain
-      ? "Gmail returned a server error; verify the Sent folder before retrying."
-      : "Gmail rejected the automated reply. The saved draft needs review.");
-    error.uncertain = uncertain;
-    error.httpStatus = response.status;
-    throw error;
-  }
-  let sent;
-  try {
-    sent = await prisma.emailDraft.updateMany({
-      where: { id: draft.id, userId, status: "DRAFT" },
-      data: {
-        status: "SENT",
-        sentAt: new Date(),
-        providerMessageId: result.id ?? null,
-        lastError: null,
-      },
-    });
-  } catch (cause) {
-    const error = new Error("Gmail accepted the reply but the send status could not be saved. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    error.cause = cause;
-    throw error;
-  }
-  if (!sent.count) {
-    const error = new Error("Gmail accepted the reply but the draft state changed. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    throw error;
-  }
-  await prisma.auditEvent.create({
-    data: {
-      userId,
-      eventType: "EMAIL_AGENT_AUTO_REPLY_SENT",
-      actor: "SYSTEM",
-      resourceId: draft.id,
-      metadata: { toEmail: draft.toEmail, subject: draft.subject, sourceMessageId, providerMessageId: result.id ?? null },
-    },
-  }).catch(() => undefined);
-}
-
-async function fetchMessage(accessToken, id) {
-  const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + encodeURIComponent(id));
-  url.searchParams.set("format", "full");
-  return googleApiGet(accessToken, url.toString());
 }
 
 export async function processInboundEmailForUser(user, integration, settings) {
@@ -453,12 +385,9 @@ export async function processInboundEmailForUser(user, integration, settings) {
         await prisma.inboundEmail.update({
           where: { id: record.id },
           data: {
-            status: autoReplyUncertain ? "SEND_UNCERTAIN" :
-              classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
+            status: classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
               createdTask ? "TASK_CREATED" :
-              autoReplySent ? "REPLIED" :
-              autoEligible && draft.status === "DRAFT" ? "DRAFTED" :
               "DRAFTED",
             category: classification.category,
             sensitive: classification.sensitive,
