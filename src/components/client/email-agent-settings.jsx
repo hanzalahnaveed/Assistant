@@ -95,6 +95,13 @@ export default function EmailAgentSettings() {
           </p>
         ) : (
           <form onSubmit={(event) => void save(event)} className="space-y-4">
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+            <label className="flex items-start gap-3 rounded-lg border p-3"><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked, ...(event.target.checked ? {} : { autoReplyEnabled: false }) }))} className="mt-1" /><span><strong className="block text-sm">Check incoming email</strong><span className="mt-1 block text-xs leading-5 text-[#6B7280]">Classify inbox messages and create replies or tasks.</span></span></label>
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950"><strong className="block">AI-generated replies are saved as drafts</strong><span className="mt-1 block text-xs leading-5">Groq reviews each new email and prepares a reply for you to review. Nothing is sent automatically; use the draft controls in the inbox when you are ready.</span></div>
+=======
+>>>>>>> temp-fixes
             <label className="flex items-start gap-3 rounded-lg border p-3">
               <input
                 type="checkbox"
@@ -131,6 +138,10 @@ export default function EmailAgentSettings() {
               </span>
             </label>
 
+<<<<<<< HEAD
+=======
+>>>>>>> dd9c023 (UI Fixes)
+>>>>>>> temp-fixes
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-semibold">
                 Reply tone

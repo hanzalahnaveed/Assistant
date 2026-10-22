@@ -4,7 +4,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
-import { generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent } from "@/lib/email-agent/dummy-classifier.mjs";
+
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const EMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
@@ -42,7 +42,7 @@ const classificationSchema = z.object({
     requestText: z.string().trim().max(1000),
   }).nullable(),
   intent: z.enum(["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION", "OTHER"]).optional(),
-  mode: z.enum(["DUMMY", "LIVE"]).optional(),
+  mode: z.literal("LIVE").optional(),
 });
 
 export function getEmailAgentSettings(preferencesJson) {
@@ -53,9 +53,9 @@ export function getEmailAgentSettings(preferencesJson) {
     ...DEFAULT_EMAIL_AGENT_SETTINGS,
     ...(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {}),
     enabled: saved?.enabled === true,
-    autoReplyEnabled: saved?.autoReplyEnabled === true,
+    autoReplyEnabled: false,
     enabledAt: typeof saved?.enabledAt === "string" ? saved.enabledAt : null,
-    autoReplyEnabledAt: typeof saved?.autoReplyEnabledAt === "string" ? saved.autoReplyEnabledAt : null,
+    autoReplyEnabledAt: null,
     tone: typeof saved?.tone === "string" ? saved.tone : DEFAULT_EMAIL_AGENT_SETTINGS.tone,
     style: typeof saved?.style === "string" ? saved.style : DEFAULT_EMAIL_AGENT_SETTINGS.style,
     signature: typeof saved?.signature === "string" ? saved.signature : "",
@@ -70,31 +70,41 @@ function safeMessageId(message) {
   return parseMessageId(header(message, "Message-ID"));
 }
 
+function normalizeIntent({ intent, category, subject = "", body = "" } = {}) {
+  const allowed = ["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION", "OTHER"];
+  if (allowed.includes(intent) && intent !== "OTHER") return intent;
+  const text = (subject + " " + body).slice(0, 24000);
+  if (/\b(decline|can't attend|cannot attend|unable to attend|won't make it|reject the invitation|not available for this meeting)\b/i.test(text)) return "DECLINE_INVITE";
+  if (/\b(reschedule|move (?:the )?meeting|change (?:the )?meeting time|different time|another time|postpone|push (?:the )?meeting)\b/i.test(text)) return "RESCHEDULE";
+  if (/\b(meeting|schedule a call|book a call|calendar invite|invitation|availability|free\s+(?:on|at|tomorrow|this))\b/i.test(text)) return "MEETING_REQUEST";
+  if (/\b(action item|follow[- ]up|please\s+(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check)|(?:could|can|would)\s+you\s+(?:please\s+)?(?:prepare|send|review|complete|finish|update|create|deliver|submit|draft|analy[sz]e|summari[sz]e|investigate|fix|build|coordinate|approve|check))\b/i.test(text)) return "TASK_DELEGATION";
+  if (intent === "OTHER") return "OTHER";
+  if (category === "MEETING") return "MEETING_REQUEST";
+  if (category === "TASK") return "TASK_DELEGATION";
+  return "OTHER";
+}
+
 function decodeModelJson(content) {
   try {
     return JSON.parse(content);
   } catch {
-    throw new Error("The AI provider returned invalid email classification JSON.");
+    throw new Error("Groq returned invalid email classification JSON.");
   }
 }
 
 async function askModel({ subject, sender, body, settings, timezone, availableSlots }) {
-  const dummyMode = process.env.EMAIL_AGENT_CLASSIFIER_MODE?.toLowerCase() === "dummy" ||
-    !process.env.OPENAI_API_KEY;
-  if (dummyMode) {
-    return classificationSchema.parse(generateDummyClassification({
-      subject, sender, body, settings, timezone, availableSlots,
-    }));
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("Email reply generation requires GROQ_API_KEY in .env.local.");
   }
-  const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+  const base = (process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/$/, "");
   const response = await fetch(base + "/chat/completions", {
     method: "POST",
     headers: {
-      authorization: "Bearer " + process.env.OPENAI_API_KEY,
+      authorization: "Bearer " + process.env.GROQ_API_KEY,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
       temperature: 0.2,
       response_format: { type: "json_object" },
       messages: [
@@ -135,11 +145,11 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
     signal: AbortSignal.timeout(20000),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error?.message || "AI provider could not draft the reply.");
+  if (!response.ok) throw new Error(data.error?.message || "Groq could not draft the reply.");
   const parsed = classificationSchema.safeParse(
     decodeModelJson(data.choices?.[0]?.message?.content || ""),
   );
-  if (!parsed.success) throw new Error("The AI provider returned incomplete or invalid email fields.");
+  if (!parsed.success) throw new Error("Groq returned incomplete or invalid email fields.");
   if (parsed.data.category === "SENSITIVE") parsed.data.sensitive = true;
   if (parsed.data.sensitive && parsed.data.category === "ROUTINE") parsed.data.category = "SENSITIVE";
   return {
@@ -211,88 +221,6 @@ async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = n
     }
   }
   return slots;
-}
-
-async function sendAutomatedReply({ userId, integration, draft, sourceMessageId }) {
-  if (!integration.scopes.includes(EMAIL_SEND_SCOPE)) {
-    throw new Error("Automatic reply is enabled, but Gmail send permission is missing. Draft left for review.");
-  }
-  const token = await getGoogleAccessToken(userId);
-  if (!token) throw new Error("Google connection needs reconnecting. Draft left for review.");
-  const headers = [
-    "To: " + draft.toEmail,
-    "Subject: " + draft.subject.replace(/[\r\n]+/g, " "),
-    ...(draft.replyMessageId ? ["In-Reply-To: " + draft.replyMessageId, "References: " + draft.replyMessageId] : []),
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: 8bit",
-  ];
-  const raw = Buffer.from(
-    headers.join("\r\n") + "\r\n\r\n" + draft.body.replace(/\r?\n/g, "\r\n"),
-    "utf8",
-  ).toString("base64url");
-  let response;
-  try {
-    response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-      method: "POST",
-      headers: { authorization: "Bearer " + token.accessToken, "content-type": "application/json" },
-      body: JSON.stringify({ raw, threadId: draft.replyThreadId }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(25000),
-    });
-  } catch (cause) {
-    const error = new Error("The Gmail send outcome is uncertain. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    error.cause = cause;
-    throw error;
-  }
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const uncertain = response.status >= 500;
-    const error = new Error(uncertain
-      ? "Gmail returned a server error; verify the Sent folder before retrying."
-      : "Gmail rejected the automated reply. The saved draft needs review.");
-    error.uncertain = uncertain;
-    error.httpStatus = response.status;
-    throw error;
-  }
-  let sent;
-  try {
-    sent = await prisma.emailDraft.updateMany({
-      where: { id: draft.id, userId, status: "DRAFT" },
-      data: {
-        status: "SENT",
-        sentAt: new Date(),
-        providerMessageId: result.id ?? null,
-        lastError: null,
-      },
-    });
-  } catch (cause) {
-    const error = new Error("Gmail accepted the reply but the send status could not be saved. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    error.cause = cause;
-    throw error;
-  }
-  if (!sent.count) {
-    const error = new Error("Gmail accepted the reply but the draft state changed. Check Gmail Sent before retrying.");
-    error.uncertain = true;
-    throw error;
-  }
-  await prisma.auditEvent.create({
-    data: {
-      userId,
-      eventType: "EMAIL_AGENT_AUTO_REPLY_SENT",
-      actor: "SYSTEM",
-      resourceId: draft.id,
-      metadata: { toEmail: draft.toEmail, subject: draft.subject, sourceMessageId, providerMessageId: result.id ?? null },
-    },
-  }).catch(() => undefined);
-}
-
-async function fetchMessage(accessToken, id) {
-  const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + encodeURIComponent(id));
-  url.searchParams.set("format", "full");
-  return googleApiGet(accessToken, url.toString());
 }
 
 export async function processInboundEmailForUser(user, integration, settings) {
@@ -453,40 +381,13 @@ export async function processInboundEmailForUser(user, integration, settings) {
             replyMessageId: safeMessageId(message),
           },
         });
-        const autoEligible = !existingDraft &&
-          draft.status === "DRAFT" &&
-          settings.autoReplyEnabled &&
-          isAutomaticReplyAllowed(classification) &&
-          Number.isFinite(Date.parse(settings.autoReplyEnabledAt || "")) &&
-          Number(message.internalDate || 0) >= Date.parse(settings.autoReplyEnabledAt) &&
-          !user.preferences?.automationPaused;
-        let autoReplySent = draft.status === "SENT";
-        let autoReplyUncertain = draft.status === "SEND_UNCERTAIN";
-        if (autoEligible) {
-          try {
-            await sendAutomatedReply({ userId: user.id, integration, draft, sourceMessageId: message.id });
-            counts.sent++;
-            autoReplySent = true;
-          } catch (error) {
-            const messageText = error instanceof Error ? error.message : "Automated reply failed.";
-            autoReplyUncertain = error?.uncertain === true;
-            await prisma.emailDraft.updateMany({
-              where: { id: draft.id, userId: user.id, status: "DRAFT" },
-              data: error?.uncertain
-                ? { status: "SEND_UNCERTAIN", lastError: messageText }
-                : { lastError: messageText },
-            });
-          }
-        }
+        // This milestone always saves the generated reply for human review; it never sends automatically.
         await prisma.inboundEmail.update({
           where: { id: record.id },
           data: {
-            status: autoReplyUncertain ? "SEND_UNCERTAIN" :
-              classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
+            status: classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
               classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
               createdTask ? "TASK_CREATED" :
-              autoReplySent ? "REPLIED" :
-              autoEligible && draft.status === "DRAFT" ? "DRAFTED" :
               "DRAFTED",
             category: classification.category,
             sensitive: classification.sensitive,
@@ -520,8 +421,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
               intent: classification.intent,
               mode: classification.mode,
               sensitive: classification.sensitive,
-              autoReplyEligible: autoEligible,
-              autoReplySent,
+              repliesRemainDrafts: true,
               draftId: draft.id,
             },
           },
