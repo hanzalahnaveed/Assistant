@@ -383,17 +383,19 @@ export default function ActionsClient() {
                           {action.input.title || (action.actionType === "CREATE_CALENDAR_EVENT" ? "Proposed calendar event" : "Proposed task")}
                         </h3>
                         <p className="mt-1 text-xs text-[#7a857e] text-pretty">
-                          {action.actionType === "CREATE_CALENDAR_EVENT" ? `${new Date(action.input.startAt).toLocaleString()} – ${new Date(action.input.endAt).toLocaleTimeString()}` : `${action.input.priority || "MEDIUM"} priority${action.input.dueAt ? ` · Due ${new Date(action.input.dueAt).toLocaleString()}` : ""}`}
+                          {action.actionType === "CREATE_CALENDAR_EVENT" ? `${new Date(action.input.startAt).toLocaleString()} – ${new Date(action.input.endAt).toLocaleTimeString()} (${action.input.timezone})` : `${action.input.priority || "MEDIUM"} priority${action.input.dueAt ? ` · Due ${new Date(action.input.dueAt).toLocaleString()}` : ""}`}
                         </p>
                       </div>
                       <span className="rounded-full bg-[#fff3dc] px-2 py-1 text-[10px] font-semibold text-[#94651a] tracking-[0.01em]">
                         Approval required
                       </span>
                     </div>
-                    {action.input.description && (
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#526159] text-pretty">
-                        {action.input.description}
-                      </p>
+                    {(action.input.description || action.input.location || action.input.attendees?.length) && (
+                      <div className="mt-3 space-y-1 text-sm leading-6 text-[#526159] text-pretty">
+                        {action.input.description && <p className="whitespace-pre-wrap">{action.input.description}</p>}
+                        {action.input.location && <p>Location: {action.input.location}</p>}
+                        {action.input.attendees?.length > 0 && <p>Invitations will be sent to: {action.input.attendees.join(", ")}</p>}
+                      </div>
                     )}
                     <p className="mt-3 text-[10px] text-[#9aa39d] text-pretty">
                       Proposed {new Date(action.createdAt).toLocaleString()}
