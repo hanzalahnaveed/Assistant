@@ -10,9 +10,8 @@ for (const field of ["inboundEmails:", "followUps:", "emailAgentState:", "pagesS
 }
 assert.doesNotMatch(route, /accessTokenEnc\s*:/, "integration tokens must not be selected");
 assert.doesNotMatch(route, /refreshTokenEnc\s*:/, "refresh tokens must not be selected");
-const stateSelection = route.match(/emailAgentState:\s*\{\s*select:\s*\{([\s\S]*?)\}\s*\}/)?.[1] ?? "";
-assert.ok(stateSelection, "email-agent operational state must be exported");
-assert.ok(!stateSelection.includes("gmailPageToken"), "opaque Gmail pagination token must never be exported");
+assert.ok(route.includes("emailAgentState: {\n        select: {"), "email-agent operational state must be exported");
+assert.ok(!route.includes("gmailPageToken"), "opaque Gmail pagination token must never be exported");
 assert.match(schema, /model InboundEmail/);
 assert.match(schema, /model EmailAgentState/);
 assert.match(schema, /model FollowUp/);
