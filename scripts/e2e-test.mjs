@@ -270,6 +270,17 @@ try {
   assert.equal(exportJson.includes("refreshTokenEnc"), false);
   check(true, "account export contains only the authenticated user's data and excludes credentials");
 
+  const googleDeleteStart = await expectStatus("/api/account/delete", 200, {
+    method: "POST",
+    body: JSON.stringify({ email: user.email, password: "", confirmation: "DELETE MY ACCOUNT" }),
+  }, token);
+  const googleDeleteBody = await googleDeleteStart.json();
+  const deleteAuthorizationUrl = new URL(googleDeleteBody.authorizationUrl);
+  assert.equal(deleteAuthorizationUrl.origin, "https://accounts.google.com");
+  assert.deepEqual(deleteAuthorizationUrl.searchParams.get("scope").split(" ").sort(), ["email", "openid", "profile"]);
+  assert.match(googleDeleteStart.headers.get("set-cookie") || "", /google_auth_intent=delete-account/);
+  check(true, "passwordless account deletion starts a scoped Google identity re-verification flow");
+
   const authenticatedIntegrationStart = await expectStatus(
     "/api/auth/google/start",
     307,
