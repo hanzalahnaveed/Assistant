@@ -6,6 +6,7 @@ import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
 import { generateDummyClassification, resolveEmailClassifierMode } from "@/lib/email-agent/dummy-classifier.mjs";
 import { getCompleteCalendarEvents } from "@/lib/email-agent/calendar-availability.mjs";
+import { buildInboxQuery, EMAIL_AGENT_MAX_ATTEMPTS, EMAIL_AGENT_PAGE_SIZE, getEmailRetryPlan, isInvalidGmailPageTokenError } from "@/lib/email-agent/queue.mjs";
 
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
@@ -236,229 +237,222 @@ async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = n
   return slots;
 }
 
-export async function processInboundEmailForUser(user, integration, settings) {
-  const counts = { scanned: 0, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 0 };
-  if (!settings.enabled) return { ...counts, skipped: 1, reason: "Email agent is disabled." };
-  if (!integration.scopes.includes(EMAIL_READ_SCOPE)) {
-    return { ...counts, skipped: 1, reason: "Gmail read permission is missing." };
+const QUEUED_EMAIL_PLACEHOLDER = "pending@assistant.invalid";
+const MAX_EMAIL_ITEMS_PER_USER_PER_RUN = 2;
+const PROCESSING_STALE_MS = 10 * 60 * 1000;
+
+async function ensureEmailAgentState(userId, enabledAt) {
+  let state = await prisma.emailAgentState.upsert({
+    where: { userId },
+    create: { userId, scanEnabledAt: enabledAt },
+    update: {},
+  });
+  if (!state.scanEnabledAt || state.scanEnabledAt.getTime() !== enabledAt.getTime()) {
+    await prisma.emailAgentState.updateMany({
+      where: { userId, scanEnabledAt: state.scanEnabledAt },
+      data: {
+        gmailPageToken: null,
+        scanEnabledAt: enabledAt,
+        pagesScanned: 0,
+        lastScanPageAt: null,
+        lastError: null,
+      },
+    });
+    state = await prisma.emailAgentState.findUnique({ where: { userId } });
   }
+  return state;
+}
+
+async function enqueueNextGmailPage(user, accessToken, settings, now) {
+  const parsedEnabledAt = Date.parse(settings.enabledAt || "");
+  const enabledAt = new Date(Number.isFinite(parsedEnabledAt) ? parsedEnabledAt : now.getTime());
+  const state = await ensureEmailAgentState(user.id, enabledAt);
+  let pageToken = state.gmailPageToken || null;
+  const listPage = async (cursor) => {
+    const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+    url.searchParams.set("maxResults", String(EMAIL_AGENT_PAGE_SIZE));
+    url.searchParams.set("q", buildInboxQuery(enabledAt));
+    if (cursor) url.searchParams.set("pageToken", cursor);
+    return googleApiGet(accessToken, url.toString());
+  };
+  let listed;
+  try {
+    listed = await listPage(pageToken);
+  } catch (error) {
+    if (!pageToken || !isInvalidGmailPageTokenError(error)) throw error;
+    const reset = await prisma.emailAgentState.updateMany({
+      where: { userId: user.id, scanEnabledAt: enabledAt, gmailPageToken: pageToken },
+      data: { gmailPageToken: null, lastError: "Gmail page cursor expired; restarting from the newest page." },
+    });
+    if (!reset.count) return { scanned: 0, queued: 0, pagesScanned: 0, hasMore: true, cursorUpdated: false };
+    pageToken = null;
+    listed = await listPage(null);
+  }
+  const messages = (Array.isArray(listed.messages) ? listed.messages : []).filter((item) => item?.id && item?.threadId);
+  const queued = messages.length
+    ? await prisma.inboundEmail.createMany({
+        data: messages.map((item) => ({
+          userId: user.id,
+          gmailMessageId: item.id,
+          gmailThreadId: item.threadId,
+          fromEmail: QUEUED_EMAIL_PLACEHOLDER,
+          subject: "Pending message details",
+          status: "RECEIVED",
+        })),
+        skipDuplicates: true,
+      })
+    : { count: 0 };
+  const nextPageToken = listed.nextPageToken || null;
+  const advanced = await prisma.emailAgentState.updateMany({
+    where: { userId: user.id, scanEnabledAt: enabledAt, gmailPageToken: pageToken },
+    data: {
+      gmailPageToken: nextPageToken,
+      lastScanPageAt: now,
+      lastWorkerRunAt: now,
+      lastError: null,
+      pagesScanned: { increment: 1 },
+    },
+  });
+  return { scanned: messages.length, queued: queued.count, pagesScanned: advanced.count ? 1 : 0, hasMore: Boolean(nextPageToken), cursorUpdated: advanced.count > 0 };
+}
+
+async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - PROCESSING_STALE_MS);
+  const claim = await prisma.inboundEmail.updateMany({
+    where: {
+      id: queuedRecord.id,
+      userId: user.id,
+      processingAttempts: { lt: EMAIL_AGENT_MAX_ATTEMPTS },
+      OR: [
+        { status: "RECEIVED" },
+        { status: "RETRY_WAIT", nextAttemptAt: { lte: now } },
+        { status: "PROCESSING", updatedAt: { lt: staleBefore } },
+      ],
+    },
+    data: { status: "PROCESSING", processingAttempts: { increment: 1 }, nextAttemptAt: null, lastError: null },
+  });
+  if (!claim.count) return { processed: 0, drafted: 0, skipped: 1, failed: 0 };
+  const attempt = (queuedRecord.processingAttempts || 0) + 1;
+  try {
+    const message = await fetchMessage(accessToken, queuedRecord.gmailMessageId);
+    const sender = parseSender(header(message, "From"));
+    const subject = header(message, "Subject").trim().slice(0, 250) || "(no subject)";
+    const receivedAt = message.internalDate ? new Date(Number(message.internalDate)) : null;
+    const threadId = message.threadId || queuedRecord.gmailThreadId;
+    if (!sender || sender === user.email.toLowerCase() || isAutomatedSender(message, sender) || (message.labelIds ?? []).includes("SENT")) {
+      await prisma.inboundEmail.update({
+        where: { id: queuedRecord.id },
+        data: { gmailThreadId: threadId, fromEmail: sender || "unknown@assistant.invalid", subject, receivedAt, status: "SKIPPED", lastError: "Automated, bulk, or non-replyable sender was skipped.", processedAt: new Date() },
+      });
+      return { processed: 0, drafted: 0, skipped: 1, failed: 0 };
+    }
+    await prisma.inboundEmail.update({ where: { id: queuedRecord.id }, data: { gmailThreadId: threadId, fromEmail: sender, subject, receivedAt } });
+    const body = extractMessageText(message);
+    if (!body) throw new Error("Message body was empty or could not be decoded.");
+    let availableSlots = [];
+    const probe = await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [] });
+    if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
+      availableSlots = await getAvailableSlots(user.id, user.timezone || "Asia/Karachi", probe.meeting?.durationMinutes || 30).catch(() => []);
+    }
+    const classification = availableSlots.length
+      ? await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
+      : probe;
+    const hasTaskProposal = Boolean(classification.task && (classification.category === "TASK" || classification.intent === "TASK_DELEGATION"));
+    const draftGoal = "Inbound reply for Gmail message " + message.id +
+      "\nClassification: " + classification.category +
+      "\nSensitivity: " + (classification.sensitive ? "sensitive; approval required" : "not flagged sensitive") +
+      "\nReason: " + classification.reason +
+      (hasTaskProposal ? "\nTask proposal: requires manager approval before it is added to the schedule" : "") +
+      (availableSlots.length ? "\nAvailability checked against primary calendar. Proposed times: " + availableSlots.map((slot) => slot.label).join(", ") : "");
+    const existingDraft = await prisma.emailDraft.findFirst({
+      where: { userId: user.id, goal: { contains: "Inbound reply for Gmail message " + message.id } },
+      orderBy: { createdAt: "desc" },
+    });
+    const draft = existingDraft || await prisma.emailDraft.create({
+      data: {
+        userId: user.id, toEmail: sender,
+        subject: classification.replySubject.startsWith("Re:") ? classification.replySubject : "Re: " + subject.replace(/^(re:\s*)+/i, ""),
+        body: classification.replyBody, goal: draftGoal, status: "DRAFT", replyThreadId: threadId, replyMessageId: safeMessageId(message),
+      },
+    });
+    const nextStatus = hasTaskProposal ? "TASK_REVIEW" :
+      classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
+      classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
+      "DRAFTED";
+    await prisma.inboundEmail.update({
+      where: { id: queuedRecord.id },
+      data: {
+        status: nextStatus, category: classification.category, sensitive: classification.sensitive, summary: classification.summary,
+        classification: {
+          category: classification.category, taskId: null, taskApprovalStatus: hasTaskProposal ? "PENDING" : null, taskCreated: false,
+          intent: classification.intent, mode: classification.mode, sensitive: classification.sensitive, reason: classification.reason, summary: classification.summary,
+          task: classification.task, meeting: classification.meeting, availableSlots,
+        },
+        draftId: draft.id, processedAt: new Date(), nextAttemptAt: null, lastError: null,
+      },
+    });
+    await prisma.auditEvent.create({
+      data: {
+        userId: user.id, eventType: "EMAIL_AGENT_MESSAGE_PROCESSED", actor: "SYSTEM", resourceId: queuedRecord.id,
+        metadata: { category: classification.category, intent: classification.intent, mode: classification.mode, sensitive: classification.sensitive, repliesRemainDrafts: true, taskRequiresApproval: hasTaskProposal, draftId: draft.id },
+      },
+    }).catch(() => undefined);
+    return { processed: 1, drafted: 1, skipped: 0, failed: 0 };
+  } catch (error) {
+    const errorText = error instanceof Error ? error.message.slice(0, 500) : "Email processing failed.";
+    const retry = getEmailRetryPlan(attempt);
+    const nextAttemptAt = retry.terminal ? null : new Date(Date.now() + retry.delayMs);
+    await prisma.inboundEmail.update({
+      where: { id: queuedRecord.id },
+      data: { status: retry.status, nextAttemptAt, lastError: errorText, processedAt: new Date() },
+    }).catch(() => undefined);
+    return { processed: 0, drafted: 0, skipped: 0, failed: 1, retryAt: nextAttemptAt };
+  }
+}
+
+export async function processInboundEmailForUser(user, integration, settings) {
+  const counts = { scanned: 0, queued: 0, pagesScanned: 0, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 0, deferred: 0 };
+  if (!settings.enabled) return { ...counts, skipped: 1, reason: "Email agent is disabled." };
+  if (!integration.scopes.includes(EMAIL_READ_SCOPE)) return { ...counts, skipped: 1, reason: "Gmail read permission is missing." };
   const token = await getGoogleAccessToken(user.id);
   if (!token) return { ...counts, skipped: 1, reason: "Google connection needs reconnecting." };
-  const candidates = [];
-  let pageToken = null;
-  for (let page = 0; page < 5; page++) {
-    const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-    listUrl.searchParams.set("maxResults", "100");
-    const enabledAt = Date.parse(settings.enabledAt || "");
-    const after = Number.isFinite(enabledAt) ? Math.floor(enabledAt / 1000) : Math.floor(Date.now() / 1000);
-    listUrl.searchParams.set("q", "in:inbox newer_than:7d after:" + after + " -from:me -category:promotions -category:social");
-    if (pageToken) listUrl.searchParams.set("pageToken", pageToken);
-    const listed = await googleApiGet(token.accessToken, listUrl.toString());
-    candidates.push(...(listed.messages ?? []));
-    pageToken = listed.nextPageToken ?? null;
-    if (!pageToken) break;
+  const now = new Date();
+  const parsedEnabledAt = Date.parse(settings.enabledAt || "");
+  const enabledAt = new Date(Number.isFinite(parsedEnabledAt) ? parsedEnabledAt : now.getTime());
+  await prisma.emailAgentState.upsert({
+    where: { userId: user.id }, create: { userId: user.id, scanEnabledAt: enabledAt, lastWorkerRunAt: now }, update: { lastWorkerRunAt: now },
+  });
+  try {
+    const page = await enqueueNextGmailPage(user, token.accessToken, settings, now);
+    counts.scanned = page.scanned; counts.queued = page.queued; counts.pagesScanned = page.pagesScanned;
+  } catch (error) {
+    const errorText = error instanceof Error ? error.message.slice(0, 300) : "Gmail inbox scan failed.";
+    await prisma.emailAgentState.update({ where: { userId: user.id }, data: { lastError: errorText, lastWorkerRunAt: now } }).catch(() => undefined);
+    counts.failed++;
   }
-  counts.scanned = candidates.length;
-  // Keep each serverless invocation bounded; later scheduled runs continue through older pages.
-  let newlyClaimed = 0;
-  for (const item of candidates) {
-    if (newlyClaimed >= 2) break;
-    let record;
-    try {
-      const existing = await prisma.inboundEmail.findUnique({
-        where: { userId_gmailMessageId: { userId: user.id, gmailMessageId: item.id } },
-        select: { id: true, status: true, updatedAt: true },
-      });
-      if (existing) {
-        if (["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "REPLIED", "SEND_UNCERTAIN", "SKIPPED"].includes(existing.status)) {
-          counts.skipped++;
-          continue;
-        }
-        const staleProcessing = existing.status === "PROCESSING" &&
-          existing.updatedAt.getTime() < Date.now() - 10 * 60 * 1000;
-        if (existing.status === "PROCESSING" && !staleProcessing) {
-          counts.skipped++;
-          continue;
-        }
-        const claim = await prisma.inboundEmail.updateMany({
-          where: {
-            id: existing.id,
-            status: existing.status,
-            ...(existing.status === "PROCESSING" ? { updatedAt: { lt: new Date(Date.now() - 10 * 60 * 1000) } } : {}),
-          },
-          data: { status: "PROCESSING", lastError: null },
-        });
-        if (!claim.count) {
-          counts.skipped++;
-          continue;
-        }
-        record = { id: existing.id };
-      }
-      const message = await fetchMessage(token.accessToken, item.id);
-      const fromHeader = header(message, "From");
-      const sender = parseSender(fromHeader);
-      const subject = header(message, "Subject").trim().slice(0, 250) || "(no subject)";
-      if (!sender || sender === user.email.toLowerCase() || isAutomatedSender(message, sender) || (message.labelIds ?? []).includes("SENT")) {
-        counts.skipped++;
-        if (record) await prisma.inboundEmail.update({ where: { id: record.id }, data: { status: "SKIPPED", lastError: "Automated, bulk, or non-replyable sender was skipped." } }).catch(() => undefined);
-        continue;
-      }
-      if (!record) {
-        record = await prisma.inboundEmail.create({
-          data: {
-            userId: user.id,
-            gmailMessageId: message.id,
-            gmailThreadId: message.threadId,
-            fromEmail: sender,
-            subject,
-            receivedAt: message.internalDate ? new Date(Number(message.internalDate)) : null,
-            status: "PROCESSING",
-          },
-        });
-      }
-      newlyClaimed++;
-      const body = extractMessageText(message);
-      if (!body) throw new Error("Message body was empty or could not be decoded.");
-      let availableSlots = [];
-      // Calendar availability is advisory only: the agent never creates an event or promises a slot here.
-      try {
-        const probe = await classifyEmail({
-          sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [],
-        });
-        if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
-          availableSlots = await getAvailableSlots(
-            user.id,
-            user.timezone || "Asia/Karachi",
-            probe.meeting?.durationMinutes || 30,
-          ).catch(() => []);
-        }
-        const classification = availableSlots.length
-          ? await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
-          : probe;
-        let createdTask = null;
-        if ((classification.category === "TASK" || classification.intent === "TASK_DELEGATION") && classification.task) {
-          const existingTask = await prisma.scheduleItem.findUnique({
-            where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: message.id } },
-            select: { id: true },
-          });
-          const taskDueAt = classification.task.dueAt ? new Date(classification.task.dueAt) : null;
-          createdTask = await prisma.scheduleItem.upsert({
-            where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: message.id } },
-            create: {
-              userId: user.id,
-              title: classification.task.title,
-              description: classification.task.description || null,
-              priority: classification.task.priority || "MEDIUM",
-              dueAt: taskDueAt,
-              scheduledStartAt: taskDueAt,
-              source: "EMAIL",
-              sourceRef: message.id,
-              timezone: user.timezone || "Asia/Karachi",
-            },
-            update: {},
-          });
-          if (!existingTask) {
-            await prisma.auditEvent.create({
-              data: {
-                userId: user.id,
-                eventType: "TASK_CREATED",
-                actor: "ASSISTANT",
-                resourceId: createdTask.id,
-                metadata: { source: "EMAIL", sourceRef: message.id, intent: classification.intent },
-              },
-            }).catch(() => undefined);
-          }
-        }
-        const bodyText = classification.replyBody;
-        const draftGoal = "Inbound reply for Gmail message " + message.id +
-          "\nClassification: " + classification.category +
-          "\nSensitivity: " + (classification.sensitive ? "sensitive; approval required" : "not flagged sensitive") +
-          "\nReason: " + classification.reason +
-          (createdTask ? "\nTask created: " + createdTask.id : "") +
-          (availableSlots.length ? "\nAvailability checked against primary calendar. Proposed times: " + availableSlots.map((slot) => slot.label).join(", ") : "");
-        const existingDraft = await prisma.emailDraft.findFirst({
-          where: { userId: user.id, goal: { contains: "Inbound reply for Gmail message " + message.id } },
-          orderBy: { createdAt: "desc" },
-        });
-        const draft = existingDraft || await prisma.emailDraft.create({
-          data: {
-            userId: user.id,
-            toEmail: sender,
-            subject: classification.replySubject.startsWith("Re:")
-              ? classification.replySubject
-              : "Re: " + subject.replace(/^(re:\s*)+/i, ""),
-            body: bodyText,
-            goal: draftGoal,
-            status: "DRAFT",
-            replyThreadId: message.threadId,
-            replyMessageId: safeMessageId(message),
-          },
-        });
-        // This milestone always saves the generated reply for human review; it never sends automatically.
-        await prisma.inboundEmail.update({
-          where: { id: record.id },
-          data: {
-            status: classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
-              classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
-              createdTask ? "TASK_CREATED" :
-              "DRAFTED",
-            category: classification.category,
-            sensitive: classification.sensitive,
-            summary: classification.summary,
-            classification: {
-              category: classification.category,
-              taskId: createdTask?.id || null,
-              intent: classification.intent,
-              mode: classification.mode,
-              sensitive: classification.sensitive,
-              reason: classification.reason,
-              summary: classification.summary,
-              task: classification.task,
-              meeting: classification.meeting,
-              availableSlots,
-              taskCreated: Boolean(createdTask),
-            },
-            draftId: draft.id,
-            processedAt: new Date(),
-            lastError: null,
-          },
-        });
-        await prisma.auditEvent.create({
-          data: {
-            userId: user.id,
-            eventType: "EMAIL_AGENT_MESSAGE_PROCESSED",
-            actor: "SYSTEM",
-            resourceId: record.id,
-            metadata: {
-              category: classification.category,
-              intent: classification.intent,
-              mode: classification.mode,
-              sensitive: classification.sensitive,
-              repliesRemainDrafts: true,
-              draftId: draft.id,
-            },
-          },
-        }).catch(() => undefined);
-        counts.processed++;
-        counts.drafted++;
-      } catch (error) {
-        const messageText = error instanceof Error ? error.message.slice(0, 500) : "Email processing failed.";
-        if (record) {
-          await prisma.inboundEmail.update({
-            where: { id: record.id },
-            data: { status: "FAILED", lastError: messageText, processedAt: new Date() },
-          }).catch(() => undefined);
-        }
-        counts.failed++;
-      }
-    } catch (error) {
-      // A uniqueness race means another worker claimed this message; do not create a duplicate draft.
-      if (error?.code === "P2002") {
-        counts.skipped++;
-        continue;
-      }
-      counts.failed++;
-    }
+  const staleBefore = new Date(Date.now() - PROCESSING_STALE_MS);
+  const ready = await prisma.inboundEmail.findMany({
+    where: {
+      userId: user.id, processingAttempts: { lt: EMAIL_AGENT_MAX_ATTEMPTS },
+      OR: [
+        { status: "RECEIVED" },
+        { status: "RETRY_WAIT", nextAttemptAt: { lte: new Date() } },
+        { status: "PROCESSING", updatedAt: { lt: staleBefore } },
+      ],
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: MAX_EMAIL_ITEMS_PER_USER_PER_RUN,
+    select: { id: true, gmailMessageId: true, gmailThreadId: true, processingAttempts: true },
+  });
+  const outcomes = await Promise.all(ready.map((record) => processQueuedEmail(user, token.accessToken, settings, record)));
+  for (const outcome of outcomes) {
+    counts.processed += outcome.processed; counts.drafted += outcome.drafted; counts.skipped += outcome.skipped; counts.failed += outcome.failed;
   }
+  const waiting = await prisma.inboundEmail.count({
+    where: { userId: user.id, OR: [
+      { status: "RECEIVED" }, { status: "RETRY_WAIT" }, { status: "PROCESSING", updatedAt: { lt: staleBefore } },
+    ] },
+  });
+  counts.deferred = Math.max(0, waiting - ready.length);
   return counts;
 }
