@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "../src/lib/email-agent/format.mjs";
+import { getCompleteCalendarEvents } from "../src/lib/email-agent/calendar-availability.mjs";
 
 const encode = (value) => Buffer.from(value, "utf8").toString("base64url");
 
 assert.equal(parseSender('Jane Doe <Jane.Doe@example.com>'), "jane.doe@example.com");
+assert.deepEqual(getCompleteCalendarEvents({ items: [{ id: "event-1" }] }), [{ id: "event-1" }]);
+assert.deepEqual(getCompleteCalendarEvents({}), []);
+assert.throws(
+  () => getCompleteCalendarEvents({ items: [{ id: "event-1" }], nextPageToken: "next-page" }),
+  /availability results are incomplete/i,
+);
 assert.equal(parseSender("PERSON@example.test"), "person@example.test");
 assert.equal(parseSender("not an email"), null);
 assert.equal(parseSender(null), null);

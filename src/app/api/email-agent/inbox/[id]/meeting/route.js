@@ -6,6 +6,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { prisma } from "@/lib/prisma";
 import { saveGoogleCalendarItem } from "@/lib/schedule/items";
+import { getCompleteCalendarEvents } from "@/lib/email-agent/calendar-availability.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,7 +125,15 @@ export async function POST(request, context) {
       rangeUrl.searchParams.set("singleEvents", "true");
       rangeUrl.searchParams.set("maxResults", "250");
       const busyEvents = await googleApiGet(token.accessToken, rangeUrl.toString());
-      const conflict = (busyEvents.items ?? []).some((candidate) => {
+      let calendarEvents;
+      try {
+        calendarEvents = getCompleteCalendarEvents(busyEvents);
+      } catch {
+        return NextResponse.json({
+          error: "Calendar availability returned more results than could be checked safely. No invitation was created; refresh and choose another time.",
+        }, { status: 409 });
+      }
+      const conflict = calendarEvents.some((candidate) => {
         if (candidate.id === eventId || candidate.status === "cancelled" || candidate.transparency === "transparent") return false;
         const interval = eventInterval(candidate, user.timezone || "Asia/Karachi");
         return interval && start.getTime() < interval.end && end.getTime() > interval.start;
