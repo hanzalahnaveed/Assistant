@@ -13,7 +13,7 @@ export default function EmailClient() {
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-[#233044]"><Mail size={28} /> Email inbox</h1>
-            <p className="mt-2 text-sm text-[#6B7280]">Review replies and tasks extracted from incoming email. Nothing is sent without the configured permission.</p>
+            <p className="mt-2 text-sm text-[#6B7280]">Review replies and tasks extracted from incoming email. Every reply stays a draft until a manager edits, approves, and separately confirms Send.</p>
           </div>
           <button type="button" onClick={() => setRefreshKey((n) => n + 1)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-medium"><RefreshCw size={15} /> Refresh</button>
         </header>

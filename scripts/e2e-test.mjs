@@ -427,7 +427,7 @@ try {
     method: "PATCH",
     body: JSON.stringify({ autoReplyEnabled: true }),
   }, token);
-  assert.match((await unsafeEmailAutoReply.json()).error, /Enable the email agent/);
+  assert.match((await unsafeEmailAutoReply.json()).error, /Automatic sending is disabled/);
   const emailAgentSettingsUpdated = await expectStatus("/api/email-agent/settings", 200, {
     method: "PATCH",
     body: JSON.stringify({
@@ -448,13 +448,13 @@ try {
   assert.equal(persistedEmailAgentSettings.tone, "warm");
   assert.equal(persistedEmailAgentSettings.enabled, true);
   assert.ok(Number.isFinite(Date.parse(persistedEmailAgentSettings.enabledAt)));
-  const emailAutoReplyOptIn = await expectStatus("/api/email-agent/settings", 200, {
+  await expectStatus("/api/email-agent/settings", 400, {
     method: "PATCH",
     body: JSON.stringify({ autoReplyEnabled: true }),
   }, token);
-  const autoReplySettings = (await emailAutoReplyOptIn.json()).settings;
-  assert.equal(autoReplySettings.autoReplyEnabled, true);
-  assert.ok(Number.isFinite(Date.parse(autoReplySettings.autoReplyEnabledAt)));
+  const autoReplySettings = (await (await expectStatus("/api/email-agent/settings", 200, {}, token)).json()).settings;
+  assert.equal(autoReplySettings.autoReplyEnabled, false);
+  assert.equal(autoReplySettings.autoReplyEnabledAt, null);
   const disabledEmailAgent = await expectStatus("/api/email-agent/settings", 200, {
     method: "PATCH",
     body: JSON.stringify({ enabled: false }),
@@ -468,6 +468,15 @@ try {
     method: "PATCH",
     body: JSON.stringify({ tone: "ignore-all-safety-rules" }),
   }, token);
+  const inboundQueueDraft = await prisma.emailDraft.create({
+    data: {
+      userId: user.id,
+      toEmail: "external@example.test",
+      subject: "Re: Sensitive contract question",
+      body: "Please review this draft before sending.",
+      status: "DRAFT",
+    },
+  });
   const inboundTestMessage = await prisma.inboundEmail.create({
     data: {
       userId: user.id,
@@ -480,10 +489,15 @@ try {
       sensitive: true,
       summary: "Sender asks about a contract change.",
       classification: { category: "SENSITIVE", sensitive: true, reason: "Contract-related request" },
+      draftId: inboundQueueDraft.id,
     },
   });
   const inboundQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json()).messages;
   assert.ok(inboundQueue.some((message) => message.id === inboundTestMessage.id && message.sensitive));
+  const inboundQueueResponse = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json());
+  assert.ok(inboundQueueResponse.drafts.some((draft) =>
+    draft.id === inboundQueueDraft.id && draft.body === "Please review this draft before sending."
+  ));
   const replyDraft = await prisma.emailDraft.create({
     data: {
       userId: user.id,

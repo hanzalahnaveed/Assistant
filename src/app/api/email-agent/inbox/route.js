@@ -34,7 +34,19 @@ export async function GET() {
   const drafts = draftIds.length
     ? await prisma.emailDraft.findMany({
         where: { userId: user.id, id: { in: draftIds } },
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          toEmail: true,
+          ccEmail: true,
+          subject: true,
+          body: true,
+          goal: true,
+          status: true,
+          approvedAt: true,
+          sentAt: true,
+          lastError: true,
+          updatedAt: true,
+        },
       })
     : [];
   const draftStatusById = new Map(drafts.map((draft) => [draft.id, draft.status]));
@@ -43,5 +55,6 @@ export async function GET() {
       ...message,
       draftStatus: message.draftId ? draftStatusById.get(message.draftId) || null : null,
     })),
+    drafts,
   }, { headers: { "cache-control": "no-store" } });
 }

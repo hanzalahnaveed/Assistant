@@ -44,6 +44,11 @@ export async function PATCH(request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email-agent settings.", details: parsed.error.flatten() }, { status: 400 });
   }
+  if (parsed.data.autoReplyEnabled === true) {
+    return NextResponse.json({
+      error: "Automatic sending is disabled. All inbound replies remain drafts for manager review.",
+    }, { status: 400 });
+  }
   const current = await prisma.userPreference.upsert({
     where: { userId: user.id },
     create: { userId: user.id },
@@ -59,13 +64,6 @@ export async function PATCH(request) {
     settings.enabledAt = null;
     settings.autoReplyEnabled = false;
     settings.autoReplyEnabledAt = null;
-  }
-  if (settings.enabled && parsed.data.autoReplyEnabled === true && !saved.autoReplyEnabled) settings.autoReplyEnabledAt = now;
-  if (parsed.data.autoReplyEnabled === false) settings.autoReplyEnabledAt = null;
-  if (settings.autoReplyEnabled && !settings.enabled) {
-    return NextResponse.json({
-      error: "Enable the email agent before enabling automatic replies.",
-    }, { status: 400 });
   }
   const preferencesJson = { ...root, emailAgent: settings };
   await prisma.userPreference.update({

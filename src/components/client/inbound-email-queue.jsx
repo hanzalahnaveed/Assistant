@@ -24,7 +24,6 @@ export default function InboundEmailQueue() {
   const [edits, setEdits] = useState({});
   const [meetingBusy, setMeetingBusy] = useState("");
 
-  // NOTE: adjust these endpoints/response shapes to match your API.
   const load = useCallback(async () => {
     try {
       const [settingsRes, inboxRes] = await Promise.all([
@@ -147,9 +146,12 @@ export default function InboundEmailQueue() {
     }
   }
 
-  const pendingCount = messages.filter((message) =>
-    ["DRAFTED", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "FAILED"].includes(message.status)
-  ).length;
+  const pendingCount = messages.filter((message) => {
+    const draft = getDraft(message);
+    const draftNeedsAttention = draft && ["DRAFT", "FAILED", "APPROVED", "SEND_UNCERTAIN"].includes(draft.status);
+    const messageNeedsAttention = ["RECEIVED", "PROCESSING", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "FAILED"].includes(message.status);
+    return Boolean(draftNeedsAttention || messageNeedsAttention);
+  }).length;
 
   return (
     <section className="rounded-2xl border border-[#E3E7ED] bg-white p-4 shadow-sm sm:p-5">

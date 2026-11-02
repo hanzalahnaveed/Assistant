@@ -84,7 +84,7 @@ export default function EmailAgentSettings() {
         )}
         {automationPaused && (
           <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-            Automation is paused globally. Automatic replies will stay off.
+            Global automation pause is active. Drafts can still be prepared, but sending and calendar invitations are blocked.
           </p>
         )}
 
@@ -115,21 +115,12 @@ export default function EmailAgentSettings() {
               </span>
             </label>
 
-            <label className="flex items-start gap-3 rounded-lg border p-3">
-              <input
-                type="checkbox"
-                checked={settings.autoReplyEnabled}
-                disabled={!settings.enabled || automationPaused}
-                onChange={(event) => update({ autoReplyEnabled: event.target.checked })}
-                className="mt-1"
-              />
-              <span>
-                <strong className="block text-sm">Automatically send routine replies</strong>
-                <span className="mt-1 block text-xs leading-5 text-[#6B7280]">
-                  Only safe routine replies. Meetings, tasks, sensitive messages, and uncertain classifications require your review.
-                </span>
-              </span>
-            </label>
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+              <strong className="block">Draft-only operation</strong>
+              <p className="mt-1 text-xs leading-5 text-blue-900">
+                Every inbound reply is saved as a draft. Review or edit it, approve that exact version, and then separately choose Send. The agent never sends replies automatically.
+              </p>
+            </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-semibold">
