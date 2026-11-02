@@ -6,9 +6,9 @@ concurrency:
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -38,6 +38,7 @@ jobs:
       OPENAI_API_KEY: ci-test-key
       OPENAI_MODEL: ci-test-model
       OPENAI_BASE_URL: http://127.0.0.1:4010/v1
+      EMAIL_AGENT_CLASSIFIER_MODE: dummy
       GOOGLE_CLIENT_ID: ci-google-client-id.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: ci-google-client-secret
       GOOGLE_REDIRECT_URI: http://127.0.0.1:3000/api/auth/google/callback
