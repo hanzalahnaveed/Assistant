@@ -9,7 +9,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in to view inbound email activity." }, { status: 401 });
   const messages = await prisma.inboundEmail.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, fromEmail: { not: "pending@assistant.invalid" } },
     orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
     take: 50,
     select: {
@@ -26,6 +26,8 @@ export async function GET() {
       classification: true,
       draftId: true,
       processedAt: true,
+      processingAttempts: true,
+      nextAttemptAt: true,
       lastError: true,
       createdAt: true,
     },
@@ -50,7 +52,17 @@ export async function GET() {
       })
     : [];
   const draftStatusById = new Map(drafts.map((draft) => [draft.id, draft.status]));
+  const [queuedCount, retryingCount, failedCount, workerState] = await Promise.all([
+    prisma.inboundEmail.count({ where: { userId: user.id, status: "RECEIVED" } }),
+    prisma.inboundEmail.count({ where: { userId: user.id, status: "RETRY_WAIT" } }),
+    prisma.inboundEmail.count({ where: { userId: user.id, status: "FAILED" } }),
+    prisma.emailAgentState.findUnique({
+      where: { userId: user.id },
+      select: { pagesScanned: true, lastScanPageAt: true, lastWorkerRunAt: true, lastError: true },
+    }),
+  ]);
   return NextResponse.json({
+    worker: { queuedCount, retryingCount, failedCount, ...workerState },
     messages: messages.map((message) => ({
       ...message,
       draftStatus: message.draftId ? draftStatusById.get(message.draftId) || null : null,

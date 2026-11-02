@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, RefreshCw, Save, Send, ShieldAlert } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, RefreshCw, Save, Send, ShieldAlert, XCircle } from "lucide-react";
 
 const statusLabels = {
   RECEIVED: "New", PROCESSING: "Processing", DRAFTED: "Reply ready",
@@ -23,6 +23,8 @@ export default function InboundEmailQueue() {
   const [runResult, setRunResult] = useState("");
   const [edits, setEdits] = useState({});
   const [meetingBusy, setMeetingBusy] = useState("");
+  const [taskBusyId, setTaskBusyId] = useState("");
+  const [worker, setWorker] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +38,7 @@ export default function InboundEmailQueue() {
       setAgentEnabled(settingsRes.ok && settingsData.settings?.enabled === true);
       setMessages(inboxData.messages || []);
       setDrafts(inboxData.drafts || []);
+      setWorker(inboxData.worker || null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load inbox.");
     } finally {
@@ -69,7 +72,7 @@ export default function InboundEmailQueue() {
       const response = await fetch("/api/email-agent/run", { method: "POST", cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || data.reason || "Inbox check failed.");
-      setRunResult(`Checked inbox: ${data.processed || 0} processed · ${data.drafted || 0} replies prepared · ${data.failed || 0} errors.`);
+      setRunResult(`Scanned ${data.scanned || 0} · queued ${data.queued || 0} · processed ${data.processed || 0} · drafted ${data.drafted || 0} · ${data.failed || 0} errors.`);
       if (data.failed > 0) setError(data.failures?.[0]?.error || data.reason || "Some messages need attention.");
       await load();
     } catch (reason) {
@@ -146,10 +149,51 @@ export default function InboundEmailQueue() {
     }
   }
 
+  async function retryMessage(message) {
+    setTaskBusyId(message.id);
+    setError("");
+    try {
+      const response = await fetch("/api/email-agent/inbox/" + message.id + "/retry", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not retry message.");
+      setNotice("Message returned to the processing queue.");
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not retry message.");
+    } finally {
+      setTaskBusyId("");
+    }
+  }
+
+  async function reviewTask(message, action) {
+    if (!window.confirm(action === "APPROVE"
+      ? "Add this email-derived task to Tasks & calendar?"
+      : "Decline this task proposal? No task will be created.")) return;
+    setTaskBusyId(message.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/email-agent/inbox/" + message.id + "/task", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not update task proposal.");
+      setNotice(action === "APPROVE" ? "Task approved and added to Tasks & calendar." : "Task proposal declined.");
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not update task proposal.");
+      await load();
+    } finally {
+      setTaskBusyId("");
+    }
+  }
+
   const pendingCount = messages.filter((message) => {
     const draft = getDraft(message);
     const draftNeedsAttention = draft && ["DRAFT", "FAILED", "APPROVED", "SEND_UNCERTAIN"].includes(draft.status);
-    const messageNeedsAttention = ["RECEIVED", "PROCESSING", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "FAILED"].includes(message.status);
+    const messageNeedsAttention = ["RECEIVED", "PROCESSING", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "RETRY_WAIT", "FAILED"].includes(message.status);
     return Boolean(draftNeedsAttention || messageNeedsAttention);
   }).length;
 
@@ -160,6 +204,7 @@ export default function InboundEmailQueue() {
           <h2 className="text-lg font-semibold text-[#233044]">Inbox activity</h2>
           <p className="mt-1 text-sm text-[#6B7280]">
             {pendingCount} item{pendingCount === 1 ? "" : "s"} need attention
+            {worker ? ` · ${worker.queuedCount || 0} queued · ${worker.retryingCount || 0} retrying · ${worker.failedCount || 0} stopped` : ""}
           </p>
         </div>
         <button
@@ -236,8 +281,34 @@ export default function InboundEmailQueue() {
                     </a>
                   </div>
                 )}
-                {task && !classification.taskId && message.status !== "FAILED" && (
-                  <p className="mt-3 rounded-lg bg-violet-50 p-3 text-sm text-violet-950">Task identified: {task.title}</p>
+                {task && classification.taskApprovalStatus === "PENDING" && message.status === "TASK_REVIEW" && (
+                  <div className="mt-3 rounded-lg border border-violet-100 bg-violet-50 p-3 text-sm text-violet-950">
+                    <div className="flex items-center gap-2 font-semibold"><ListTodo size={15} /> Task proposal — approval required</div>
+                    <p className="mt-2 font-medium">{task.title}</p>
+                    {task.description && <p className="mt-1 text-xs leading-5">{task.description}</p>}
+                    <p className="mt-2 text-xs">Priority: {task.priority || "MEDIUM"}{task.dueAt ? " · Due " + new Date(task.dueAt).toLocaleString() : " · No due date"}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={Boolean(taskBusyId)}
+                        onClick={() => void reviewTask(message, "APPROVE")}
+                        className="rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {taskBusyId === message.id ? "Saving…" : "Approve and add task"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(taskBusyId)}
+                        onClick={() => void reviewTask(message, "REJECT")}
+                        className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                      >
+                        <XCircle size={13} /> Decline proposal
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {task && classification.taskApprovalStatus === "REJECTED" && (
+                  <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">Task proposal declined. No schedule item was created.</p>
                 )}
 
                 {(message.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent)) &&
@@ -277,7 +348,24 @@ export default function InboundEmailQueue() {
                   />
                 )}
 
-                {message.lastError && <p className="mt-3 text-sm text-amber-900">{message.lastError}</p>}
+                {message.lastError && (
+                  <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                    {message.lastError}
+                    {message.status === "RETRY_WAIT" && message.nextAttemptAt && (
+                      <p className="mt-1 text-xs">Next automatic attempt: {new Date(message.nextAttemptAt).toLocaleString()}</p>
+                    )}
+                    {message.status === "FAILED" && (
+                      <button
+                        type="button"
+                        disabled={Boolean(taskBusyId)}
+                        onClick={() => void retryMessage(message)}
+                        className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      >
+                        Retry processing
+                      </button>
+                    )}
+                  </div>
+                )}
               </article>
             );
           })}
