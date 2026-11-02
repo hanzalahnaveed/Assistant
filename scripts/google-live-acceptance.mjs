@@ -290,8 +290,13 @@ async function runLiveAcceptance() {
   console.log("Google live acceptance completed. No message bodies, OAuth tokens, or calendar event contents were logged.");
 }
 
-if (process.argv.includes("--self-test")) {
-  await runSelfTest();
-} else {
-  await runLiveAcceptance();
+import { pathToFileURL } from "node:url";
+
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  if (process.argv.includes("--self-test")) {
+    await runSelfTest();
+  } else {
+    await runLiveAcceptance();
+  }
 }
