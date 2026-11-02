@@ -23,6 +23,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Daily briefing commitment candidates from explicit email next-step language and upcoming calendar events, with evidence, rationale, and policy-controlled task proposals
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
 - [x] Complete account data export covering inbound email history, follow-ups, and email-agent state while excluding OAuth credentials and opaque provider cursors
+- [x] Account deletion with password or Google identity re-verification, cascading local data removal, and best-effort Google token revocation
 - [x] CI validation, production build, and end-to-end test workflow
 - [x] Saved outreach drafts, AI-assisted generation, separate approval and send steps, and email audit events
 - [x] Inbound email agent with per-user tone/style/signature preferences, sensitive-message review, idempotent Gmail message tracking, email-derived tasks in the unified schedule, advisory calendar availability suggestions, and draft-only reply generation requiring manager approval and a separate send confirmation

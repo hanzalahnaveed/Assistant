@@ -9,6 +9,7 @@ const IDENTITY_SCOPES = ["openid", "email", "profile"];
 export async function GET(request) {
   const intent = request.nextUrl.searchParams.get("intent");
   const isAuthentication = intent === "signin" || intent === "signup";
+  const isDeletion = intent === "delete-account";
 
   if (!isAuthentication) {
     const user = await getSessionUser();
@@ -20,7 +21,7 @@ export async function GET(request) {
   try {
     const state = createOAuthState();
     const response = NextResponse.redirect(
-      googleAuthorizationUrl(state, isAuthentication ? IDENTITY_SCOPES : undefined),
+      googleAuthorizationUrl(state, isAuthentication || isDeletion ? IDENTITY_SCOPES : undefined),
     );
     response.cookies.set("google_oauth_state", state, {
       httpOnly: true,
@@ -29,7 +30,7 @@ export async function GET(request) {
       path: "/",
       maxAge: 600,
     });
-    response.cookies.set("google_auth_intent", isAuthentication ? intent : "connect", {
+    response.cookies.set("google_auth_intent", isAuthentication || isDeletion ? intent : "connect", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

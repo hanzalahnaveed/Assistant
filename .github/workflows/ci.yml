@@ -82,6 +82,8 @@ jobs:
         run: npm run test:crud-surface
       - name: Test complete account data export
         run: npm run test:account-export
+      - name: Test secure account deletion flow
+        run: npm run test:account-deletion
       - name: Test AI chat task and email orchestration
         run: npm run test:chat-orchestration
       - name: Validate Prisma schema

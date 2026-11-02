@@ -31,7 +31,8 @@
     "test:google-data-crud": "node scripts/google-data-crud-test.mjs",
     "test:crud-surface": "node scripts/crud-surface-test.mjs",
     "test:chat-orchestration": "node scripts/chat-orchestration-test.mjs",
-    "test:account-export": "node scripts/account-export-test.mjs"
+    "test:account-export": "node scripts/account-export-test.mjs",
+    "test:account-deletion": "node scripts/account-deletion-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",

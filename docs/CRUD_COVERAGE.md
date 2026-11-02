@@ -6,7 +6,7 @@ This document defines the supported create/read/update/delete behavior for each 
 
 | Data area | Create | Read | Update | Delete / archive |
 | --- | --- | --- | --- | --- |
-| Account profile | Email/password signup or Google signup | Session/profile and account export | Display name, timezone, briefing and approval preferences | No in-app account purge endpoint; disconnect/revoke Google and log out are supported |
+| Account profile | Email/password signup or Google signup | Session/profile and complete account export | Display name, timezone, briefing and approval preferences | Permanently delete account and cascaded app data after password or Google identity re-verification; Google token revocation is best-effort |
 | Tasks | Create a local task or approve an email-derived task proposal | Task list, briefing and schedule views | Title, description, due date, priority and status | Soft-cancel; task history and source references are retained |
 | Google Calendar | Create a provider event after explicit confirmation | Date-range sync from the primary calendar | Update the Google event after rechecking availability and event version | Cancel the Google event (provider cancellation, not a local-only delete) |
 | Gmail inbound messages | Gmail delivers the message; the agent records a tenant-scoped reference | Full email body and attachments metadata fetched from Gmail on demand | Mark read/unread, star/unstar, archive/move to inbox; update Gmail labels | Move to Trash and restore. Permanent deletion is not exposed |

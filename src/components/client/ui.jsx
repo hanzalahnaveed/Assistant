@@ -31,6 +31,7 @@ export default function IntegrationsClient() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [oauthError, setOauthError] = useState("");
@@ -175,6 +176,36 @@ export default function IntegrationsClient() {
       setError(e instanceof Error ? e.message : "Disconnect failed.");
     } finally {
       setBusy(false);
+    }
+  }
+  async function deleteAccount() {
+    if (deletingAccount) return;
+    const phrase = window.prompt("This permanently deletes your Assistant account and saved data. Type DELETE MY ACCOUNT to continue.");
+    if (phrase !== "DELETE MY ACCOUNT") return;
+    setDeletingAccount(true);
+    setError("");
+    try {
+      if (!data?.user?.hasPassword) {
+        window.location.assign("/api/auth/google/start?intent=delete-account");
+        return;
+      }
+      const password = window.prompt("Enter your current Assistant password to confirm deletion.");
+      if (!password) return;
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: data.user.email, password, confirmation: phrase }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 409 && body.code === "GOOGLE_REAUTH_REQUIRED") {
+        window.location.assign("/api/auth/google/start?intent=delete-account");
+        return;
+      }
+      if (!response.ok) throw new Error(body.error || "Account deletion failed.");
+      window.location.replace("/auth?deleted=1");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Account deletion failed.");
+      setDeletingAccount(false);
     }
   }
   async function logout() {
@@ -527,7 +558,7 @@ export default function IntegrationsClient() {
             <div>
               <h2 className="font-semibold tracking-[-0.025em]">Your account</h2>
               <p className="mt-1 max-w-2xl text-xs leading-5 text-[#6B7280] text-pretty">
-                Export your Assistant data or securely log out of this account.
+                Export your Assistant data, log out, or permanently delete your account.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -538,7 +569,16 @@ export default function IntegrationsClient() {
                 Download data export <ExternalLink size={14} />
               </a>
               <Button
-                onClick={() => void logout()}
+                danger
+                onClick={() => void deleteAccount()}
+                loading={deletingAccount}
+                disabled={deletingAccount || loggingOut || busy}
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+              >
+                Delete account
+              </Button>
+              <Button
+                onClick={() => void logout()
                 loading={loggingOut}
                 disabled={loggingOut || busy}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-semibold hover:bg-[#fafbf9]"

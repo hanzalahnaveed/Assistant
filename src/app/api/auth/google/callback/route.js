@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser, createSession } from "@/lib/auth/session";
+import { getSessionUser, createSession, clearSession } from "@/lib/auth/session";
+import { decryptSecret } from "@/lib/security/token-crypto";
 import { encryptSecret } from "@/lib/security/token-crypto";
 import { exchangeGoogleCode, fetchGoogleProfile } from "@/lib/google/oauth";
 
@@ -12,6 +13,7 @@ export async function GET(request) {
   const intent = jar.get("google_auth_intent")?.value;
   const isAuthentication = intent === "signin" || intent === "signup";
   const isConnection = intent === "connect";
+  const isDeletion = intent === "delete-account";
   const expectedState = jar.get("google_oauth_state")?.value;
   const state = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
@@ -37,7 +39,7 @@ export async function GET(request) {
     return redirectError(isAuthentication ? "/auth" : "/dashboard/integrations", "invalid_oauth_state");
   }
 
-  if (!isAuthentication && !isConnection) {
+  if (!isAuthentication && !isConnection && !isDeletion) {
     return redirectError("/dashboard/integrations", "invalid_oauth_intent");
   }
 
@@ -45,6 +47,44 @@ export async function GET(request) {
     const tokens = await exchangeGoogleCode(code);
     const profile = await fetchGoogleProfile(tokens.accessToken);
     const email = profile.email.toLowerCase();
+
+    if (isDeletion) {
+      const user = await getSessionUser();
+      if (!user) return redirectError("/auth", "sign_in_required");
+      if (email !== user.email.toLowerCase()) {
+        return redirectError("/dashboard/integrations", "account_delete_identity_mismatch");
+      }
+      const integrations = await prisma.integration.findMany({
+        where: { userId: user.id, provider: "GOOGLE" },
+        select: { accessTokenEnc: true, refreshTokenEnc: true },
+      });
+      for (const integration of integrations) {
+        const encrypted = integration.refreshTokenEnc || integration.accessTokenEnc;
+        if (!encrypted) continue;
+        try {
+          const storedToken = decryptSecret(encrypted);
+          await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(storedToken), {
+            method: "POST",
+            cache: "no-store",
+            signal: AbortSignal.timeout(5000),
+          });
+        } catch {
+          // Best-effort provider revocation.
+        }
+      }
+      try {
+        await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(tokens.accessToken), {
+          method: "POST",
+          cache: "no-store",
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch {
+        // The verified Google identity is sufficient to complete local deletion.
+      }
+      await prisma.user.delete({ where: { id: user.id } });
+      await clearSession();
+      return clearState(NextResponse.redirect(new URL("/auth?deleted=1", request.url)));
+    }
 
     if (isConnection) {
       const user = await getSessionUser();

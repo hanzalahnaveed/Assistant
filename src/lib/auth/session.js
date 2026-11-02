@@ -88,10 +88,13 @@ export async function getSessionUser() {
   try {
     const payload = verifyToken(token);
     if (!payload) return null;
-    return await prisma.user.findUnique({
+    const account = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, imageUrl: true, timezone: true },
+      select: { id: true, email: true, name: true, imageUrl: true, timezone: true, passwordHash: true },
     });
+    if (!account) return null;
+    const { passwordHash, ...safeAccount } = account;
+    return { ...safeAccount, hasPassword: Boolean(passwordHash) };
   } catch {
     return null;
   }
