@@ -18,6 +18,7 @@
     "format": "npx --yes prettier@3 --write .",
     "format:check": "npx --yes prettier@3 --check .",
     "test:calendar-timezone": "node scripts/calendar-timezone-test.mjs",
+    "test:calendar-availability": "node scripts/calendar-availability-test.mjs",
     "test:email-agent": "node scripts/email-agent-test.mjs",
     "email-agent:local-worker": "node scripts/email-agent-local-worker.mjs",
     "test:email-agent-dummy": "node scripts/email-agent-dummy-classifier-test.mjs",
