@@ -187,26 +187,24 @@ export default function IntegrationsClient() {
     setDeletingAccount(true);
     setError("");
     try {
-      if (!data?.user?.hasPassword) {
-        window.location.assign("/api/auth/google/start?intent=delete-account");
-        return;
-      }
-      const password = window.prompt("Enter your current Assistant password to confirm deletion.");
-      if (!password) {
+      const password = data?.user?.hasPassword
+        ? window.prompt("Enter your current Assistant password to confirm deletion.")
+        : "";
+      if (data?.user?.hasPassword && !password) {
         setDeletingAccount(false);
         return;
       }
       const response = await fetch("/api/account/delete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: data.user.email, password, confirmation: phrase }),
+        body: JSON.stringify({ email: data.user.email, password: password || "", confirmation: phrase }),
       });
       const body = await response.json().catch(() => ({}));
-      if (response.status === 409 && body.code === "GOOGLE_REAUTH_REQUIRED") {
-        window.location.assign("/api/auth/google/start?intent=delete-account");
+      if (!response.ok) throw new Error(body.error || "Account deletion failed.");
+      if (body.authorizationUrl) {
+        window.location.assign(body.authorizationUrl);
         return;
       }
-      if (!response.ok) throw new Error(body.error || "Account deletion failed.");
       window.location.replace("/auth?deleted=1");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Account deletion failed.");

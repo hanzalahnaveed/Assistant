@@ -4,6 +4,7 @@ import { getSessionUser, clearSession } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
 import { decryptSecret } from "@/lib/security/token-crypto";
 import { prisma } from "@/lib/prisma";
+import { createOAuthState, googleAuthorizationUrl } from "@/lib/google/oauth";
 
 export const runtime = "nodejs";
 
@@ -54,10 +55,21 @@ export async function POST(request) {
   });
   if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
   if (!account.passwordHash) {
-    return NextResponse.json({
-      code: "GOOGLE_REAUTH_REQUIRED",
-      error: "Verify your Google identity to delete this account.",
-    }, { status: 409 });
+    try {
+      const state = createOAuthState();
+      const response = NextResponse.json({
+        authorizationUrl: googleAuthorizationUrl(state, ["openid", "email", "profile"]),
+      }, { headers: { "cache-control": "no-store" } });
+      response.cookies.set("google_oauth_state", state, {
+        httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 600,
+      });
+      response.cookies.set("google_auth_intent", "delete-account", {
+        httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 600,
+      });
+      return response;
+    } catch {
+      return NextResponse.json({ error: "Google identity verification is not configured. Contact the administrator." }, { status: 503 });
+    }
   }
   if (!parsed.data.password || !(await verifyPassword(parsed.data.password, account.passwordHash))) {
     return NextResponse.json({ error: "The current password is incorrect." }, { status: 401 });
