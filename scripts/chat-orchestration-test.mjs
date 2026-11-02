@@ -6,16 +6,25 @@ const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import
 
 assert.match(route, /name:\s*"propose_task"/);
 assert.match(route, /name:\s*"prepare_email_draft"/);
+assert.match(route, /name:\s*"propose_calendar_event"/);
+assert.match(route, /for \(let index = 0; index < toolCalls.length; index \+= 1\)/);
 assert.match(route, /prisma\.actionRecord\.findMany/);
 assert.match(route, /prisma\.emailDraft\.findMany/);
 assert.match(route, /Pending assistant actions/);
 assert.match(route, /Outbound email drafts/);
-assert.match(route, /createTaskActionProposal\(userId, idempotencyKey/);
+assert.match(route, /createTaskActionProposal/);
 assert.match(route, /prisma\.emailDraft\.create/);
-assert.match(route, /status: draft\.status, type: "CREATE_EMAIL_DRAFT"/);
+assert.match(route, /type: "CREATE_EMAIL_DRAFT", status: draft\.status/);
+assert.match(route, /CREATE_CALENDAR_EVENT/);
 assert.match(route, /eventType: "EMAIL_DRAFT_GENERATED"/);
 assert.match(route, /has not been approved or sent/);
-assert.match(route, /actionType: reply\.action\.type \|\| "CREATE_TASK"/);
+assert.match(route, /metadata: \{ actions: reply\.actions \|\| \[reply\.action\] \}/);
 assert.equal(packageJson.scripts["test:chat-orchestration"], "node scripts/chat-orchestration-test.mjs");
 
-console.log("PASS chat orchestration contract: task proposals use the action policy; email drafting saves an audited unsent draft.");
+const calendarService = fs.readFileSync(new URL("../src/lib/actions/calendar.js", import.meta.url), "utf8");
+assert.match(calendarService, /executeCalendarEventAction/);
+assert.match(calendarService, /calendar.events/);
+assert.match(calendarService, /CALENDAR_CONFLICT/);
+assert.match(calendarService, /createHash/);
+assert.match(fs.readFileSync(new URL("../src/app/api/actions/[id]/route.js", import.meta.url), "utf8"), /executeCalendarEventAction/);
+console.log("PASS multi-action orchestration and approved calendar execution contract.");

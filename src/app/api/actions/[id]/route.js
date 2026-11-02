@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { executeCalendarEventAction } from "@/lib/actions/calendar";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const decisionSchema = z.object({ decision: z.enum(["APPROVE", "REJECT"]) });
@@ -78,6 +79,11 @@ export async function PATCH(request, context) {
       { action: decision.action, ...(decision.reused ? { reused: true } : {}) },
       { headers: { "cache-control": "no-store" } },
     );
+  }
+  if (existing.actionType === "CREATE_CALENDAR_EVENT") {
+    const execution = await executeCalendarEventAction(user.id, existing);
+    if (execution.error) return NextResponse.json({ error: execution.error, ...(execution.action ? { action: execution.action } : {}) }, { status: execution.status || 409 });
+    return NextResponse.json({ action: execution.action, event: execution.event, ...(execution.reused ? { reused: true } : {}) }, { headers: { "cache-control": "no-store" } });
   }
   if (existing.actionType !== "CREATE_TASK") {
     return NextResponse.json(

@@ -213,11 +213,9 @@ export default function ActionsClient() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not update this action.");
-      setNotice(
-        decision === "APPROVE"
-          ? "Approved. The task was created and the result recorded."
-          : "Proposal rejected. No task was created.",
-      );
+      const reviewed = actions.find((action) => action.id === id);
+      const label = reviewed?.actionType === "CREATE_CALENDAR_EVENT" ? "calendar event" : "task";
+      setNotice(decision === "APPROVE" ? `Approved. The ${label} was created and recorded.` : `Proposal rejected. No ${label} was created.`);
       await loadActions();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update this action.");
@@ -382,13 +380,10 @@ export default function ActionsClient() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-semibold">
-                          {action.input.title || "Proposed task"}
+                          {action.input.title || (action.actionType === "CREATE_CALENDAR_EVENT" ? "Proposed calendar event" : "Proposed task")}
                         </h3>
                         <p className="mt-1 text-xs text-[#7a857e] text-pretty">
-                          {action.input.priority || "MEDIUM"} priority
-                          {action.input.dueAt
-                            ? ` · Due ${new Date(action.input.dueAt).toLocaleString()}`
-                            : ""}
+                          {action.actionType === "CREATE_CALENDAR_EVENT" ? `${new Date(action.input.startAt).toLocaleString()} – ${new Date(action.input.endAt).toLocaleTimeString()}` : `${action.input.priority || "MEDIUM"} priority${action.input.dueAt ? ` · Due ${new Date(action.input.dueAt).toLocaleString()}` : ""}`}
                         </p>
                       </div>
                       <span className="rounded-full bg-[#fff3dc] px-2 py-1 text-[10px] font-semibold text-[#94651a] tracking-[0.01em]">
@@ -508,7 +503,7 @@ export default function ActionsClient() {
                 >
                   <div>
                     <p className="text-sm font-medium text-pretty">
-                      {action.input.title || action.result.title || "Task action"}
+                      {action.input.title || action.result.title || (action.actionType === "CREATE_CALENDAR_EVENT" ? "Calendar event action" : "Task action")}
                     </p>
                     <p className="mt-1 text-xs text-[#87918b] text-pretty">
                       {new Date(action.createdAt).toLocaleString()}

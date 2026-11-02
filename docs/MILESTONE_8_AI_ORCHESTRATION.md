@@ -2,35 +2,26 @@
 
 ## Objective
 
-Make the assistant conversation a practical entry point into existing application capabilities while preserving each module's ownership and approval lifecycle.
+Make assistant chat a unified entry point into task, email, and calendar workflows while preserving each module approval and execution boundaries.
 
-## Delivered in this increment
+## Delivered
 
-- Chat retains its existing task proposal tool, which routes task requests through the shared ActionRecord service and configured AUTO / CONFIRM / BLOCK policy.
-- Chat can prepare an outbound email draft when the user explicitly asks for one and supplies an exact recipient address.
-- Chat-created drafts are persisted as ordinary `EmailDraft` records with `DRAFT` status and an audit event identifying the AI chat source.
-- The assistant explicitly states that the draft has not been approved or sent.
-- The existing Email workflow remains responsible for editing, approving the exact draft version, and separately confirming Send. Chat does not send email.
-- Chat continues to reuse the briefing intelligence service for current tasks, calendar events and evidence-based inbox follow-up candidates.
+- Chat processes every returned function tool call in order rather than selecting only the first task or email tool. Each action is persisted independently and invalid or unsupported calls are reported.
+- Task proposals continue through the existing AUTO / CONFIRM / BLOCK policy and idempotent action service.
+- Email requests create audited local EmailDraft records only. They remain DRAFT and chat never approves or sends them.
+- Explicit calendar scheduling requests create pending CREATE_CALENDAR_EVENT actions. Chat does not write to Google Calendar.
+- Action Center can review and approve calendar proposals. Approval checks Google connection and write scope, claims the action once, checks overlapping events, creates the event using a deterministic provider ID, saves the local schedule mirror, and records an audit event.
+- Assistant context includes current tasks, calendar events, inbox follow-up candidates, pending actions, and email draft metadata.
+- Action Center renders task and calendar proposals and reports the correct action outcome.
 
-## Safety and ownership boundaries
+## Safety and ownership
 
-- Connected email content, calendar content and user-provided text remain untrusted context, not instructions that can override system behavior.
-- A recipient address must be supplied; the assistant must not invent one.
-- Email drafting is a local application write only. No provider send call is made from chat.
-- Task creation continues through the existing policy-controlled action service.
-- Calendar event creation and other external actions remain in their dedicated confirmation workflows; chat must not bypass those controls.
+- Connected content and user-supplied text remain untrusted context.
+- Calendar creation requires explicit Action Center approval, a connected Google account with calendar event write permission, valid timestamps and timezone, and a conflict check. Attendee invitations are sent only after approval.
+- Calendar proposals remain pending if Google Calendar is not connected; approval returns a clear connection or permission error without creating an event.
+- Email drafts require an exact recipient address and are never sent from chat.
+- Task actions retain the existing approval policy.
 
-## Current scope boundary
+## Verification
 
-This increment establishes the first cross-module chat actions: task proposals and outbound email drafts. It does not yet provide multi-action execution in a single turn, direct calendar mutation, or a general-purpose workflow planner. Those are subsequent integration increments and must reuse the existing service and approval boundaries.
-
-## Automated contract check
-
-Run:
-
-```sh
-npm run test:chat-orchestration
-```
-
-CI runs this check alongside the existing API, CRUD, migration, build and end-to-end jobs.
+Run `npm run test:chat-orchestration`. CI runs the contract check with the existing project checks. Live Google Calendar and Gmail acceptance require owner-provided connected test accounts and credentials.
