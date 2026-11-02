@@ -80,6 +80,8 @@ jobs:
         run: npm run test:google-data-crud
       - name: Test application CRUD coverage
         run: npm run test:crud-surface
+      - name: Test complete account data export
+        run: npm run test:account-export
       - name: Test AI chat task and email orchestration
         run: npm run test:chat-orchestration
       - name: Validate Prisma schema

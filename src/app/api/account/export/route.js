@@ -55,6 +55,19 @@ export async function GET() {
       dailyBriefings: { orderBy: { generatedAt: "desc" } },
       notifications: { orderBy: { createdAt: "desc" } },
       emailDrafts: { orderBy: { createdAt: "desc" } },
+      inboundEmails: { orderBy: { createdAt: "desc" } },
+      followUps: { orderBy: { createdAt: "desc" } },
+      emailAgentState: {
+        select: {
+          scanEnabledAt: true,
+          pagesScanned: true,
+          lastScanPageAt: true,
+          lastWorkerRunAt: true,
+          lastError: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
     },
   });
 
@@ -68,7 +81,7 @@ export async function GET() {
   const filenameDate = exportedAt.toISOString().slice(0, 10);
   return NextResponse.json(
     {
-      formatVersion: 1,
+      formatVersion: 2,
       exportedAt: exportedAt.toISOString(),
       account: exportedAccount,
     },
