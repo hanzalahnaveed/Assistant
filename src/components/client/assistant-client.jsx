@@ -305,22 +305,30 @@ export default function AssistantClient() {
                     >
                       {item.content}
                     </div>
-                    {item.role === "assistant" && item.metadata?.actionType === "CREATE_TASK" && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs">
-                        {item.metadata.actionStatus === "SUCCEEDED" ? (
-                          <CheckCircle2 size={15} className="text-[#176b52]" />
-                        ) : (
-                          <Clock3 size={15} className="text-[#9a6a2c]" />
-                        )}
-                        <span className="text-[#526159]">
-                          {item.metadata.actionStatus === "SUCCEEDED"
-                            ? "Task created"
-                            : `Task proposal: ${item.metadata.actionStatus?.toLowerCase() || "review"}`}
-                        </span>
-                        <a href="/dashboard/actions" className="ml-auto font-semibold text-[#176b52] hover:underline">
-                          {item.metadata.actionStatus === "SUCCEEDED" ? "Open Action Center" : "Review action ↗"}
-                        </a>
-                      </div>
+                    {item.role === "assistant" && (
+                      (item.metadata?.actions?.length
+                        ? item.metadata.actions
+                        : item.metadata?.actionType
+                          ? [{ type: item.metadata.actionType, status: item.metadata.actionStatus, id: item.metadata.actionId }]
+                          : []
+                      ).map((action, actionIndex) => {
+                        const isEmail = action.type === "CREATE_EMAIL_DRAFT";
+                        const isCalendar = action.type === "CREATE_CALENDAR_EVENT";
+                        const label = isEmail ? "Email draft" : isCalendar ? "Calendar event" : "Task";
+                        const completed = action.status === "SUCCEEDED" || action.status === "DRAFT";
+                        return (
+                          <div key={action.id || actionIndex} className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dce7df] bg-white px-3 py-2 text-xs">
+                            {completed ? <CheckCircle2 size={15} className="text-[#176b52]" /> : <Clock3 size={15} className="text-[#9a6a2c]" />}
+                            <span className="text-[#526159]">
+                              {action.title ? label + ": " + action.title + " · " : ""}
+                              {completed ? (isEmail ? "Draft saved" : label + " created") : label + " proposal: " + (action.status?.toLowerCase() || "review")}
+                            </span>
+                            <a href={isEmail ? "/dashboard/email" : "/dashboard/actions"} className="ml-auto font-semibold text-[#176b52] hover:underline">
+                              {isEmail ? "Open Email" : completed ? "Open Action Center" : "Review action ↗"}
+                            </a>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
