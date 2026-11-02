@@ -17,6 +17,7 @@ Personal AI Executive Assistant for individual managers, combining a proactive d
 - [x] Per-action automation rule for task creation (AUTO, CONFIRM, or BLOCK)
 - [x] AI chat grounded in current task priorities, today’s calendar, and read-only inbox follow-up candidates
 - [x] Chat tool calling for explicit task-creation requests, routed through the same approval rules and idempotent action service
+- [x] Chat-assisted outbound email drafting, saved as an unsent draft with audit history and separate approval/send controls
 - [x] Inbox follow-up recommendations routed through policy-controlled, idempotent task proposals instead of bypassing the Action Center
 - [x] Daily briefing commitment candidates from explicit email next-step language and upcoming calendar events, with evidence, rationale, and policy-controlled task proposals
 - [x] Timezone-aware scheduled briefing worker with idempotent daily generation
