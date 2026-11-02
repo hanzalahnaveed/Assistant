@@ -23,6 +23,7 @@ export default function NotificationCenter() {
   const [notifications, setNotifications] = useState([]);
   const [briefings, setBriefings] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadBriefingCount, setUnreadBriefingCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -36,6 +37,7 @@ export default function NotificationCenter() {
       setNotifications(data.notifications || []);
       setBriefings(data.briefings || []);
       setUnreadCount(data.unreadCount || 0);
+      setUnreadBriefingCount(data.unreadBriefingCount || 0);
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load notifications.");
@@ -75,7 +77,10 @@ export default function NotificationCenter() {
       } else {
         setNotifications((current) => current.map((entry) => entry.id === id ? { ...entry, readAt: new Date().toISOString() } : entry));
       }
-      setUnreadCount((count) => Math.max(0, count - (item.readAt ? 0 : 1)));
+      if (!item.readAt) {
+        if (type === "briefing") setUnreadBriefingCount((count) => Math.max(0, count - 1));
+        else setUnreadCount((count) => Math.max(0, count - 1));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not mark item as read.");
     } finally {
@@ -100,7 +105,10 @@ export default function NotificationCenter() {
       if (!response.ok) throw new Error(data.error || "Could not delete " + label + ".");
       if (type === "briefing") setBriefings((current) => current.filter((entry) => entry.id !== id));
       else setNotifications((current) => current.filter((entry) => entry.id !== id));
-      if (!item.readAt) setUnreadCount((count) => Math.max(0, count - 1));
+      if (!item.readAt) {
+        if (type === "briefing") setUnreadBriefingCount((count) => Math.max(0, count - 1));
+        else setUnreadCount((count) => Math.max(0, count - 1));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not delete " + label + ".");
     } finally {
@@ -123,6 +131,7 @@ export default function NotificationCenter() {
       setNotifications((current) => current.map((item) => ({ ...item, readAt: item.readAt || now })));
       setBriefings((current) => current.map((item) => ({ ...item, readAt: item.readAt || now })));
       setUnreadCount(0);
+      setUnreadBriefingCount(0);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not mark everything as read.");
     } finally {
@@ -151,11 +160,13 @@ export default function NotificationCenter() {
     }
   }
 
+  const totalUnreadCount = unreadCount + unreadBriefingCount;
+
   return (
     <div className="w-full">
       <button
         type="button"
-        aria-label={"Notifications" + (unreadCount ? ", " + unreadCount + " unread" : "")}
+        aria-label={"Notifications" + (totalUnreadCount ? ", " + totalUnreadCount + " unread" : "")}
         aria-expanded={open}
         onClick={() => {
           const next = !open;
@@ -166,9 +177,9 @@ export default function NotificationCenter() {
       >
         <Bell size={18} />
         <span className="max-[760px]:hidden">Notifications</span>
-        {unreadCount > 0 && (
+        {totalUnreadCount > 0 && (
           <span className="ml-auto rounded-full bg-[#FA8500] px-2 py-0.5 text-[10px] font-bold text-white max-[760px]:absolute max-[760px]:right-0 max-[760px]:top-0">
-            {unreadCount > 99 ? "99+" : unreadCount}
+            {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
           </span>
         )}
       </button>
@@ -178,10 +189,10 @@ export default function NotificationCenter() {
           <div className="flex items-center justify-between gap-3 border-b border-[#E8EBF0] px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold">Notifications</h2>
-              <p className="mt-0.5 text-[11px] text-[#7B8492]">{unreadCount} unread</p>
+              <p className="mt-0.5 text-[11px] text-[#7B8492]">{totalUnreadCount} unread</p>
             </div>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => void markAllRead()} disabled={unreadCount === 0 || Boolean(busyId)} className="rounded-lg px-2 py-1.5 text-[11px] font-semibold text-[#176b52] hover:bg-[#eff7f1] disabled:opacity-40">
+              <button type="button" onClick={() => void markAllRead()} disabled={totalUnreadCount === 0 || Boolean(busyId)} className="rounded-lg px-2 py-1.5 text-[11px] font-semibold text-[#176b52] hover:bg-[#eff7f1] disabled:opacity-40">
                 Mark all read
               </button>
               <button type="button" onClick={() => void clearRead()} disabled={Boolean(busyId) || (!notifications.some((item) => item.readAt) && !briefings.some((item) => item.readAt))} title="Delete all read items" aria-label="Delete all read items" className="rounded-lg p-1.5 text-[#8A919C] hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40">

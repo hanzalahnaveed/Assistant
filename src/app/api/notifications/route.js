@@ -44,7 +44,7 @@ export async function GET() {
     prisma.dailyBriefing.count({ where: { userId: user.id, readAt: null } }),
   ]);
   return NextResponse.json(
-    { notifications, briefings, unreadCount: unreadNotifications + unreadBriefings },
+    { notifications, briefings, unreadCount: unreadNotifications, unreadBriefingCount: unreadBriefings },
     { headers: { "cache-control": "no-store" } },
   );
 }
