@@ -84,9 +84,3 @@ export function normalizeIntent({ intent, category, subject = "", body = "" } = 
   return "OTHER";
 }
 
-export function isAutomaticReplyAllowed(classification = {}) {
-  return classification.mode === "LIVE" &&
-    classification.category === "ROUTINE" &&
-    classification.sensitive !== true &&
-    classification.intent === "OTHER";
-}

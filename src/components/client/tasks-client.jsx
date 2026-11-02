@@ -94,6 +94,12 @@ export default function TasksClient({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [view, setView] = useState("open");
+  const viewTabs = [
+    { id: "open", label: "Open" },
+    { id: "in_progress", label: "In progress" },
+    { id: "completed", label: "Completed" },
+    { id: "all", label: "All" },
+  ];
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [dueFilter, setDueFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DUE_ASC");
@@ -296,6 +302,26 @@ export default function TasksClient({
             >
               Refresh
             </Button>
+          </div>
+
+          <div role="tablist" aria-label="Schedule item status" className="flex flex-wrap gap-2">
+            {viewTabs.map((tab) => (
+              <button
+                key={tab.id}
+                id={tab.id}
+                type="button"
+                role="tab"
+                aria-pressed={view === tab.id}
+                onClick={() => setView(tab.id)}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  view === tab.id
+                    ? "bg-[#233044] text-white"
+                    : "border border-[#E3E7ED] bg-white text-[#526159] hover:bg-[#F8F9FA]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {selectableVisibleTasks.length > 0 && view !== "completed" && (
