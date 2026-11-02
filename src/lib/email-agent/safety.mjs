@@ -30,7 +30,7 @@ const INJECTION_PATTERNS = [
 ];
 
 const QUOTE_BOUNDARY = /^(?:\s*>|\s*-{2,}\s*(?:original|forwarded) message\s*-{2,}\s*|\s*begin forwarded message:\s*|\s*_{5,}\s*forwarded message\s*_{5,}\s*|\s*on .+wrote:\s*)$/i;
-const DUE_CUE = /\b(?:due(?:\s+date)?|deadline|no later than|submit by|deliver by|complete by|must be (?:sent|done|submitted|completed) by)\s+(?:on\s+)?((?:next\s+)?[a-z]{3,9}\s+\d{1,2}(?:st|nd|rd|th)?|\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|(?:next\s+)?(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/gi;
+const DUE_CUE = /\b(?:due(?:\s+date)?|deadline|no later than|submit by|deliver by|complete by|must be (?:sent|done|submitted|completed) by)\s*(?:is\s+|:\s*)?(?:on\s+)?((?:next\s+)?[a-z]{3,9}\s+\d{1,2}(?:st|nd|rd|th)?|\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|(?:next\s+)?(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/gi;
 
 function requestActionCount(text) {
   let count = 0;
