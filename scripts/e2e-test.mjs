@@ -468,6 +468,24 @@ try {
     method: "PATCH",
     body: JSON.stringify({ tone: "ignore-all-safety-rules" }),
   }, token);
+  const cursorSecretFixture = "opaque-e2e-gmail-page-token";
+  await prisma.emailAgentState.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      gmailPageToken: cursorSecretFixture,
+      scanEnabledAt: new Date(),
+      pagesScanned: 9,
+      lastScanPageAt: new Date(),
+      lastWorkerRunAt: new Date(),
+    },
+    update: {
+      gmailPageToken: cursorSecretFixture,
+      pagesScanned: 9,
+      lastScanPageAt: new Date(),
+      lastWorkerRunAt: new Date(),
+    },
+  });
   const inboundQueueDraft = await prisma.emailDraft.create({
     data: {
       userId: user.id,
@@ -498,6 +516,125 @@ try {
   assert.ok(inboundQueueResponse.drafts.some((draft) =>
     draft.id === inboundQueueDraft.id && draft.body === "Please review this draft before sending."
   ));
+  assert.equal(inboundQueueResponse.worker.pagesScanned, 9);
+  assert.equal(JSON.stringify(inboundQueueResponse).includes(cursorSecretFixture), false);
+  check(true, "inbound queue exposes worker health without exposing its persisted Gmail pagination cursor");
+
+  const emailTaskSourceId = "e2e-email-task-proposal-" + Date.now();
+  const emailTaskProposal = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: emailTaskSourceId,
+      gmailThreadId: "e2e-task-thread-" + Date.now(),
+      fromEmail: "external@example.test",
+      subject: "Please review the Q4 pipeline",
+      status: "TASK_REVIEW",
+      category: "TASK",
+      sensitive: false,
+      summary: "Sender requests a Q4 pipeline review.",
+      classification: {
+        category: "TASK",
+        intent: "TASK_DELEGATION",
+        taskApprovalStatus: "PENDING",
+        taskCreated: false,
+        task: {
+          title: "Review the Q4 pipeline",
+          description: "Inspect the opportunities and prepare a short risk summary.",
+          priority: "HIGH",
+          dueAt: null,
+        },
+      },
+    },
+  });
+  const taskProposalUrl = "/api/email-agent/inbox/" + emailTaskProposal.id + "/task";
+  await expectStatus(taskProposalUrl, 401, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  });
+  await expectStatus(taskProposalUrl, 400, {
+    method: "POST",
+    body: JSON.stringify({ action: "CREATE" }),
+  }, token);
+  const approvedEmailTask = await expectStatus(taskProposalUrl, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  }, token);
+  const approvedEmailTaskBody = await approvedEmailTask.json();
+  assert.equal(approvedEmailTaskBody.task.title, "Review the Q4 pipeline");
+  assert.equal(approvedEmailTaskBody.task.source, "EMAIL");
+  assert.equal(approvedEmailTaskBody.task.sourceRef, emailTaskSourceId);
+  const persistedEmailTask = await prisma.scheduleItem.findUnique({
+    where: { userId_source_sourceRef: { userId: user.id, source: "EMAIL", sourceRef: emailTaskSourceId } },
+  });
+  assert.ok(persistedEmailTask);
+  const approvedEmailTaskInbound = await prisma.inboundEmail.findUnique({ where: { id: emailTaskProposal.id } });
+  assert.equal(approvedEmailTaskInbound.status, "TASK_CREATED");
+  assert.equal(approvedEmailTaskInbound.classification.taskApprovalStatus, "APPROVED");
+  const duplicateEmailTaskApproval = await expectStatus(taskProposalUrl, 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "APPROVE" }),
+  }, token);
+  assert.equal((await duplicateEmailTaskApproval.json()).alreadyProcessed, true);
+  assert.equal(await prisma.scheduleItem.count({
+    where: { userId: user.id, source: "EMAIL", sourceRef: emailTaskSourceId },
+  }), 1);
+  const tasksAfterApproval = (await (await expectStatus("/api/tasks", 200, {}, token)).json()).tasks;
+  assert.ok(tasksAfterApproval.some((task) => task.id === persistedEmailTask.id));
+  check(true, "email-derived task proposals require manager approval, create one idempotent schedule item, and are visible in Tasks & calendar");
+
+  const rejectedTaskSourceId = "e2e-email-task-reject-" + Date.now();
+  const rejectedTaskProposal = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: rejectedTaskSourceId,
+      gmailThreadId: "e2e-task-reject-thread-" + Date.now(),
+      fromEmail: "external@example.test",
+      subject: "Prepare a draft agenda",
+      status: "TASK_REVIEW",
+      category: "TASK",
+      sensitive: false,
+      classification: {
+        category: "TASK",
+        intent: "TASK_DELEGATION",
+        taskApprovalStatus: "PENDING",
+        task: { title: "Prepare a draft agenda", description: "Draft and share an agenda.", priority: "MEDIUM", dueAt: null },
+      },
+    },
+  });
+  const rejectedTaskResponse = await expectStatus("/api/email-agent/inbox/" + rejectedTaskProposal.id + "/task", 200, {
+    method: "POST",
+    body: JSON.stringify({ action: "REJECT" }),
+  }, token);
+  assert.equal((await rejectedTaskResponse.json()).rejected, true);
+  const rejectedTaskInbound = await prisma.inboundEmail.findUnique({ where: { id: rejectedTaskProposal.id } });
+  assert.equal(rejectedTaskInbound.status, "TASK_DISMISSED");
+  assert.equal(rejectedTaskInbound.classification.taskApprovalStatus, "REJECTED");
+  assert.equal(await prisma.scheduleItem.count({
+    where: { userId: user.id, source: "EMAIL", sourceRef: rejectedTaskSourceId },
+  }), 0);
+  check(true, "declining an email task proposal leaves the shared schedule unchanged");
+
+  const deadLetterId = "e2e-email-retry-" + Date.now();
+  const deadLetter = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: deadLetterId,
+      gmailThreadId: deadLetterId,
+      fromEmail: "external@example.test",
+      subject: "Message requiring a retry",
+      status: "FAILED",
+      processingAttempts: 5,
+      lastError: "Mock terminal processing error",
+    },
+  });
+  const retryUrl = "/api/email-agent/inbox/" + deadLetter.id + "/retry";
+  await expectStatus(retryUrl, 401, { method: "POST" });
+  await expectStatus(retryUrl, 200, { method: "POST" }, token);
+  const retriedDeadLetter = await prisma.inboundEmail.findUnique({ where: { id: deadLetter.id } });
+  assert.equal(retriedDeadLetter.status, "RECEIVED");
+  assert.equal(retriedDeadLetter.processingAttempts, 0);
+  assert.equal(retriedDeadLetter.nextAttemptAt, null);
+  check(true, "terminal email failures can be manually retried with a reset attempt counter and audit event");
   const replyDraft = await prisma.emailDraft.create({
     data: {
       userId: user.id,

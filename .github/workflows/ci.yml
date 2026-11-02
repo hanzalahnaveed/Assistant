@@ -64,6 +64,8 @@ jobs:
         run: npm run test:email-agent
       - name: Test token-free email-agent dummy classifier
         run: npm run test:email-agent-dummy
+      - name: Test email queue cursors and retry policy
+        run: npm run test:email-agent-queue
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client
