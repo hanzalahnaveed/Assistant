@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret, encryptSecret } from "@/lib/security/token-crypto";
+import { classifyGoogleApiFailure } from "@/lib/email-agent/provider-errors.mjs";
 async function refreshAccessToken(refreshToken) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -86,16 +87,11 @@ export async function googleApiGet(accessToken, url) {
         ? googleError.message.slice(0, 240)
         : "Google did not provide an error description.";
 
-    if (response.status === 401) {
-      throw new Error("Google access was rejected. Reconnect your Google account.");
-    }
-
-    const detail = reason ? `${reason}: ` : "";
-    if (response.status === 403) {
-      throw new Error(`Google API access denied (${detail}${message}).`);
-    }
-
-    throw new Error(`Google Workspace API returned HTTP ${response.status} (${detail}${message}).`);
+    const failure = classifyGoogleApiFailure({ status: response.status, reason, message });
+    const error = new Error(failure.message);
+    error.code = failure.code;
+    error.retryable = failure.retryable;
+    throw error;
   }
   return response.json();
 }

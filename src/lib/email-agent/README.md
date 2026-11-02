@@ -32,3 +32,14 @@ Run the cursor/retry policy tests with:
 ```sh
 npm run test:email-agent-queue
 ```
+
+
+## Milestone 7 — Safety gate and provider recovery
+
+- Inbound content is untrusted. The worker detects instruction-injection language before invoking the classifier. Suspected injection, multiple independent requests, vague actions, conflicting explicit deadlines, and forwarded-only messages without a new instruction are routed to `SAFETY_REVIEW`.
+- The classifier receives only the new, unquoted message text. Quoted and forwarded text is not treated as an instruction from the current sender. A task payload is suppressed unless an explicit action request exists outside forwarded content.
+- A safety-review message receives a neutral clarification draft. No task proposal, meeting suggestion, calendar action, or substantive model-generated reply is created for that item. The manager inbox shows static review reasons, not the untrusted instruction text.
+- Google 401 responses and explicit OAuth-scope failures mark the integration `REAUTH_REQUIRED`. Affected queue items become visible terminal failures and can be retried after the account is reconnected. Google rate limits and 5xx responses remain retryable; generic 403 policy errors are not mislabeled as token revocation.
+- Automated tests cover injected instructions in current and quoted content, multiple and ambiguous requests, conflicting deadlines, forwarded-only messages, ordinary non-request language, OAuth revocation, missing scopes, rate limits, and transient provider failures.
+
+This gate is deliberately conservative. It cannot prove that arbitrary natural-language messages are safe; ambiguous cases remain manager-reviewed and all replies remain drafts.

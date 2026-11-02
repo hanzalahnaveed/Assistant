@@ -21,7 +21,9 @@
     "test:email-agent": "node scripts/email-agent-test.mjs",
     "email-agent:local-worker": "node scripts/email-agent-local-worker.mjs",
     "test:email-agent-dummy": "node scripts/email-agent-dummy-classifier-test.mjs",
-    "test:email-agent-queue": "node scripts/email-agent-queue-test.mjs"
+    "test:email-agent-queue": "node scripts/email-agent-queue-test.mjs",
+    "test:email-agent-safety": "node scripts/email-agent-safety-test.mjs",
+    "test:google-provider-errors": "node scripts/google-provider-errors-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",

@@ -5,8 +5,8 @@ import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, Refre
 
 const statusLabels = {
   RECEIVED: "New", PROCESSING: "Processing", DRAFTED: "Reply ready",
-  AWAITING_APPROVAL: "Needs review", MEETING_REVIEW: "Meeting request",
-  MEETING_BOOKED_REVIEW: "Meeting booked", TASK_REVIEW: "Task created",
+  AWAITING_APPROVAL: "Needs review", SAFETY_REVIEW: "Safety review", MEETING_REVIEW: "Meeting request",
+  MEETING_BOOKED_REVIEW: "Meeting booked", TASK_REVIEW: "Task approval",
   TASK_CREATED: "Task created", REPLIED: "Replied", SKIPPED: "Skipped",
   SEND_UNCERTAIN: "Check Gmail Sent", FAILED: "Needs attention",
 };
@@ -193,7 +193,7 @@ export default function InboundEmailQueue() {
   const pendingCount = messages.filter((message) => {
     const draft = getDraft(message);
     const draftNeedsAttention = draft && ["DRAFT", "FAILED", "APPROVED", "SEND_UNCERTAIN"].includes(draft.status);
-    const messageNeedsAttention = ["RECEIVED", "PROCESSING", "AWAITING_APPROVAL", "MEETING_REVIEW", "TASK_REVIEW", "RETRY_WAIT", "FAILED"].includes(message.status);
+    const messageNeedsAttention = ["RECEIVED", "PROCESSING", "AWAITING_APPROVAL", "SAFETY_REVIEW", "MEETING_REVIEW", "TASK_REVIEW", "RETRY_WAIT", "FAILED"].includes(message.status);
     return Boolean(draftNeedsAttention || messageNeedsAttention);
   }).length;
 
@@ -264,6 +264,18 @@ export default function InboundEmailQueue() {
                 </div>
 
                 {message.summary && <p className="mt-3 text-sm leading-6 text-[#4B5563]">{message.summary}</p>}
+
+                {classification.safetyReviewRequired && (
+                  <div role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                    <p className="font-semibold">Safety review required</p>
+                    <p className="mt-1 text-xs leading-5">No task or substantive reply was inferred. Check the original message and clarify the request before approving or sending a reply.</p>
+                    {Array.isArray(classification.reviewReasons) && classification.reviewReasons.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+                        {classification.reviewReasons.map((reason) => <li key={reason}>{reason}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   <span className="rounded-full bg-[#F3F5F7] px-2.5 py-1">

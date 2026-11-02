@@ -518,7 +518,34 @@ try {
   ));
   assert.equal(inboundQueueResponse.worker.pagesScanned, 9);
   assert.equal(JSON.stringify(inboundQueueResponse).includes(cursorSecretFixture), false);
-  check(true, "inbound queue exposes worker health without exposing its persisted Gmail pagination cursor");
+
+  const safetyReviewFixture = await prisma.inboundEmail.create({
+    data: {
+      userId: user.id,
+      gmailMessageId: "e2e-safety-review-" + Date.now(),
+      gmailThreadId: "e2e-safety-review-thread-" + Date.now(),
+      fromEmail: "external@example.test",
+      subject: "Forwarded request needs clarification",
+      status: "SAFETY_REVIEW",
+      category: "SENSITIVE",
+      sensitive: true,
+      summary: "This message needs manual review.",
+      classification: {
+        category: "SENSITIVE",
+        mode: "SAFETY_REVIEW",
+        sensitive: true,
+        safetyReviewRequired: true,
+        reviewReasons: ["Multiple requested actions need to be separated"],
+        task: null,
+      },
+    },
+  });
+  const safetyInbox = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json()).messages;
+  const visibleSafetyReview = safetyInbox.find((message) => message.id === safetyReviewFixture.id);
+  assert.equal(visibleSafetyReview.status, "SAFETY_REVIEW");
+  assert.equal(visibleSafetyReview.classification.safetyReviewRequired, true);
+  assert.equal(visibleSafetyReview.classification.task, null);
+  check(true, "inbound safety-review items are visible in the manager inbox without exposing source instructions");
 
   const emailTaskSourceId = "e2e-email-task-proposal-" + Date.now();
   const emailTaskProposal = await prisma.inboundEmail.create({

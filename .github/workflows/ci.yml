@@ -66,6 +66,10 @@ jobs:
         run: npm run test:email-agent-dummy
       - name: Test email queue cursors and retry policy
         run: npm run test:email-agent-queue
+      - name: Test inbound email safety gate
+        run: npm run test:email-agent-safety
+      - name: Test Google provider error recovery policy
+        run: npm run test:google-provider-errors
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client

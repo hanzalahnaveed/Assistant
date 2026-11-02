@@ -54,13 +54,20 @@ The scheduled workflow runs every five minutes. A worker pass processes at most 
 - Decline updates the proposal state and writes an audit event without creating a schedule item.
 - Repeated approvals return the already-created task; concurrent or cross-account changes cannot create duplicate tasks.
 
-## Next milestone — Agent safety and integration acceptance
+## Milestone 7 — Agent safety and provider recovery
 
-- Add adversarial prompt-injection fixtures in inbound emails, including instructions to reveal secrets, forward data, override approval policy, or perform unrelated actions. Treat all email content and attachments as untrusted.
-- Add mocked Gmail/Calendar integration tests for multi-page cursors, page-token expiration, duplicate page ingestion, token revocation, provider timeouts/rate limits, stale claims, and calendar conflicts.
-- Add classifier fixtures for forwarded threads, quoted instructions, multiple task proposals, vague requests, conflicting due dates, and false positives.
-- Run live end-to-end acceptance with a dedicated test Google account. Verify inbox discovery, reply review/send, task proposal approval/rejection, and meeting slot confirmation. This repository CI does not authenticate to a real Google account.
-- Add metrics/alerts for queue age, scan lag, per-user processing latency, retry attempts, classifier mode, and terminal failures. Do not log message bodies or OAuth tokens.
+<badge>Implemented on `dev`</badge>
+
+- Added a deterministic inbound safety gate that detects prompt-injection language, multiple independent requested actions, vague instructions, conflicting explicit deadlines, and forwarded-only content without a new instruction. These items are stored as `SAFETY_REVIEW` and never become task proposals.
+- The classifier receives the sender's current, unquoted message only. Quoted or forwarded text is retained only as a safety signal and context marker; it cannot independently authorize a task. Model task extraction is discarded unless a clear action request appears in the sender's unquoted text.
+- Safety-review messages receive a neutral clarification draft. No substantive reply, task, or meeting suggestion is generated for them. The manager inbox displays static review reasons without echoing the untrusted instructions.
+- Added provider error classification. Google 401 and explicit missing-scope responses mark the integration `REAUTH_REQUIRED`; the current affected message becomes a visible terminal failure. Rate limits and 5xx responses remain eligible for retry, while unrelated 403 policy errors are not treated as revoked credentials.
+- Added focused tests for injection in current/quoted content, quote boundaries, multi-action and ambiguous requests, conflicting deadlines, forwarded-only mail, non-request false positives, OAuth revocation, missing scopes, rate limits, and transient failures. E2E verifies that the inbox exposes a safety-review item without leaking the page cursor or source instructions.
+
+### Remaining integration acceptance
+
+- CI uses deterministic fixtures and a mocked classifier. It does not authenticate against a live Google account or exercise real Gmail/Calendar APIs. A dedicated test account is still required before enabling the feature for production mailboxes.
+- A future observability pass should add queue-age and scan-lag metrics, per-user processing latency, retry-attempt dashboards, and alerts for terminal failures. Message bodies and OAuth tokens must not be logged.
 
 ## Production readiness
 

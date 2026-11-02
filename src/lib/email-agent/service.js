@@ -7,6 +7,8 @@ import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } fr
 import { generateDummyClassification, resolveEmailClassifierMode } from "@/lib/email-agent/dummy-classifier.mjs";
 import { getCompleteCalendarEvents } from "@/lib/email-agent/calendar-availability.mjs";
 import { buildInboxQuery, EMAIL_AGENT_MAX_ATTEMPTS, EMAIL_AGENT_PAGE_SIZE, getEmailRetryPlan, isInvalidGmailPageTokenError } from "@/lib/email-agent/queue.mjs";
+import { hasExplicitActionRequest, inspectInboundEmail } from "@/lib/email-agent/safety.mjs";
+import { isGoogleReauthRequiredError } from "@/lib/email-agent/provider-errors.mjs";
 
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
@@ -238,6 +240,25 @@ async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = n
 }
 
 const QUEUED_EMAIL_PLACEHOLDER = "pending@assistant.invalid";
+
+async function markGoogleIntegrationReauthRequired(userId) {
+  await prisma.integration.updateMany({
+    where: { userId, provider: "GOOGLE", status: "CONNECTED" },
+    data: { status: "REAUTH_REQUIRED" },
+  });
+}
+
+function createSafetyReviewClassification(subject, reviewReasons) {
+  const safeSubject = String(subject || "(no subject)").slice(0, 240);
+  return {
+    category: "SENSITIVE", sensitive: true,
+    reason: reviewReasons.join("; ").slice(0, 500),
+    summary: "This message needs manual review before an actionable task or substantive reply can be prepared.",
+    replySubject: /^re:/i.test(safeSubject) ? safeSubject.slice(0, 250) : "Re: " + safeSubject.slice(0, 245),
+    replyBody: "Thanks for your message. I need to review the request and clarify the next step before providing a substantive response.",
+    task: null, meeting: null, intent: "OTHER", mode: "SAFETY_REVIEW",
+  };
+}
 const MAX_EMAIL_ITEMS_PER_USER_PER_RUN = 2;
 const PROCESSING_STALE_MS = 10 * 60 * 1000;
 
@@ -342,14 +363,37 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
     await prisma.inboundEmail.update({ where: { id: queuedRecord.id }, data: { gmailThreadId: threadId, fromEmail: sender, subject, receivedAt } });
     const body = extractMessageText(message);
     if (!body) throw new Error("Message body was empty or could not be decoded.");
+    const safety = inspectInboundEmail({ subject, body });
+    const classificationSubject = safety.forwarded ? "" : subject;
     let availableSlots = [];
-    const probe = await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [] });
-    if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
-      availableSlots = await getAvailableSlots(user.id, user.timezone || "Asia/Karachi", probe.meeting?.durationMinutes || 30).catch(() => []);
+    let classification;
+    if (safety.requiresHumanReview) {
+      classification = createSafetyReviewClassification(subject, safety.reviewReasons);
+    } else {
+      const classifierInput = {
+        sender, subject, body: safety.activeBody, settings,
+        timezone: user.timezone || "Asia/Karachi", availableSlots: [],
+      };
+      const probe = await classifyEmail(classifierInput);
+      if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
+        availableSlots = await getAvailableSlots(user.id, user.timezone || "Asia/Karachi", probe.meeting?.durationMinutes || 30).catch(async (error) => {
+          if (isGoogleReauthRequiredError(error)) await markGoogleIntegrationReauthRequired(user.id).catch(() => undefined);
+          return [];
+        });
+      }
+      classification = availableSlots.length
+        ? await classifyEmail({ ...classifierInput, availableSlots })
+        : probe;
+      if (classification.task && !hasExplicitActionRequest({ subject: classificationSubject, body: safety.activeBody })) {
+        classification = {
+          ...classification,
+          category: classification.category === "TASK" ? "OTHER" : classification.category,
+          intent: classification.intent === "TASK_DELEGATION" ? "OTHER" : classification.intent,
+          task: null,
+          reason: (classification.reason + " Task extraction was suppressed because no clear request appears in the sender's unquoted message.").slice(0, 500),
+        };
+      }
     }
-    const classification = availableSlots.length
-      ? await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
-      : probe;
     const hasTaskProposal = Boolean(classification.task && (classification.category === "TASK" || classification.intent === "TASK_DELEGATION"));
     const draftGoal = "Inbound reply for Gmail message " + message.id +
       "\nClassification: " + classification.category +
@@ -368,7 +412,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
         body: classification.replyBody, goal: draftGoal, status: "DRAFT", replyThreadId: threadId, replyMessageId: safeMessageId(message),
       },
     });
-    const nextStatus = hasTaskProposal ? "TASK_REVIEW" :
+    const nextStatus = safety.requiresHumanReview ? "SAFETY_REVIEW" : hasTaskProposal ? "TASK_REVIEW" :
       classification.sensitive || classification.intent === "DECLINE_INVITE" ? "AWAITING_APPROVAL" :
       classification.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent) ? "MEETING_REVIEW" :
       "DRAFTED";
@@ -380,6 +424,8 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
           category: classification.category, taskId: null, taskApprovalStatus: hasTaskProposal ? "PENDING" : null, taskCreated: false,
           intent: classification.intent, mode: classification.mode, sensitive: classification.sensitive, reason: classification.reason, summary: classification.summary,
           task: classification.task, meeting: classification.meeting, availableSlots,
+          safetyReviewRequired: safety.requiresHumanReview, reviewReasons: safety.reviewReasons,
+          quotedContextDetected: safety.quoteDetected, forwarded: safety.forwarded,
         },
         draftId: draft.id, processedAt: new Date(), nextAttemptAt: null, lastError: null,
       },
@@ -387,12 +433,20 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
     await prisma.auditEvent.create({
       data: {
         userId: user.id, eventType: "EMAIL_AGENT_MESSAGE_PROCESSED", actor: "SYSTEM", resourceId: queuedRecord.id,
-        metadata: { category: classification.category, intent: classification.intent, mode: classification.mode, sensitive: classification.sensitive, repliesRemainDrafts: true, taskRequiresApproval: hasTaskProposal, draftId: draft.id },
+        metadata: { category: classification.category, intent: classification.intent, mode: classification.mode, sensitive: classification.sensitive, repliesRemainDrafts: true, taskRequiresApproval: hasTaskProposal, safetyReviewRequired: safety.requiresHumanReview, reviewReasons: safety.reviewReasons, draftId: draft.id },
       },
     }).catch(() => undefined);
     return { processed: 1, drafted: 1, skipped: 0, failed: 0 };
   } catch (error) {
     const errorText = error instanceof Error ? error.message.slice(0, 500) : "Email processing failed.";
+    if (isGoogleReauthRequiredError(error)) {
+      await markGoogleIntegrationReauthRequired(user.id).catch(() => undefined);
+      await prisma.inboundEmail.update({
+        where: { id: queuedRecord.id },
+        data: { status: "FAILED", processingAttempts: EMAIL_AGENT_MAX_ATTEMPTS, nextAttemptAt: null, lastError: errorText, processedAt: new Date() },
+      }).catch(() => undefined);
+      return { processed: 0, drafted: 0, skipped: 0, failed: 1 };
+    }
     const retry = getEmailRetryPlan(attempt);
     const nextAttemptAt = retry.terminal ? null : new Date(Date.now() + retry.delayMs);
     await prisma.inboundEmail.update({
@@ -407,7 +461,19 @@ export async function processInboundEmailForUser(user, integration, settings) {
   const counts = { scanned: 0, queued: 0, pagesScanned: 0, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 0, deferred: 0 };
   if (!settings.enabled) return { ...counts, skipped: 1, reason: "Email agent is disabled." };
   if (!integration.scopes.includes(EMAIL_READ_SCOPE)) return { ...counts, skipped: 1, reason: "Gmail read permission is missing." };
-  const token = await getGoogleAccessToken(user.id);
+  let token;
+  try {
+    token = await getGoogleAccessToken(user.id);
+  } catch (error) {
+    if (isGoogleReauthRequiredError(error)) await markGoogleIntegrationReauthRequired(user.id).catch(() => undefined);
+    const errorText = error instanceof Error ? error.message.slice(0, 300) : "Google connection needs reconnecting.";
+    await prisma.emailAgentState.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, lastError: errorText, lastWorkerRunAt: new Date() },
+      update: { lastError: errorText, lastWorkerRunAt: new Date() },
+    }).catch(() => undefined);
+    return { ...counts, failed: 1, reason: errorText };
+  }
   if (!token) return { ...counts, skipped: 1, reason: "Google connection needs reconnecting." };
   const now = new Date();
   try {
@@ -416,6 +482,11 @@ export async function processInboundEmailForUser(user, integration, settings) {
   } catch (error) {
     const errorText = error instanceof Error ? error.message.slice(0, 300) : "Gmail inbox scan failed.";
     await prisma.emailAgentState.update({ where: { userId: user.id }, data: { lastError: errorText, lastWorkerRunAt: now } }).catch(() => undefined);
+    if (isGoogleReauthRequiredError(error)) {
+      await markGoogleIntegrationReauthRequired(user.id).catch(() => undefined);
+      counts.failed++;
+      return { ...counts, reason: "Google connection needs reconnecting." };
+    }
     counts.failed++;
   }
   const staleBefore = new Date(Date.now() - PROCESSING_STALE_MS);
