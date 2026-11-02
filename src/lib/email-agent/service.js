@@ -371,7 +371,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
       classification = createSafetyReviewClassification(subject, safety.reviewReasons);
     } else {
       const classifierInput = {
-        sender, subject, body: safety.activeBody, settings,
+        sender, subject: classificationSubject, body: safety.activeBody, settings,
         timezone: user.timezone || "Asia/Karachi", availableSlots: [],
       };
       const probe = await classifyEmail(classifierInput);

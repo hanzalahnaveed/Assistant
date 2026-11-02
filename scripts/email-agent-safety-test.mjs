@@ -50,6 +50,9 @@ const explicit = inspectInboundEmail({
   body: "Could you review the forecast and send me your comments?",
 });
 assert.equal(explicit.requiresHumanReview, false);
+assert.equal(hasExplicitActionRequest({ subject: "Please review the Q4 plan", body: "Could you review the forecast and send me your comments?" }), true);
+assert.equal(inspectInboundEmail({ body: "Could you review the forecast and send me your comments?" }).requiresHumanReview, false);
+assert.equal(inspectInboundEmail({ body: "Please review the report; also update the tracker." }).multipleActionRequests, true);
 assert.equal(hasExplicitActionRequest({ subject: "Please review the Q4 plan", body: "Could you review the forecast?" }), true);
 
 const routine = inspectInboundEmail({
