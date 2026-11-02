@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, LoaderCircle, Save, Settings2 } from "lucide-react";
+import { readJsonResponse } from "@/lib/client/read-json-response.mjs";
 
 const initial = { enabled: false, autoReplyEnabled: false, tone: "professional", style: "concise", signature: "" };
 
@@ -17,7 +18,7 @@ export default function EmailAgentSettings() {
     let active = true;
     fetch("/api/email-agent/settings", { cache: "no-store" })
       .then(async (response) => {
-        const data = await response.json();
+        const data = await readJsonResponse(response, "Email settings");
         if (!response.ok) throw new Error(data.error || "Could not load settings.");
         if (active) {
           setSettings({ ...initial, ...data.settings });
@@ -46,7 +47,7 @@ export default function EmailAgentSettings() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(settings),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "Saving email settings");
       if (!response.ok) throw new Error(data.error || "Could not save settings.");
       setSettings({ ...initial, ...data.settings });
       setAutomationPaused(data.automationPaused === true);

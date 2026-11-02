@@ -119,7 +119,7 @@ The workflow is gated by `GOOGLE_ACCEPTANCE_ENABLED` and is manual only. No live
 
 ### Local development check
 
-1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`.
+1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`. When upgrading an existing local checkout, apply already-committed migrations with `npm run db:deploy` before opening `/dashboard/email`.
 2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. For live inbound classification, set `EMAIL_AGENT_CLASSIFIER_MODE=groq` and `GROQ_API_KEY` in your local `.env`; for offline testing, use `EMAIL_AGENT_CLASSIFIER_MODE=dummy`.
 3. In **Dashboard → Email → Email permissions & settings**, enable the agent. Use **Check inbox now** to enqueue the next Gmail page and process a bounded number of queued messages. The page cursor and queue state persist across invocations.
 4. For continuous local polling, start the worker in a second terminal:

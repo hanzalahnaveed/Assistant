@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, ListTodo, RefreshCw, Save, Send, ShieldAlert, XCircle } from "lucide-react";
+import { readJsonResponse } from "@/lib/client/read-json-response.mjs";
 
 const statusLabels = {
   RECEIVED: "New", PROCESSING: "Processing", DRAFTED: "Reply ready",
@@ -32,8 +33,8 @@ export default function InboundEmailQueue() {
         fetch("/api/email-agent/settings", { cache: "no-store" }),
         fetch("/api/email-agent/inbox", { cache: "no-store" }),
       ]);
-      const settingsData = await settingsRes.json();
-      const inboxData = await inboxRes.json();
+      const settingsData = await readJsonResponse(settingsRes, "Email settings");
+      const inboxData = await readJsonResponse(inboxRes, "Email inbox");
       if (!inboxRes.ok) throw new Error(inboxData.error || "Could not load inbox.");
       setAgentEnabled(settingsRes.ok && settingsData.settings?.enabled === true);
       setMessages(inboxData.messages || []);
@@ -70,7 +71,7 @@ export default function InboundEmailQueue() {
     setRunResult("");
     try {
       const response = await fetch("/api/email-agent/run", { method: "POST", cache: "no-store" });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "Inbox check");
       if (!response.ok) throw new Error(data.error || data.reason || "Inbox check failed.");
       setRunResult(`Scanned ${data.scanned || 0} · queued ${data.queued || 0} · processed ${data.processed || 0} · drafted ${data.drafted || 0} · ${data.failed || 0} errors.`);
       if (data.failed > 0) setError(data.failures?.[0]?.error || data.reason || "Some messages need attention.");
@@ -101,7 +102,7 @@ export default function InboundEmailQueue() {
             goal: draft.goal || "",
           }),
         });
-        const saved = await saveResponse.json();
+        const saved = await readJsonResponse(saveResponse, "Reply draft save");
         if (!saveResponse.ok) throw new Error(saved.error || "Could not save reply.");
       }
       if (action !== "SAVE") {
@@ -110,7 +111,7 @@ export default function InboundEmailQueue() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ action }),
         });
-        const result = await response.json();
+        const result = await readJsonResponse(response, "Reply action");
         if (!response.ok) throw new Error(result.error || "Could not update reply.");
       }
       setNotice(action === "SAVE" ? "Reply draft saved." : action === "APPROVE" ? "Reply approved. Send it when ready." : "Reply sent.");
@@ -138,7 +139,7 @@ export default function InboundEmailQueue() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ startAt: slot.startAt }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "Meeting creation");
       if (!response.ok) throw new Error(data.error || "Could not create meeting.");
       setNotice("Meeting added to your calendar.");
       await load();
@@ -154,7 +155,7 @@ export default function InboundEmailQueue() {
     setError("");
     try {
       const response = await fetch("/api/email-agent/inbox/" + message.id + "/retry", { method: "POST" });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "Email retry");
       if (!response.ok) throw new Error(data.error || "Could not retry message.");
       setNotice("Message returned to the processing queue.");
       await load();
@@ -178,7 +179,7 @@ export default function InboundEmailQueue() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "Task proposal review");
       if (!response.ok) throw new Error(data.error || "Could not update task proposal.");
       setNotice(action === "APPROVE" ? "Task approved and added to Tasks & calendar." : "Task proposal declined.");
       await load();

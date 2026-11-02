@@ -25,7 +25,8 @@
     "test:email-agent-safety": "node scripts/email-agent-safety-test.mjs",
     "test:google-provider-errors": "node scripts/google-provider-errors-test.mjs",
     "test:google-live-acceptance": "node scripts/google-live-acceptance-test.mjs",
-    "google:live-acceptance": "node scripts/google-live-acceptance.mjs"
+    "google:live-acceptance": "node scripts/google-live-acceptance.mjs",
+    "test:email-api-response": "node scripts/email-api-response-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
