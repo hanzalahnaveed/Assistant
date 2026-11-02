@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
-import { classifyIntent, generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent } from "../src/lib/email-agent/dummy-classifier.mjs";
+import { classifyIntent, generateDummyClassification, isAutomaticReplyAllowed, normalizeIntent, resolveEmailClassifierMode } from "../src/lib/email-agent/dummy-classifier.mjs";
 
 assert.equal(classifyIntent({ subject: "Please schedule a meeting", body: "Are you free next week?" }), "MEETING_REQUEST");
+assert.equal(resolveEmailClassifierMode({ configuredMode: "dummy", hasGroqApiKey: true }), "DUMMY");
+assert.equal(resolveEmailClassifierMode({ configuredMode: "groq", hasGroqApiKey: true }), "LIVE");
+assert.equal(resolveEmailClassifierMode({ configuredMode: "", hasGroqApiKey: false }), "DUMMY");
+assert.equal(resolveEmailClassifierMode({ configuredMode: "", hasGroqApiKey: true }), "LIVE");
+assert.throws(
+  () => resolveEmailClassifierMode({ configuredMode: "groq", hasGroqApiKey: false }),
+  /GROQ_API_KEY is missing/,
+);
+assert.throws(
+  () => resolveEmailClassifierMode({ configuredMode: "unknown", hasGroqApiKey: true }),
+  /must be "dummy" or "groq"/,
+);
 assert.equal(classifyIntent({ subject: "Move our meeting", body: "Can we reschedule to Friday?" }), "RESCHEDULE");
 assert.equal(classifyIntent({ subject: "Calendar invite", body: "I cannot attend this meeting." }), "DECLINE_INVITE");
 assert.equal(classifyIntent({ subject: "Action required", body: "Please review the proposal and send feedback." }), "TASK_DELEGATION");

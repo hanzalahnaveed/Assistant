@@ -1,13 +1,15 @@
 # Email agent classification
 
-The inbound email agent supports two classifier modes:
+The inbound email worker supports two explicit classifier modes:
 
-- **Live (default when `OPENAI_API_KEY` is set):** uses the configured OpenAI-compatible chat-completions endpoint.
-- **Dummy/offline:** selected with `EMAIL_AGENT_CLASSIFIER_MODE=dummy`, or automatically when `OPENAI_API_KEY` is absent. This uses deterministic rules and makes no AI-provider network request.
+- **Dummy/offline** (`EMAIL_AGENT_CLASSIFIER_MODE=dummy`): deterministic local rules, no AI-provider request, no API key required. This is the default in `.env.example`.
+- **Groq/live** (`EMAIL_AGENT_CLASSIFIER_MODE=groq`): uses the configured Groq-compatible chat-completions endpoint and requires `GROQ_API_KEY`.
 
-The dummy classifier is intended for local development, CI, and safe fallback. It generates placeholder reply drafts and a normalized intent (`MEETING_REQUEST`, `RESCHEDULE`, `DECLINE_INVITE`, `TASK_DELEGATION`, or `OTHER`). It never sends mail or creates task action proposals. Meeting times are suggestions only; no calendar event is created.
+When the mode is omitted, the worker uses Groq if `GROQ_API_KEY` is present; otherwise it uses the dummy classifier. An explicitly selected `groq` mode without a key fails with a configuration error instead of silently changing behavior. Unknown mode values also fail closed.
 
-Automatic replies are only eligible for live, non-sensitive `ROUTINE` messages with `OTHER` intent. Meeting, reschedule, decline, and task intents are held for review. Sensitive messages also require approval.
+The dummy classifier produces a normalized intent (`MEETING_REQUEST`, `RESCHEDULE`, `DECLINE_INVITE`, `TASK_DELEGATION`, or `OTHER`) and a placeholder reply. It is intended for local development, CI, and safe fallback. Its output is always marked `DUMMY`; it cannot authorize automatic sending or create calendar events. Meeting times are suggestions only.
+
+**All inbound replies remain drafts in every mode.** The manager must review/edit the draft, explicitly approve it, and separately choose Send. Meeting requests can show advisory calendar slots; creating an event requires a separate, explicit slot selection and confirmation, and the resulting reply still remains a draft.
 
 Run the token-free unit tests with:
 
@@ -15,4 +17,4 @@ Run the token-free unit tests with:
 npm run test:email-agent-dummy
 ```
 
-The full CI workflow also runs parsing, calendar-timezone, Prisma, build, and production end-to-end checks. Live Gmail/Calendar behavior still requires a configured Google OAuth connection and should be tested in a dedicated test account before enabling automation.
+The full CI workflow also runs parsing, calendar-timezone, Prisma, build, and production end-to-end checks. Live Gmail/Calendar behavior still requires a configured Google OAuth connection and should be tested in a dedicated test account before production use.

@@ -4,6 +4,7 @@ import { getGoogleAccessToken, googleApiGet } from "@/lib/google/client";
 import { prisma } from "@/lib/prisma";
 import { localDateTimeToIso } from "@/lib/calendar-timezone.mjs";
 import { extractMessageText, isAutomatedSender, parseMessageId, parseSender } from "@/lib/email-agent/format.mjs";
+import { generateDummyClassification, resolveEmailClassifierMode } from "@/lib/email-agent/dummy-classifier.mjs";
 
 
 export const EMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
@@ -159,6 +160,15 @@ async function askModel({ subject, sender, body, settings, timezone, availableSl
   };
 }
 
+async function classifyEmail(input) {
+  const mode = resolveEmailClassifierMode({
+    configuredMode: process.env.EMAIL_AGENT_CLASSIFIER_MODE,
+    hasGroqApiKey: Boolean(process.env.GROQ_API_KEY),
+  });
+  if (mode === "DUMMY") return generateDummyClassification(input);
+  return askModel(input);
+}
+
 async function getAvailableSlots(userId, timezone, durationMinutes = 30, now = new Date()) {
   const integration = await prisma.integration.findFirst({
     where: { userId, provider: "GOOGLE", status: "CONNECTED" },
@@ -309,7 +319,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
       let availableSlots = [];
       // Calendar availability is advisory only: the agent never creates an event or promises a slot here.
       try {
-        const probe = await askModel({
+        const probe = await classifyEmail({
           sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots: [],
         });
         if (probe.category === "MEETING" || ["MEETING_REQUEST", "RESCHEDULE"].includes(probe.intent)) {
@@ -320,7 +330,7 @@ export async function processInboundEmailForUser(user, integration, settings) {
           ).catch(() => []);
         }
         const classification = availableSlots.length
-          ? await askModel({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
+          ? await classifyEmail({ sender, subject, body, settings, timezone: user.timezone || "Asia/Karachi", availableSlots })
           : probe;
         let createdTask = null;
         if ((classification.category === "TASK" || classification.intent === "TASK_DELEGATION") && classification.task) {

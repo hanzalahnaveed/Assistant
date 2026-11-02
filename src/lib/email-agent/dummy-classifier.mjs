@@ -1,4 +1,17 @@
 const INTENTS = Object.freeze(["MEETING_REQUEST", "RESCHEDULE", "DECLINE_INVITE", "TASK_DELEGATION", "OTHER"]);
+
+export function resolveEmailClassifierMode({ configuredMode = "", hasGroqApiKey = false } = {}) {
+  const mode = typeof configuredMode === "string" ? configuredMode.trim().toLowerCase() : "";
+  if (!mode) return hasGroqApiKey ? "LIVE" : "DUMMY";
+  if (mode === "dummy") return "DUMMY";
+  if (mode === "groq") {
+    if (!hasGroqApiKey) {
+      throw new Error("EMAIL_AGENT_CLASSIFIER_MODE is set to groq, but GROQ_API_KEY is missing.");
+    }
+    return "LIVE";
+  }
+  throw new Error('EMAIL_AGENT_CLASSIFIER_MODE must be "dummy" or "groq".');
+}
 const patterns = {
   sensitive: /\b(password|credential|secret|security breach|legal|lawsuit|contract|invoice|payment|bank|salary|termination|medical|confidential|complaint|negotiation)\b/i,
   decline: /\b(decline|can't attend|cannot attend|unable to attend|won't make it|reject the invitation|not available for this meeting)\b/i,
