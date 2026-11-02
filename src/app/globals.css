@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  --font-montserrat: "Montserrat";
+  --font-poppins: "Poppins";
+  --font-roboto: "Roboto";
+  --font-pacifico: "Pacifico";
   color-scheme: light;
   --ink: #212529;
   --muted: #6b7280;
