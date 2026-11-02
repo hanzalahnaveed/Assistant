@@ -578,7 +578,7 @@ export default function IntegrationsClient() {
                 Delete account
               </Button>
               <Button
-                onClick={() => void logout()
+                onClick={() => void logout()}
                 loading={loggingOut}
                 disabled={loggingOut || busy}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8e0] px-4 py-2.5 text-sm font-semibold hover:bg-[#fafbf9]"

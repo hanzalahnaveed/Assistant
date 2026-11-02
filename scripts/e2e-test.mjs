@@ -231,6 +231,25 @@ try {
   });
   const token = makeSession(user);
 
+  const passwordDeleteEmail = "e2e-delete-" + Date.now() + "@example.test";
+  await expectStatus("/api/auth/signup", 201, {
+    method: "POST",
+    body: JSON.stringify({ name: "Delete Test", email: passwordDeleteEmail, password: "Valid-delete-password-123!" }),
+  });
+  const passwordDeleteUser = await prisma.user.findUnique({ where: { email: passwordDeleteEmail } });
+  const passwordDeleteToken = makeSession(passwordDeleteUser);
+  await expectStatus("/api/account/delete", 401, {
+    method: "POST",
+    body: JSON.stringify({ email: passwordDeleteEmail, password: "wrong-password", confirmation: "DELETE MY ACCOUNT" }),
+  }, passwordDeleteToken);
+  const deletionResponse = await expectStatus("/api/account/delete", 200, {
+    method: "POST",
+    body: JSON.stringify({ email: passwordDeleteEmail, password: "Valid-delete-password-123!", confirmation: "DELETE MY ACCOUNT" }),
+  }, passwordDeleteToken);
+  assert.equal((await deletionResponse.json()).ok, true);
+  assert.equal(await prisma.user.findUnique({ where: { id: passwordDeleteUser.id } }), null);
+  check(true, "account deletion verifies the current password, cascades local data, and removes the account");
+
   const exportUnauthenticated = await expectStatus("/api/account/export", 401);
   check(exportUnauthenticated.status === 401, "account export rejects unauthenticated requests");
   const exportResponse = await expectStatus("/api/account/export", 200, {}, token);
