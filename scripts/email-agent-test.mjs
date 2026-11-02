@@ -55,5 +55,13 @@ assert.equal(
   extractMessageText({ payload: { mimeType: "text/plain", body: { data: encode("x".repeat(25000)) } } }).length,
   20000,
 );
+assert.equal(
+  extractMessageText({ payload: { mimeType: "text/plain", body: { data: encode("x".repeat(75000)) } } }, 100000).length,
+  75000,
+);
+assert.equal(
+  extractMessageText({ payload: { mimeType: "text/plain", body: { data: encode("x".repeat(75000)) } } }, 5000).length,
+  5000,
+);
 
-console.log("PASS email-agent message parsing, HTML cleanup, sender validation, and size limits");
+console.log("PASS email-agent message parsing, HTML cleanup, sender validation, and message detail limits");

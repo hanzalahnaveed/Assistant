@@ -19,7 +19,7 @@ function collectBody(payload, output = { plain: [], html: [] }) {
 
 function cleanHtml(value) {
   return value
-    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\/\s*\1\s*>/gi, " ")
+    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ")
     .replace(/<\s*br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|tr)\s*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
@@ -34,11 +34,12 @@ function cleanHtml(value) {
     .trim();
 }
 
-export function extractMessageText(message) {
+export function extractMessageText(message, maxLength = 20000) {
   const body = collectBody(message.payload);
+  const limit = Number.isSafeInteger(maxLength) && maxLength >= 0 ? maxLength : 20000;
   return (body.plain.join("\n") || body.html.map(cleanHtml).join("\n") || message.snippet || "")
     .replace(/\u0000/g, "")
-    .slice(0, 20000)
+    .slice(0, limit)
     .trim();
 }
 

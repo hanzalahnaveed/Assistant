@@ -5,13 +5,25 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const PAGE_SIZE = 50;
+
+export async function GET(request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in to view inbound email activity." }, { status: 401 });
-  const messages = await prisma.inboundEmail.findMany({
-    where: { userId: user.id, OR: [{ fromEmail: { not: "pending@assistant.invalid" } }, { status: { in: ["RETRY_WAIT", "FAILED"] } }] },
-    orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
-    take: 50,
+
+  const url = new URL(request.url);
+  const requestedOffset = Number.parseInt(url.searchParams.get("offset") || "0", 10);
+  const offset = Number.isSafeInteger(requestedOffset) && requestedOffset > 0 ? requestedOffset : 0;
+
+  const fetchedMessages = await prisma.inboundEmail.findMany({
+    where: { userId: user.id },
+    orderBy: [
+      { receivedAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" },
+      { id: "desc" },
+    ],
+    skip: offset,
+    take: PAGE_SIZE + 1,
     select: {
       id: true,
       gmailMessageId: true,
@@ -32,6 +44,8 @@ export async function GET() {
       createdAt: true,
     },
   });
+  const hasMore = fetchedMessages.length > PAGE_SIZE;
+  const messages = fetchedMessages.slice(0, PAGE_SIZE);
   const draftIds = messages.map((message) => message.draftId).filter(Boolean);
   const drafts = draftIds.length
     ? await prisma.emailDraft.findMany({
@@ -116,5 +130,6 @@ export async function GET() {
       draftStatus: message.draftId ? draftStatusById.get(message.draftId) || null : null,
     })),
     drafts,
+    nextOffset: hasMore ? offset + PAGE_SIZE : null,
   }, { headers: { "cache-control": "no-store" } });
 }
