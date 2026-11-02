@@ -182,6 +182,8 @@ export default function IntegrationsClient() {
     if (deletingAccount) return;
     const phrase = window.prompt("This permanently deletes your Assistant account and saved data. Type DELETE MY ACCOUNT to continue.");
     if (phrase !== "DELETE MY ACCOUNT") return;
+    const emailConfirmation = window.prompt("Enter your Assistant account email to confirm deletion:");
+    if (!emailConfirmation || emailConfirmation.trim().toLowerCase() !== data?.user?.email?.toLowerCase()) return;
     setDeletingAccount(true);
     setError("");
     try {
@@ -190,7 +192,10 @@ export default function IntegrationsClient() {
         return;
       }
       const password = window.prompt("Enter your current Assistant password to confirm deletion.");
-      if (!password) return;
+      if (!password) {
+        setDeletingAccount(false);
+        return;
+      }
       const response = await fetch("/api/account/delete", {
         method: "POST",
         headers: { "content-type": "application/json" },
