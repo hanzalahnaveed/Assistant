@@ -9,7 +9,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in to view inbound email activity." }, { status: 401 });
   const messages = await prisma.inboundEmail.findMany({
-    where: { userId: user.id, fromEmail: { not: "pending@assistant.invalid" } },
+    where: { userId: user.id, OR: [{ fromEmail: { not: "pending@assistant.invalid" } }, { status: { in: ["RETRY_WAIT", "FAILED"] } }] },
     orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
     take: 50,
     select: {

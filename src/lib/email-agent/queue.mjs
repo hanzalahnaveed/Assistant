@@ -1,6 +1,6 @@
 export const EMAIL_AGENT_PAGE_SIZE = 100;
 export const EMAIL_AGENT_MAX_ATTEMPTS = 5;
-export const EMAIL_AGENT_RETRY_BASE_MS = 30_000;
+export const EMAIL_AGENT_RETRY_BASE_MS = 5 * 60 * 1000;
 export const EMAIL_AGENT_RETRY_MAX_MS = 60 * 60 * 1000;
 
 export function buildInboxQuery(enabledAt) {

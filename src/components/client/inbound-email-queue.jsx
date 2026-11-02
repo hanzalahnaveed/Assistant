@@ -204,7 +204,7 @@ export default function InboundEmailQueue() {
           <h2 className="text-lg font-semibold text-[#233044]">Inbox activity</h2>
           <p className="mt-1 text-sm text-[#6B7280]">
             {pendingCount} item{pendingCount === 1 ? "" : "s"} need attention
-            {worker ? ` · ${worker.queuedCount || 0} queued · ${worker.retryingCount || 0} retrying · ${worker.failedCount || 0} stopped` : ""}
+            {worker ? ` · ${worker.queuedCount || 0} queued · ${worker.retryingCount || 0} retrying · ${worker.failedCount || 0} stopped · ${worker.pagesScanned || 0} pages scanned` : ""}
           </p>
         </div>
         <button
@@ -233,6 +233,11 @@ export default function InboundEmailQueue() {
       )}
       {runResult && (
         <p role="status" className="mb-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{runResult}</p>
+      )}
+      {worker?.lastError && (
+        <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+          Latest worker issue: {worker.lastError}
+        </p>
       )}
 
       {loading ? (

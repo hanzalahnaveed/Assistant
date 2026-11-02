@@ -8,6 +8,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+
 function authorized(request) {
   const configured = process.env.CRON_SECRET;
   const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
@@ -36,8 +38,10 @@ export async function POST(request) {
     },
     orderBy: { id: "asc" },
   });
-  const candidates = users.filter((user) => getEmailAgentSettings(user.preferences?.preferencesJson).enabled)
-    .sort(compareWorkerFairness);
+  const candidates = users.filter((user) =>
+    getEmailAgentSettings(user.preferences?.preferencesJson).enabled &&
+    user.integrations[0]?.scopes?.includes(GMAIL_READ_SCOPE)
+  ).sort(compareWorkerFairness);
   const maxUsersPerRun = 4;
   const selectedUsers = candidates.slice(0, maxUsersPerRun);
   const deferredUsers = Math.max(0, candidates.length - selectedUsers.length);
@@ -50,12 +54,13 @@ export async function POST(request) {
       return { userId: user.id, ...(await processInboundEmailForUser(user, integration, settings)) };
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 240) : "Unknown email-agent error";
+      return { userId: user.id, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 1, error: message };
+    } finally {
       await prisma.emailAgentState.upsert({
         where: { userId: user.id },
-        create: { userId: user.id, lastWorkerRunAt: new Date(), lastError: message },
-        update: { lastWorkerRunAt: new Date(), lastError: message },
+        create: { userId: user.id, lastWorkerRunAt: new Date() },
+        update: { lastWorkerRunAt: new Date() },
       }).catch(() => undefined);
-      return { userId: user.id, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 1, error: message };
     }
   }));
   const totals = outcomes.reduce((result, outcome) => {

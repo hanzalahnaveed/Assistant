@@ -419,6 +419,20 @@ export async function processInboundEmailForUser(user, integration, settings) {
     counts.failed++;
   }
   const staleBefore = new Date(Date.now() - PROCESSING_STALE_MS);
+  await prisma.inboundEmail.updateMany({
+    where: {
+      userId: user.id,
+      status: "PROCESSING",
+      processingAttempts: { gte: EMAIL_AGENT_MAX_ATTEMPTS },
+      updatedAt: { lt: staleBefore },
+    },
+    data: {
+      status: "FAILED",
+      nextAttemptAt: null,
+      processedAt: new Date(),
+      lastError: "Processing lease expired after the final automatic attempt. Retry manually to restart this message.",
+    },
+  });
   const ready = await prisma.inboundEmail.findMany({
     where: {
       userId: user.id, processingAttempts: { lt: EMAIL_AGENT_MAX_ATTEMPTS },
