@@ -67,7 +67,8 @@ The scheduled workflow runs every five minutes. A worker pass processes at most 
 ### Remaining integration acceptance
 
 - CI uses deterministic fixtures and a mocked classifier. It does not authenticate against a live Google account or exercise real Gmail/Calendar APIs. A dedicated test account is still required before enabling the feature for production mailboxes.
-- A future observability pass should add queue-age and scan-lag metrics, per-user processing latency, retry-attempt dashboards, and alerts for terminal failures. Message bodies and OAuth tokens must not be logged.
+- Added per-user queue age, scan/worker freshness, measured processing duration, classifier-mode counts, retry-attempt buckets, and UI alerts for stale queues/scans/workers and terminal failures. Aggregates exclude message bodies and OAuth tokens.
+- Added a gated, manual live Google acceptance runner for OAuth refresh, Gmail inbox/message reads, pagination, Calendar availability, and an optional temporary invitation to the test account. App-level end-to-end use and interactive reconnect still require a configured dedicated test account and a staging deployment.
 
 ## Production readiness
 

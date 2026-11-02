@@ -43,3 +43,11 @@ npm run test:email-agent-queue
 - Automated tests cover injected instructions in current and quoted content, multiple and ambiguous requests, conflicting deadlines, forwarded-only messages, ordinary non-request language, OAuth revocation, missing scopes, rate limits, and transient provider failures.
 
 This gate is deliberately conservative. It cannot prove that arbitrary natural-language messages are safe; ambiguous cases remain manager-reviewed and all replies remain drafts.
+
+
+## Live provider acceptance and operational metrics
+
+- Run deterministic helper checks with `npm run test:google-live-acceptance`.
+- Run the provider smoke test locally with `npm run google:live-acceptance` after setting `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ACCEPTANCE_REFRESH_TOKEN`, and `GOOGLE_ACCEPTANCE_EMAIL`. It reads Gmail and Calendar; it does not write an event unless `GOOGLE_ACCEPTANCE_CREATE_TEST_INVITATION=true` and the recipient exactly matches the dedicated test account.
+- The manual GitHub Actions job is gated by repository variable `GOOGLE_ACCEPTANCE_ENABLED=true`. It can also verify a separate already-revoked grant through `GOOGLE_ACCEPTANCE_REVOKED_REFRESH_TOKEN`.
+- The inbox operational metrics include queue/processing ages, scan/worker freshness, measured last-attempt duration, recent classifier modes, retry-attempt distribution, and threshold alerts. These metrics contain counts/timestamps only, never email bodies or OAuth tokens.

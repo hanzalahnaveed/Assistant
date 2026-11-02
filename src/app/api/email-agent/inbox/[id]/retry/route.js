@@ -16,7 +16,7 @@ export async function POST(_request, context) {
   }
   const reset = await prisma.inboundEmail.updateMany({
     where: { id, userId: user.id, status: "FAILED" },
-    data: { status: "RECEIVED", processingAttempts: 0, nextAttemptAt: null, processedAt: null, lastError: null },
+    data: { status: "RECEIVED", processingAttempts: 0, lastProcessingStartedAt: null, lastProcessingDurationMs: null, nextAttemptAt: null, processedAt: null, lastError: null },
   });
   if (!reset.count) return NextResponse.json({ error: "This message was updated concurrently. Refresh the inbox." }, { status: 409 });
   await prisma.auditEvent.create({

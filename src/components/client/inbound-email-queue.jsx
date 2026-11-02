@@ -204,8 +204,16 @@ export default function InboundEmailQueue() {
           <h2 className="text-lg font-semibold text-[#233044]">Inbox activity</h2>
           <p className="mt-1 text-sm text-[#6B7280]">
             {pendingCount} item{pendingCount === 1 ? "" : "s"} need attention
-            {worker ? ` · ${worker.queuedCount || 0} queued · ${worker.retryingCount || 0} retrying · ${worker.failedCount || 0} stopped · ${worker.pagesScanned || 0} pages scanned` : ""}
+            {worker ? ` · ${worker.queuedCount || 0} queued · ${worker.processingCount || 0} processing · ${worker.retryingCount || 0} retrying · ${worker.failedCount || 0} stopped · ${worker.pagesScanned || 0} pages scanned` : ""}
           </p>
+          {worker && (
+            <p className="mt-1 text-xs text-[#6B7280]">
+              {worker.oldestQueuedAgeSeconds !== null && worker.oldestQueuedAgeSeconds !== undefined ? `Oldest queued: ${Math.floor(worker.oldestQueuedAgeSeconds / 60)}m · ` : ""}
+              {worker.scanFreshnessSeconds !== null && worker.scanFreshnessSeconds !== undefined ? `Last scan: ${Math.floor(worker.scanFreshnessSeconds / 60)}m ago · ` : ""}
+              {worker.averageProcessingDurationMs !== null && worker.averageProcessingDurationMs !== undefined ? `Avg processing: ${(worker.averageProcessingDurationMs / 1000).toFixed(1)}s (${worker.measuredProcessingSamples} samples) · ` : ""}
+              {Object.entries(worker.classifierModes || {}).map(([mode, count]) => `${mode.toLowerCase()}: ${count}`).join(" · ")}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -237,6 +245,11 @@ export default function InboundEmailQueue() {
       {worker?.lastError && (
         <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
           Latest worker issue: {worker.lastError}
+        </p>
+      )}
+      {worker?.alerts?.length > 0 && (
+        <p role="alert" className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+          Operational alerts: {worker.alerts.join(", ").replaceAll("_", " ").toLowerCase()}
         </p>
       )}
 

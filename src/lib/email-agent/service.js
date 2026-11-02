@@ -343,7 +343,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
         { status: "PROCESSING", updatedAt: { lt: staleBefore } },
       ],
     },
-    data: { status: "PROCESSING", processingAttempts: { increment: 1 }, nextAttemptAt: null, lastError: null },
+    data: { status: "PROCESSING", processingAttempts: { increment: 1 }, lastProcessingStartedAt: now, lastProcessingDurationMs: null, nextAttemptAt: null, lastError: null },
   });
   if (!claim.count) return { processed: 0, drafted: 0, skipped: 1, failed: 0 };
   const attempt = (queuedRecord.processingAttempts || 0) + 1;
@@ -356,7 +356,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
     if (!sender || sender === user.email.toLowerCase() || isAutomatedSender(message, sender) || (message.labelIds ?? []).includes("SENT")) {
       await prisma.inboundEmail.update({
         where: { id: queuedRecord.id },
-        data: { gmailThreadId: threadId, fromEmail: sender || "unknown@assistant.invalid", subject, receivedAt, status: "SKIPPED", lastError: "Automated, bulk, or non-replyable sender was skipped.", processedAt: new Date() },
+        data: { gmailThreadId: threadId, fromEmail: sender || "unknown@assistant.invalid", subject, receivedAt, status: "SKIPPED", lastError: "Automated, bulk, or non-replyable sender was skipped.", processedAt: new Date(), lastProcessingDurationMs: Math.max(0, Date.now() - now.getTime()) },
       });
       return { processed: 0, drafted: 0, skipped: 1, failed: 0 };
     }
@@ -427,7 +427,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
           safetyReviewRequired: safety.requiresHumanReview, reviewReasons: safety.reviewReasons,
           quotedContextDetected: safety.quoteDetected, forwarded: safety.forwarded,
         },
-        draftId: draft.id, processedAt: new Date(), nextAttemptAt: null, lastError: null,
+        draftId: draft.id, processedAt: new Date(), lastProcessingDurationMs: Math.max(0, Date.now() - now.getTime()), nextAttemptAt: null, lastError: null,
       },
     });
     await prisma.auditEvent.create({
@@ -443,7 +443,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
       await markGoogleIntegrationReauthRequired(user.id).catch(() => undefined);
       await prisma.inboundEmail.update({
         where: { id: queuedRecord.id },
-        data: { status: "FAILED", processingAttempts: EMAIL_AGENT_MAX_ATTEMPTS, nextAttemptAt: null, lastError: errorText, processedAt: new Date() },
+        data: { status: "FAILED", processingAttempts: EMAIL_AGENT_MAX_ATTEMPTS, nextAttemptAt: null, lastError: errorText, processedAt: new Date(), lastProcessingDurationMs: Math.max(0, Date.now() - now.getTime()) },
       }).catch(() => undefined);
       return { processed: 0, drafted: 0, skipped: 0, failed: 1 };
     }
@@ -451,7 +451,7 @@ async function processQueuedEmail(user, accessToken, settings, queuedRecord) {
     const nextAttemptAt = retry.terminal ? null : new Date(Date.now() + retry.delayMs);
     await prisma.inboundEmail.update({
       where: { id: queuedRecord.id },
-      data: { status: retry.status, nextAttemptAt, lastError: errorText, processedAt: new Date() },
+      data: { status: retry.status, nextAttemptAt, lastError: errorText, processedAt: new Date(), lastProcessingDurationMs: Math.max(0, Date.now() - now.getTime()) },
     }).catch(() => undefined);
     return { processed: 0, drafted: 0, skipped: 0, failed: 1, retryAt: nextAttemptAt };
   }

@@ -36,3 +36,39 @@ jobs:
             --request POST "$APP_BASE_URL/api/cron/email-agent" \
             --header "Authorization: Bearer $CRON_SECRET" \
             --header "Accept: application/json"
+
+
+  google-live-acceptance:
+    if: github.event_name == 'workflow_dispatch' && vars.GOOGLE_ACCEPTANCE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_ACCEPTANCE_REFRESH_TOKEN: ${{ secrets.GOOGLE_ACCEPTANCE_REFRESH_TOKEN }}
+      GOOGLE_ACCEPTANCE_REVOKED_REFRESH_TOKEN: ${{ secrets.GOOGLE_ACCEPTANCE_REVOKED_REFRESH_TOKEN }}
+      GOOGLE_ACCEPTANCE_EMAIL: ${{ vars.GOOGLE_ACCEPTANCE_EMAIL }}
+      GOOGLE_ACCEPTANCE_TIME_ZONE: ${{ vars.GOOGLE_ACCEPTANCE_TIME_ZONE }}
+      GOOGLE_ACCEPTANCE_CREATE_TEST_INVITATION: ${{ vars.GOOGLE_ACCEPTANCE_CREATE_TEST_INVITATION }}
+      GOOGLE_ACCEPTANCE_RECIPIENT: ${{ vars.GOOGLE_ACCEPTANCE_RECIPIENT }}
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Verify dedicated test-account configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_CLIENT_ID" ]; then echo "::error::Missing GOOGLE_CLIENT_ID"; exit 1; fi
+          if [ -z "$GOOGLE_CLIENT_SECRET" ]; then echo "::error::Missing GOOGLE_CLIENT_SECRET"; exit 1; fi
+          if [ -z "$GOOGLE_ACCEPTANCE_REFRESH_TOKEN" ]; then echo "::error::Missing GOOGLE_ACCEPTANCE_REFRESH_TOKEN"; exit 1; fi
+          if [ -z "$GOOGLE_ACCEPTANCE_EMAIL" ]; then echo "::error::Missing GOOGLE_ACCEPTANCE_EMAIL"; exit 1; fi
+          if [ "${GOOGLE_ACCEPTANCE_CREATE_TEST_INVITATION:-false}" = "true" ] && [ "${GOOGLE_ACCEPTANCE_RECIPIENT:-}" != "$GOOGLE_ACCEPTANCE_EMAIL" ]; then
+            echo "::error::Calendar invitation recipient must exactly match the dedicated acceptance account."
+            exit 1
+          fi
+      - name: Exercise live Gmail, OAuth, and Calendar APIs
+        run: node scripts/google-live-acceptance.mjs

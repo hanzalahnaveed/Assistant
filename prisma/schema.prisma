@@ -285,8 +285,10 @@ model InboundEmail {
   classification      Json     @default("{}")
   draftId             String?
   processedAt         DateTime?
-  processingAttempts  Int      @default(0)
-  nextAttemptAt       DateTime?
+  processingAttempts        Int       @default(0)
+  lastProcessingStartedAt   DateTime?
+  lastProcessingDurationMs  Int?
+  nextAttemptAt             DateTime?
   lastError           String?  @db.Text
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

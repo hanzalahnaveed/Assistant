@@ -506,8 +506,12 @@ try {
       category: "SENSITIVE",
       sensitive: true,
       summary: "Sender asks about a contract change.",
-      classification: { category: "SENSITIVE", sensitive: true, reason: "Contract-related request" },
+      classification: { category: "SENSITIVE", mode: "DUMMY", sensitive: true, reason: "Contract-related request" },
       draftId: inboundQueueDraft.id,
+      processingAttempts: 2,
+      processedAt: new Date(),
+      lastProcessingStartedAt: new Date(Date.now() - 2500),
+      lastProcessingDurationMs: 2500,
     },
   });
   const inboundQueue = (await (await expectStatus("/api/email-agent/inbox", 200, {}, token)).json()).messages;
@@ -517,6 +521,10 @@ try {
     draft.id === inboundQueueDraft.id && draft.body === "Please review this draft before sending."
   ));
   assert.equal(inboundQueueResponse.worker.pagesScanned, 9);
+  assert.equal(inboundQueueResponse.worker.averageProcessingDurationMs, 2500);
+  assert.equal(inboundQueueResponse.worker.measuredProcessingSamples, 1);
+  assert.ok(inboundQueueResponse.worker.classifierModes.DUMMY >= 1);
+  assert.ok(inboundQueueResponse.worker.retryAttemptDistribution.some((entry) => entry.attempts === 2 && entry.count >= 1));
   assert.equal(JSON.stringify(inboundQueueResponse).includes(cursorSecretFixture), false);
 
   const safetyReviewFixture = await prisma.inboundEmail.create({
@@ -651,6 +659,8 @@ try {
       subject: "Message requiring a retry",
       status: "FAILED",
       processingAttempts: 5,
+      lastProcessingStartedAt: new Date(),
+      lastProcessingDurationMs: 4000,
       lastError: "Mock terminal processing error",
     },
   });
@@ -661,6 +671,8 @@ try {
   assert.equal(retriedDeadLetter.status, "RECEIVED");
   assert.equal(retriedDeadLetter.processingAttempts, 0);
   assert.equal(retriedDeadLetter.nextAttemptAt, null);
+  assert.equal(retriedDeadLetter.lastProcessingStartedAt, null);
+  assert.equal(retriedDeadLetter.lastProcessingDurationMs, null);
   check(true, "terminal email failures can be manually retried with a reset attempt counter and audit event");
   const replyDraft = await prisma.emailDraft.create({
     data: {

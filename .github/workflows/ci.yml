@@ -70,6 +70,8 @@ jobs:
         run: npm run test:email-agent-safety
       - name: Test Google provider error recovery policy
         run: npm run test:google-provider-errors
+      - name: Test Google live acceptance harness helpers
+        run: npm run test:google-live-acceptance
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client

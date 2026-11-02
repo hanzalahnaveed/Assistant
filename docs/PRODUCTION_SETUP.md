@@ -81,7 +81,7 @@ The worker endpoint is `POST /api/cron/email-agent`. The workflow `.github/workf
 
 Enable the feature from **Dashboard → Email → Email permissions & settings** after connecting a Google account with Gmail read access. The agent defaults to off. Its initial Gmail search starts at `enabledAt` and has no fixed five-page or seven-day scan cap. A per-user `EmailAgentState` row stores the Gmail page token and scan progress. Each discovered message is inserted into the durable `InboundEmail` queue with duplicate protection, then processed separately. An invalid/expired page token causes a safe restart from the newest page; repeated message IDs are ignored through the unique `(userId, gmailMessageId)` constraint.
 
-The scheduled worker selects up to four enabled accounts per run in least-recently-served order. It fetches one 100-message Gmail page per selected account and processes at most two queued messages per account in parallel. This bounds one serverless run while allowing the persisted cursor and queue to continue on later runs. Automatic failures retry after 5, 10, 20, and 40 minutes; after five attempts they become visible stopped items. Stale `PROCESSING` claims are recovered, including a worker that terminated during its final attempt. A manager can manually retry a stopped message. The inbox displays queued/retrying/stopped counts, pages scanned, last run, and the most recent worker issue. Page tokens are never returned to the browser.
+The scheduled worker selects up to four enabled accounts per run in least-recently-served order. It fetches one 100-message Gmail page per selected account and processes at most two queued messages per account in parallel. This bounds one serverless run while allowing the persisted cursor and queue to continue on later runs. Automatic failures retry after 5, 10, 20, and 40 minutes; after five attempts they become visible stopped items. Stale `PROCESSING` claims are recovered, including a worker that terminated during its final attempt. A manager can manually retry a stopped message. The inbox displays queued/processing/retrying/stopped counts, oldest queue age, scan and worker freshness, measured average processing duration, classifier-mode counts, retry-attempt distribution, and threshold alerts for aged queues, stale workers/scans, or terminal failures. Message bodies and page tokens are never included in operational metric aggregates.
 
 Set `EMAIL_AGENT_CLASSIFIER_MODE=dummy` for deterministic offline classification, or `EMAIL_AGENT_CLASSIFIER_MODE=groq` with `GROQ_API_KEY` for live classification. When the mode is omitted, the worker selects Groq when the key is present and dummy otherwise. An explicitly selected Groq mode without a key and unknown mode values fail closed. `OPENAI_API_KEY` is for separate chat/outreach features, not the inbound email classifier.
 
@@ -90,6 +90,32 @@ Set `EMAIL_AGENT_CLASSIFIER_MODE=dummy` for deterministic offline classification
 Email-derived task requests are persisted as **task proposals**, not immediate schedule items. The email queue presents the title, description, priority, and due date. The manager must explicitly approve or decline the proposal. Approval creates one idempotent `ScheduleItem` linked to the source Gmail message; decline creates no task. Task proposal approval is tenant-scoped, audited, and blocked while the global automation pause is active.
 
 For a meeting request, the agent checks primary-calendar availability and presents advisory time options. The account owner must explicitly choose a proposed slot and confirm creation. The server rechecks availability and refuses to create an invitation when the complete availability response cannot be verified. It creates an idempotent Calendar event with a Meet request and sends the calendar invitation to the sender. The resulting meeting details are appended to the reply draft, which still requires manager review, approval, and separate send confirmation. Sensitive meeting requests require approval of the reply draft before the calendar invitation can be created.
+
+### Live Google provider acceptance (manual, dedicated test account)
+
+The repository includes a live acceptance runner at `scripts/google-live-acceptance.mjs`. CI tests its deterministic slot-selection helpers, but the live runner only executes when manually enabled and configured with a dedicated Google test account.
+
+In GitHub → Settings → Secrets and variables → Actions, configure:
+
+**Repository secrets**
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the OAuth client used by the application.
+- `GOOGLE_ACCEPTANCE_REFRESH_TOKEN`: refresh token for a dedicated test account with `gmail.readonly`, `calendar.readonly`, and `calendar.events` scopes.
+- Optional `GOOGLE_ACCEPTANCE_REVOKED_REFRESH_TOKEN`: a separate, already-revoked test grant. Do not use the active acceptance token here.
+
+**Repository variables**
+- `GOOGLE_ACCEPTANCE_ENABLED=true`: enables the live job for manual workflow dispatches.
+- `GOOGLE_ACCEPTANCE_EMAIL`: exact email address for the dedicated test account.
+- `GOOGLE_ACCEPTANCE_TIME_ZONE`: IANA time zone, for example `Asia/Karachi`.
+- Optional `GOOGLE_ACCEPTANCE_CREATE_TEST_INVITATION=true`: enables a temporary Calendar event/invitation test. Leave false for read-only acceptance.
+- `GOOGLE_ACCEPTANCE_RECIPIENT`: must equal `GOOGLE_ACCEPTANCE_EMAIL`; invitations are deliberately restricted to the test account itself.
+
+Seed the dedicated test inbox with at least one harmless email. Then use Actions → **Scheduled email agent** → **Run workflow**, select `dev`, and inspect the `google-live-acceptance` job. The read-only phase checks OAuth refresh, account identity, inbox listing, message retrieval, next-page cursor behavior when a second page exists, invalid-page-token rejection, Calendar availability reads, and the existence of a free 30-minute slot in the account's time zone. A separately revoked grant is verified only when its optional secret is configured.
+
+The invitation phase is off by default. When explicitly enabled, the runner selects a free slot in the next seven days, inserts a temporary event with the test account as the sole attendee, verifies the attendee and event/Meet link, then deletes the event and sends the cancellation update. It logs only pass/fail labels and aggregate results, not message bodies, tokens, event subjects, or calendar contents. Run this phase only against the dedicated test account.
+
+**Application-level acceptance still requires the deployed/staging app.** Connect the same test account in the app, enable the email agent, send a new harmless seed message, and verify the queue creates a manager-reviewed draft. Then test the manager's approve-and-send flow to the same test account, approve/decline a task proposal, and confirm one meeting slot. For OAuth recovery, revoke a separate test grant, verify the app marks the corresponding integration `REAUTH_REQUIRED`, reconnect interactively from Connections, and confirm the integration returns to `CONNECTED`. Do not revoke the only active acceptance grant used by the runner.
+
+The workflow is gated by `GOOGLE_ACCEPTANCE_ENABLED` and is manual only. No live API write occurs unless the invitation variable is explicitly enabled.
 
 ### Local development check
 
