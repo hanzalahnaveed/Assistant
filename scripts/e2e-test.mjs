@@ -239,7 +239,10 @@ try {
     /attachment; filename="assistant-data-export-\d{4}-\d{2}-\d{2}\.json"/,
   );
   const exportBody = await exportResponse.json();
-  assert.equal(exportBody.formatVersion, 1);
+  assert.equal(exportBody.formatVersion, 2);
+  assert.ok(Array.isArray(exportBody.account.inboundEmails));
+  assert.ok(Array.isArray(exportBody.account.followUps));
+  assert.ok(exportBody.account.emailAgentState);
   assert.equal(exportBody.account.id, user.id);
   assert.ok(Array.isArray(exportBody.account.tasks));
   const exportJson = JSON.stringify(exportBody);
