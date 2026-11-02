@@ -40,7 +40,8 @@ function requestActionCount(text) {
     if (!REQUEST_START.test(candidate) && !REQUEST_PHRASE.test(candidate)) continue;
     const actions = candidate.match(ACTION_MATCH) || [];
     if (!actions.length) continue;
-    const independentFollowOn = candidate.match(/(?:;\s*|\b(?:and also|also|additionally|separately|secondly)\s+)(?:please\s+)?(?:${ACTION_VERBS})\b/gi) || [];
+    const independentPattern = new RegExp("(?:;\\s*|\\b(?:and also|also|additionally|separately|secondly)\\s+)(?:please\\s+)?(?:" + ACTION_VERBS + ")\\b", "gi");
+    const independentFollowOn = candidate.match(independentPattern) || [];
     count += 1 + independentFollowOn.length;
   }
   return count;
