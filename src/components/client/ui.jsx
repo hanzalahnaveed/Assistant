@@ -101,6 +101,7 @@ export default function IntegrationsClient() {
           briefingHour: Number(preferences.briefingHour),
           defaultApprovalMode: preferences.defaultApprovalMode,
           timezone: preferences.timezone,
+          name: preferences.name,
         }),
       });
       const body = await response.json();
@@ -267,7 +268,7 @@ export default function IntegrationsClient() {
                   Gmail inbox and primary calendar
                 </p>
                 <div className="mt-3 flex items-center gap-2 text-xs text-[#6B7280]">
-                  <ShieldCheck size={14} className="text-[#FA8500]" /> Gmail read + approved sending
+                  <ShieldCheck size={14} className="text-[#FA8500]" /> Gmail read + mailbox controls + approved sending
                   · Calendar read + approved event creation
                 </div>
                 {data?.connected && (
@@ -381,6 +382,7 @@ export default function IntegrationsClient() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     ["gmailRead", "Gmail inbox read", "Used by inbox context, briefings, and assistant research."],
+                    ["gmailModify", "Gmail mailbox controls", "Required for marking messages read, starring, archiving, and moving messages to or from Trash."],
                     ["gmailSend", "Gmail sending", "Required for sending a saved draft after approval."],
                     ["calendarRead", "Google Calendar read", "Used by calendar views, briefings, and assistant context."],
                     ["calendarWrite", "Calendar event creation", "Required after meeting approval and separate confirmation."],
@@ -438,6 +440,17 @@ export default function IntegrationsClient() {
           ) : (
             <form onSubmit={savePreferences} className="grid gap-5 md:grid-cols-2">
               <div className="space-y-4">
+                <label className="block text-xs font-semibold text-[#526159]">
+                  Display name
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={preferences.name || ""}
+                    onChange={(event) => setPreferences((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Your name"
+                    className="mt-2 w-full rounded-xl border border-[#dce4dd] bg-white px-3 py-3 text-sm font-normal"
+                  />
+                </label>
                 <label className="flex items-start gap-3 rounded-xl bg-[#f7f9f6] p-4">
                   <input
                     type="checkbox"

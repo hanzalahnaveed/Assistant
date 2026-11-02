@@ -36,6 +36,7 @@ const statusLabels = {
   RETRY_WAIT: "Retry scheduled",
   SEND_UNCERTAIN: "Check Gmail Sent",
   FAILED: "Needs attention",
+  CANCELLED: "Cancelled",
 };
 
 function formatDate(value) {
@@ -70,6 +71,7 @@ export default function InboundEmailQueue() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const [gmailBusy, setGmailBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -210,6 +212,7 @@ export default function InboundEmailQueue() {
 
   async function draftAction(draft, action) {
     if (action === "SEND" && !window.confirm("Send this reply to " + draft.toEmail + "?")) return;
+    if (action === "CANCEL" && !window.confirm("Cancel this reply draft? It will not be sent.")) return;
     setBusyId(draft.id);
     setError("");
     setNotice("");
@@ -231,11 +234,13 @@ export default function InboundEmailQueue() {
         if (!saveResponse.ok) throw new Error(saved.error || "Could not save reply.");
       }
       if (action !== "SAVE") {
-        const response = await fetch("/api/email-drafts/" + draft.id, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action }),
-        });
+        const response = action === "CANCEL"
+          ? await fetch("/api/email-drafts/" + draft.id, { method: "DELETE" })
+          : await fetch("/api/email-drafts/" + draft.id, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ action }),
+            });
         const result = await readJsonResponse(response, "Reply action");
         if (!response.ok) throw new Error(result.error || "Could not update reply.");
       }
@@ -244,7 +249,9 @@ export default function InboundEmailQueue() {
           ? "Reply draft saved."
           : action === "APPROVE"
             ? "Reply approved. Press Send reply when you are ready."
-            : "Reply sent.",
+            : action === "CANCEL"
+              ? "Reply draft cancelled."
+              : "Reply sent.",
       );
       setEdits((current) => {
         const next = { ...current };
@@ -257,6 +264,52 @@ export default function InboundEmailQueue() {
       await load();
     } finally {
       setBusyId("");
+    }
+  }
+
+  async function gmailAction(action) {
+    if (!selectedMessage || gmailBusy) return;
+    if (action === "TRASH" && !window.confirm("Move this email to Gmail Trash? You can restore it later from Trash.")) return;
+    setGmailBusy(true);
+    setDetailError("");
+    setError("");
+    try {
+      const response = await fetch(
+        "/api/email-agent/inbox/" + encodeURIComponent(selectedMessage.id),
+        action === "TRASH"
+          ? { method: "DELETE" }
+          : {
+              method: "PATCH",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ action }),
+            },
+      );
+      const data = await readJsonResponse(response, "Gmail mailbox update");
+      if (!response.ok) throw new Error(data.error || "Could not update this Gmail message.");
+      setDetail((current) => current ? {
+        ...current,
+        ...(data.message || {}),
+        labelIds: data.message?.labelIds || current.labelIds || [],
+      } : current);
+      setNotice(action === "TRASH"
+        ? "Email moved to Gmail Trash. You can restore it from the popup."
+        : action === "RESTORE_FROM_TRASH"
+          ? "Email restored from Gmail Trash."
+          : action === "ARCHIVE"
+            ? "Email archived in Gmail."
+            : action === "MOVE_TO_INBOX"
+              ? "Email moved back to the Gmail inbox."
+              : action === "MARK_READ"
+                ? "Email marked as read."
+                : action === "MARK_UNREAD"
+                  ? "Email marked as unread."
+                  : action === "STAR"
+                    ? "Email starred."
+                    : "Email unstarred.");
+    } catch (cause) {
+      setDetailError(cause instanceof Error ? cause.message : "Could not update this Gmail message.");
+    } finally {
+      setGmailBusy(false);
     }
   }
 
@@ -558,6 +611,43 @@ export default function InboundEmailQueue() {
                   )}
                 </div>
 
+                {detail?.canModify ? (
+                  <div className="mb-4 rounded-xl border border-[#E8EBF0] p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-semibold text-[#344054]">Gmail mailbox actions</h4>
+                      <span className="text-[10px] text-[#98A2B3]">Updates your connected Gmail account</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={gmailBusy} onClick={() => void gmailAction((detail.labelIds || []).includes("UNREAD") ? "MARK_READ" : "MARK_UNREAD")} className="rounded-lg border border-[#DDE2E8] bg-white px-3 py-2 text-xs font-semibold text-[#344054] disabled:opacity-50">
+                        {(detail.labelIds || []).includes("UNREAD") ? "Mark read" : "Mark unread"}
+                      </button>
+                      <button type="button" disabled={gmailBusy} onClick={() => void gmailAction((detail.labelIds || []).includes("STARRED") ? "UNSTAR" : "STAR")} className="rounded-lg border border-[#DDE2E8] bg-white px-3 py-2 text-xs font-semibold text-[#344054] disabled:opacity-50">
+                        {(detail.labelIds || []).includes("STARRED") ? "Remove star" : "Star"}
+                      </button>
+                      {(detail.labelIds || []).includes("TRASH") ? (
+                        <button type="button" disabled={gmailBusy} onClick={() => void gmailAction("RESTORE_FROM_TRASH")} className="rounded-lg border border-[#DDE2E8] bg-white px-3 py-2 text-xs font-semibold text-[#344054] disabled:opacity-50">Restore from Trash</button>
+                      ) : (
+                        <>
+                          {(detail.labelIds || []).includes("INBOX") ? (
+                            <button type="button" disabled={gmailBusy} onClick={() => void gmailAction("ARCHIVE")} className="rounded-lg border border-[#DDE2E8] bg-white px-3 py-2 text-xs font-semibold text-[#344054] disabled:opacity-50">Archive</button>
+                          ) : (
+                            <button type="button" disabled={gmailBusy} onClick={() => void gmailAction("MOVE_TO_INBOX")} className="rounded-lg border border-[#DDE2E8] bg-white px-3 py-2 text-xs font-semibold text-[#344054] disabled:opacity-50">Move to inbox</button>
+                          )}
+                          <button type="button" disabled={gmailBusy} onClick={() => void gmailAction("TRASH")} className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-50">Move to Trash</button>
+                        </>
+                      )}
+                      {gmailBusy && <span className="self-center text-[11px] text-[#7B8492]">Updating Gmail…</span>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs leading-5 text-amber-900">
+                      Gmail mailbox changes are not enabled for this connection. Reconnect Google and grant Gmail modify access to mark read, star, archive, and move messages to or from Trash.
+                    </p>
+                    <a href="/api/auth/google/start" className="mt-2 inline-block text-xs font-semibold text-amber-950 underline">Reconnect Google</a>
+                  </div>
+                )}
+
                 <div className="mb-2 flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-[#233044]">Original message</h4>
                   {detail?.bodyTruncated && <span className="text-[10px] text-amber-800">Long message shortened</span>}
@@ -822,6 +912,16 @@ function ReplyDraftCard({ draft, busy, value, onChange, onAction }) {
           >
             <Send size={13} />
             {busy ? "Sending…" : "Send reply"}
+          </button>
+        )}
+        {["DRAFT", "FAILED", "APPROVED"].includes(draft.status) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAction("CANCEL")}
+            className="rounded-lg border border-rose-200 bg-white px-3 py-2.5 text-xs font-semibold text-rose-700 disabled:opacity-50"
+          >
+            Cancel draft
           </button>
         )}
         {draft.status === "SENT" && (

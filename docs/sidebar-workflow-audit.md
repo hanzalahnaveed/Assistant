@@ -1,39 +1,51 @@
 # Sidebar frontend workflow audit
 
-This inventory is the route-by-route baseline for completing the app's user-facing workflows. Keep it in sync with `src/components/workspace-header.jsx`.
+This inventory is the route-by-route baseline for user-facing CRUD. Keep it in sync with \`src/components/workspace-header.jsx\`.
 
 ## Routes and current workflow wiring
 
-Google integration verification is available from Connections; its live checks are read-only and do not send mail or create events.
+| Sidebar route | Page/client | Create | Read | Update | Delete / archive |
+| --- | --- | --- | --- | --- | --- |
+| Overview (\`/dashboard/briefing\`) | \`briefing-client.jsx\` | Propose a task from a commitment | Briefing, tasks, events, follow-up candidates | Complete/reopen tasks; dismiss/restore follow-ups | Follow-up dismissal is reversible; source email/calendar data stays provider-owned |
+| AI assistant (\`/dashboard\`) | \`assistant-client.jsx\` | New conversation and messages | Conversation list and message history | Rename conversation | Delete conversation and its message history; individual chat messages remain part of an immutable transcript |
+| Schedule (\`/dashboard/schedule\`) | \`schedule-client.jsx\` | Task or Google Calendar event | Unified task/event list and date-range views | Edit task fields/status and Google event details | Tasks are soft-cancelled; calendar events are cancelled in Google Calendar. Existing \`/dashboard/tasks\` and \`/dashboard/calendar\` URLs redirect to Schedule |
+| Email (\`/dashboard/email\`) | \`email-client.jsx\` | Compose outbound draft; inbound messages are imported by the agent | Outbound drafts and chronological inbound list; popup loads full message from Gmail | Edit/cancel draft; approve exact draft; Gmail read/unread, star, archive/move-to-inbox | Cancel unsent drafts; move inbound message to Gmail Trash and restore it |
+| Action center (\`/dashboard/actions\`) | \`actions-client.jsx\` | Propose action and automation rule | Pending and historical actions; configured rules | Approve/reject actions; edit rule and global pause state | Delete automation rule. Action/audit history is retained rather than erased |
+| Connections (\`/dashboard/integrations\`) | \`ui.jsx\` | Connect Google | Connection status and permission checks | Reconnect, edit display name, timezone and preferences | Disconnect/revoke stored Google access; export account data |
 
-| Sidebar route | Page/client | Current user workflow | Main API dependencies |
-| --- | --- | --- | --- |
-| Overview (`/dashboard/briefing`) | `src/app/dashboard/briefing/page.jsx` → `briefing-client.jsx` | Review the daily briefing, tasks, calendar context, email follow-ups, and commitments; mark eligible tasks complete and manage follow-ups. | `/api/workspace/briefing`, task and follow-up endpoints |
-| AI assistant (`/dashboard`) | `src/app/dashboard/page.jsx` → `assistant-client.jsx` | Start a conversation, search/open saved conversations, send messages, and review task-action cards returned by the assistant. | `/api/chat`, `/api/chat/[id]` |
-| Schedule (`/dashboard/schedule`) | `src/app/dashboard/schedule/page.jsx` → `schedule-client.jsx` | Create and manage one persisted schedule-item collection; switch between a mixed list and day/week/month calendar; search, filter, edit, complete, bulk-complete, and archive local items; sync calendar-backed items with conflict checks and explicit confirmation. Existing `/dashboard/tasks` and `/dashboard/calendar` URLs redirect to Schedule. | `/api/tasks`, `/api/calendar-events`, `/api/preferences` |
-| Email outreach (`/dashboard/email`) | `src/app/dashboard/email/page.jsx` → `email-client.jsx` | Create or generate a draft, edit recipients/content, filter drafts, and use the approval/send lifecycle. | `/api/email-drafts` and draft action endpoints |
-| Action center (`/dashboard/actions`) | `src/app/dashboard/actions/page.jsx` → `actions-client.jsx` | Review and approve/reject pending actions, inspect action history, configure task automation, and pause/resume automation. | `/api/actions`, `/api/automation-rules`, preferences |
-| Connections (`/dashboard/integrations`) | `src/app/dashboard/integrations/page.jsx` → `ui.jsx` | Connect/reconnect/disconnect Google Workspace, inspect recent Gmail/calendar context, update briefing/approval preferences, export account data, and log out. | `/api/workspace/overview`, `/api/preferences`, Google OAuth and disconnect endpoints, account export/logout |
+## CRUD semantics and ownership
 
-## How to run the route coverage check
+- **Tasks:** task APIs are tenant-scoped. A task deletion is a soft-cancel so schedule history and task references remain coherent.
+- **Google Calendar:** event edits and cancellations go through the Google Calendar API, not just the local mirror. Availability is checked before updates; provider event IDs and etags are used where available. A provider failure does not pretend the local copy was changed successfully.
+- **Gmail:** messages are provider-owned. Message details are loaded from Gmail on demand. Read/unread, star, archive, inbox restore, Trash, and untrash operations call Gmail APIs. Existing OAuth connections must reconnect to grant \`gmail.modify\`. The app does not request permanent-delete scope.
+- **Email drafts:** outbound drafts are local records. Create, edit, cancel, approval and send are distinct actions. Sending stays behind approval of the exact version and a separate explicit Send confirmation.
+- **Inbound email:** an imported message is a reference to Gmail rather than a second locally editable copy. The app can process/retry its classification, review task proposals and meeting options, and manage the original Gmail message through the provider controls.
+- **Conversations:** rename and delete operate only on conversations owned by the signed-in user. Delete removes the conversation and its child messages. Individual transcript messages are intentionally not editable independently because they form the stored assistant conversation history.
+- **Notifications and briefings:** individual items can be marked read and deleted. All unread items can be marked read and previously read items can be cleared in bulk.
+- **Follow-ups:** follow-ups are derived from source email/calendar context. Dismiss/restore is the supported reversible lifecycle rather than editing generated evidence.
+- **Actions and audit events:** action status follows its approval/execution state machine; audit events are append-only. They are not arbitrary CRUD records and are intentionally not hard-deleted through the workspace.
+- **Account data:** display name and preferences can be updated; account data can be exported. OAuth credentials are never exposed to the browser.
+
+## Automated coverage
 
 Run:
 
-```sh
+\`\`\`sh
+npm run test:crud-surface
+npm run test:google-data-crud
 npm run test:sidebar-routes
-```
+npm run verify:javascript
+\`\`\`
 
-The route check verifies that every sidebar link has a page module, mounts the expected client component, and retains key workflow markers and API wiring. It checks embedded task bulk completion and the in-progress view, plus unified task/event creation, timezone-aware date conversion, server-side event validation and permission/pause/availability enforcement, and E2E coverage for direct event creation denial without permission. Run `npm run test:calendar-timezone` for executable timezone conversion checks, including UTC, Karachi, New York daylight/standard time, and nonexistent daylight-saving times. These checks do not replace a full build and authenticated Google Calendar acceptance pass.
+The CRUD surface test checks route methods and verifies the visible CRUD controls are wired into the client pages. The Google action test validates the Gmail label mutations and confirms that no permanent-delete action is exposed. These are deterministic checks; they do not replace the live acceptance pass against a dedicated Google test account.
 
-## Manual acceptance pass
+## Manual provider acceptance
 
-For each route, use a signed-in test account and verify:
+Use a dedicated Google test account, never a production mailbox:
 
-1. The sidebar highlights the current route and navigation works on desktop and narrow screens.
-2. Loading, empty, success, and error states are understandable.
-3. Forms reject invalid input without losing the user's work.
-4. Mutations show success/failure feedback and the resulting data remains correct after refresh.
-5. External actions remain behind the app's approval and automation-pause safeguards.
-6. A failed API request can be retried without duplicating tasks or calendar events.
-
-For Google-dependent checks, use a test Google account and verify connect, reconnect, revoked access, and disconnect states without using a production mailbox.
+1. Reconnect Google and confirm the \`gmail.modify\` capability is granted on Connections.
+2. Open an inbound message; mark it read/unread, star/unstar, archive it and move it back to the inbox.
+3. Move a test message to Trash and restore it from the email popup.
+4. Edit and cancel an outbound draft. Approve a separate draft, verify its exact content, then send it to the dedicated test address.
+5. Create/edit/cancel a Calendar test event and verify the provider calendar reflects each change.
+6. Confirm task, conversation, notification, briefing and automation-rule changes persist after refresh.

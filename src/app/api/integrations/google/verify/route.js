@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 const SCOPES = {
   gmailRead: "https://www.googleapis.com/auth/gmail.readonly",
+  gmailModify: "https://www.googleapis.com/auth/gmail.modify",
   gmailSend: "https://www.googleapis.com/auth/gmail.send",
   calendarRead: "https://www.googleapis.com/auth/calendar.readonly",
   calendarWrite: "https://www.googleapis.com/auth/calendar.events",
@@ -37,6 +38,7 @@ export async function POST() {
       checkedAt: new Date().toISOString(),
       checks: {
         gmailRead: capability("not_connected", "Connect a Google account to test Gmail inbox access."),
+        gmailModify: capability("not_connected", "Connect a Google account to manage read status, stars, archive, and Trash in Gmail."),
         gmailSend: capability("not_connected", "Connect a Google account to check approved email sending permission."),
         calendarRead: capability("not_connected", "Connect a Google account to test calendar access."),
         calendarWrite: capability("not_connected", "Connect a Google account to check event creation permission."),
@@ -46,11 +48,13 @@ export async function POST() {
 
   const granted = new Set(integration.scopes ?? []);
   const hasGmailRead = granted.has(SCOPES.gmailRead);
+  const hasGmailModify = granted.has(SCOPES.gmailModify);
   const hasGmailSend = granted.has(SCOPES.gmailSend);
   const hasCalendarRead = granted.has(SCOPES.calendarRead) || granted.has(SCOPES.calendarWrite);
   const hasCalendarWrite = granted.has(SCOPES.calendarWrite);
   const checks = {
     gmailRead: capability(hasGmailRead ? "checking" : "missing_scope", hasGmailRead ? "Gmail read permission is granted; testing live API access." : "Missing Gmail read permission. Reconnect Google and grant inbox access."),
+    gmailModify: capability(hasGmailModify ? "granted" : "missing_scope", hasGmailModify ? "Gmail mailbox update permission is granted. Message changes remain user initiated." : "Missing Gmail modify permission. Reconnect Google to enable read status, stars, archive, and Trash actions."),
     gmailSend: capability(hasGmailSend ? "granted" : "missing_scope", hasGmailSend ? "Permission granted. Sending is still gated by draft approval and explicit confirmation." : "Missing Gmail send permission. Reconnect Google and grant send access."),
     calendarRead: capability(hasCalendarRead ? "checking" : "missing_scope", hasCalendarRead ? "Calendar read permission is granted; testing live API access." : "Missing Calendar read permission. Reconnect Google and grant calendar access."),
     calendarWrite: capability(hasCalendarWrite ? "granted" : "missing_scope", hasCalendarWrite ? "Permission granted. Event creation still requires approval and a separate confirmation." : "Missing Calendar event permission. Reconnect Google and grant event access."),

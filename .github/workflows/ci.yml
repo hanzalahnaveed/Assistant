@@ -74,6 +74,10 @@ jobs:
         run: npm run test:google-live-acceptance
       - name: Test email API response handling
         run: npm run test:email-api-response
+      - name: Test Google provider CRUD action mapping
+        run: npm run test:google-data-crud
+      - name: Test application CRUD coverage
+        run: npm run test:crud-surface
       - name: Validate Prisma schema
         run: npx prisma validate
       - name: Generate Prisma client

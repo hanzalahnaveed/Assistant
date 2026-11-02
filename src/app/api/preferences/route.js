@@ -10,6 +10,7 @@ const updateSchema = z
     briefingHour: z.number().int().min(0).max(23).optional(),
     defaultApprovalMode: z.enum(["AUTO", "CONFIRM", "BLOCK"]).optional(),
     automationPaused: z.boolean().optional(),
+    name: z.string().trim().max(120).optional(),
     timezone: z.string().trim().min(1).max(100).refine((value) => {
       try {
         new Intl.DateTimeFormat("en-US", { timeZone: value });
@@ -36,7 +37,7 @@ export async function GET() {
     },
   });
   return NextResponse.json(
-    { preferences: { ...preferences, timezone: user.timezone } },
+    { preferences: { ...preferences, timezone: user.timezone, name: user.name } },
     { headers: { "cache-control": "no-store" } },
   );
 }
@@ -49,7 +50,7 @@ export async function PATCH(request) {
       { error: "Invalid preference values.", details: parsed.error.flatten() },
       { status: 400 },
     );
-  const { timezone, ...preferenceData } = parsed.data;
+  const { timezone, name, ...preferenceData } = parsed.data;
   const preferences = await prisma.userPreference.upsert({
     where: { userId: user.id },
     create: { userId: user.id, ...preferenceData },
@@ -62,9 +63,13 @@ export async function PATCH(request) {
       updatedAt: true,
     },
   });
-  const updatedUser = timezone
-    ? await prisma.user.update({ where: { id: user.id }, data: { timezone }, select: { timezone: true } })
-    : { timezone: user.timezone };
+  const updatedUser = timezone !== undefined || name !== undefined
+    ? await prisma.user.update({
+        where: { id: user.id },
+        data: { ...(timezone !== undefined ? { timezone } : {}), ...(name !== undefined ? { name: name || null } : {}) },
+        select: { timezone: true, name: true },
+      })
+    : { timezone: user.timezone, name: user.name };
   await prisma.auditEvent.create({
     data: {
       userId: user.id,
@@ -74,7 +79,7 @@ export async function PATCH(request) {
     },
   });
   return NextResponse.json(
-    { preferences: { ...preferences, timezone: updatedUser.timezone } },
+    { preferences: { ...preferences, timezone: updatedUser.timezone, name: updatedUser.name } },
     { headers: { "cache-control": "no-store" } },
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, Mail, Settings2, UserRound } from "lucide-react";
+import NotificationCenter from "@/components/client/notification-center";
 import { useEffect, useState } from "react";
 
 const items = [
@@ -32,6 +33,7 @@ export default function WorkspaceHeader() {
           return <Link key={href} href={href} aria-current={active ? "page" : undefined} title={label} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold max-[760px]:justify-center max-[760px]:px-0 ${active ? "bg-[#FA8500] text-white" : "text-white/90 hover:bg-white/10"}`}><Icon size={18} /><span className="max-[760px]:hidden">{label}</span></Link>;
         })}
       </nav>
+      <NotificationCenter />
       <div className="mt-auto flex min-w-0 items-center gap-2 px-2 max-[760px]:px-0">
         {user?.imageUrl ? <img src={user.imageUrl} alt="" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full object-cover" /> : <span className="grid h-8 w-8 place-items-center rounded-full bg-white/15"><UserRound size={15} /></span>}
         <span className="min-w-0 max-[760px]:hidden"><strong className="block max-w-[130px] truncate text-xs">{user?.name || "Your account"}</strong><span className="text-[10px] text-white/60">Workspace</span></span>

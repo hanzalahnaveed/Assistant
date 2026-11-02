@@ -286,3 +286,29 @@ export async function POST(request, context) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
+
+export async function DELETE(_request, context) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Sign in to cancel email drafts." }, { status: 401 });
+  const { id } = await context.params;
+  const changed = await prisma.emailDraft.updateMany({
+    where: { id, userId: user.id, status: { in: ["DRAFT", "APPROVED", "FAILED"] } },
+    data: { status: "CANCELLED", lastError: null },
+  });
+  if (!changed.count) {
+    return NextResponse.json(
+      { error: "Draft not found or it can no longer be cancelled in its current state." },
+      { status: 409 },
+    );
+  }
+  await prisma.auditEvent.create({
+    data: {
+      userId: user.id,
+      eventType: "EMAIL_DRAFT_CANCELLED",
+      actor: "USER",
+      resourceId: id,
+      metadata: { via: "DELETE" },
+    },
+  });
+  return NextResponse.json({ cancelled: true }, { headers: { "cache-control": "no-store" } });
+}

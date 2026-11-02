@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Mail, RefreshCw } from "lucide-react";
 import EmailAgentSettings from "@/components/client/email-agent-settings";
 import InboundEmailQueue from "@/components/client/inbound-email-queue";
+import EmailDraftManager from "@/components/client/email-draft-manager";
 
 export default function EmailClient() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -28,6 +29,7 @@ export default function EmailClient() {
           </button>
         </header>
         <EmailAgentSettings />
+        <EmailDraftManager />
         <InboundEmailQueue key={refreshKey} />
       </div>
     </main>

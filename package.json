@@ -26,7 +26,9 @@
     "test:google-provider-errors": "node scripts/google-provider-errors-test.mjs",
     "test:google-live-acceptance": "node scripts/google-live-acceptance-test.mjs",
     "google:live-acceptance": "node scripts/google-live-acceptance.mjs",
-    "test:email-api-response": "node scripts/email-api-response-test.mjs"
+    "test:email-api-response": "node scripts/email-api-response-test.mjs",
+    "test:google-data-crud": "node scripts/google-data-crud-test.mjs",
+    "test:crud-surface": "node scripts/crud-surface-test.mjs"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",

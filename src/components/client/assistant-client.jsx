@@ -3,7 +3,7 @@
 
 import { Button, Input } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Clock3, LoaderCircle, MessageCircle, Plus, Search, Send, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, Clock3, LoaderCircle, MessageCircle, Pencil, Plus, Search, Send, Sparkles, Trash2, X } from "lucide-react";
 export default function AssistantClient() {
   const [conversations, setConversations] = useState([]);
   const [conversationId, setConversationId] = useState("");
@@ -13,6 +13,9 @@ export default function AssistantClient() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [conversationSearch, setConversationSearch] = useState("");
+  const [editingConversationId, setEditingConversationId] = useState("");
+  const [editingTitle, setEditingTitle] = useState("");
+  const [conversationBusyId, setConversationBusyId] = useState("");
   const loadConversations = useCallback(async () => {
     try {
       const response = await fetch("/api/chat", {
@@ -42,6 +45,56 @@ export default function AssistantClient() {
       setMessages(body.conversation.messages);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load conversation.");
+    }
+  }
+  function beginRename(item) {
+    setEditingConversationId(item.id);
+    setEditingTitle(item.title || "New conversation");
+    setError("");
+  }
+  async function saveConversationTitle(item) {
+    const title = editingTitle.trim();
+    if (!title) {
+      setError("Enter a conversation title.");
+      return;
+    }
+    setConversationBusyId(item.id);
+    setError("");
+    try {
+      const response = await fetch("/api/chat/" + encodeURIComponent(item.id), {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not rename conversation.");
+      setConversations((current) => current.map((entry) => entry.id === item.id ? { ...entry, title: body.conversation.title } : entry));
+      setEditingConversationId("");
+      setEditingTitle("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not rename conversation.");
+    } finally {
+      setConversationBusyId("");
+    }
+  }
+  async function deleteConversation(item) {
+    if (!window.confirm("Delete this conversation and all of its messages? This cannot be undone.")) return;
+    setConversationBusyId(item.id);
+    setError("");
+    try {
+      const response = await fetch("/api/chat/" + encodeURIComponent(item.id), { method: "DELETE" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not delete conversation.");
+      setConversations((current) => current.filter((entry) => entry.id !== item.id));
+      if (conversationId === item.id) {
+        setConversationId("");
+        setMessages([]);
+      }
+      if (editingConversationId === item.id) setEditingConversationId("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete conversation.");
+    } finally {
+      setConversationBusyId("");
     }
   }
   function newConversation() {
@@ -138,14 +191,39 @@ export default function AssistantClient() {
             ) : visibleConversations.length ? (
               <div className="space-y-1">
                 {visibleConversations.map((item) => (
-                  <Button
-                    key={item.id}
-                    onClick={() => void openConversation(item.id)}
-                    className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs ${conversationId === item.id ? "bg-[#e7f3ed] text-[#FA8500]" : "text-[#59665e] hover:bg-[#F8F9FA]"}`}
-                  >
-                    <MessageCircle size={14} className="mt-0.5 shrink-0" />
-                    <span className="line-clamp-2">{item.title || "New conversation"}</span>
-                  </Button>
+                  <div key={item.id} className="flex min-w-0 items-center gap-1 rounded-lg">
+                    {editingConversationId === item.id ? (
+                      <>
+                        <input
+                          aria-label="Conversation title"
+                          autoFocus
+                          maxLength={100}
+                          value={editingTitle}
+                          onChange={(event) => setEditingTitle(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void saveConversationTitle(item);
+                            if (event.key === "Escape") setEditingConversationId("");
+                          }}
+                          className="min-w-0 flex-1 rounded-lg border border-[#E3E7ED] px-2 py-2 text-xs text-[#344054] outline-none focus:border-[#FA8500]"
+                        />
+                        <button type="button" aria-label="Save conversation title" disabled={conversationBusyId === item.id} onClick={() => void saveConversationTitle(item)} className="rounded-md p-1.5 text-[#176b52] hover:bg-[#e7f3ed] disabled:opacity-50"><Check size={13} /></button>
+                        <button type="button" aria-label="Cancel rename" disabled={conversationBusyId === item.id} onClick={() => setEditingConversationId("")} className="rounded-md p-1.5 text-[#6B7280] hover:bg-[#F3F5F7] disabled:opacity-50"><X size={13} /></button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={() => void openConversation(item.id)}
+                          disabled={Boolean(conversationBusyId)}
+                          className={\`flex min-w-0 flex-1 items-start gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs \${conversationId === item.id ? "bg-[#e7f3ed] text-[#FA8500]" : "text-[#59665e] hover:bg-[#F8F9FA]"}\`}
+                        >
+                          <MessageCircle size={14} className="mt-0.5 shrink-0" />
+                          <span className="line-clamp-2">{item.title || "New conversation"}</span>
+                        </Button>
+                        <button type="button" title="Rename conversation" aria-label="Rename conversation" disabled={Boolean(conversationBusyId)} onClick={() => beginRename(item)} className="rounded-md p-1.5 text-[#87918b] hover:bg-[#F3F5F7] hover:text-[#344054] disabled:opacity-50"><Pencil size={12} /></button>
+                        <button type="button" title="Delete conversation" aria-label="Delete conversation" disabled={Boolean(conversationBusyId)} onClick={() => void deleteConversation(item)} className="rounded-md p-1.5 text-[#A05A4A] hover:bg-rose-50 disabled:opacity-50"><Trash2 size={12} /></button>
+                      </>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
