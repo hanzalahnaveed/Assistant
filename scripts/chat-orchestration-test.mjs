@@ -6,6 +6,10 @@ const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import
 
 assert.match(route, /name:\s*"propose_task"/);
 assert.match(route, /name:\s*"prepare_email_draft"/);
+assert.match(route, /prisma\.actionRecord\.findMany/);
+assert.match(route, /prisma\.emailDraft\.findMany/);
+assert.match(route, /Pending assistant actions/);
+assert.match(route, /Outbound email drafts/);
 assert.match(route, /createTaskActionProposal\(userId, idempotencyKey/);
 assert.match(route, /prisma\.emailDraft\.create/);
 assert.match(route, /status: draft\.status, type: "CREATE_EMAIL_DRAFT"/);

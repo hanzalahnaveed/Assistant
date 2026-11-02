@@ -32,6 +32,29 @@ async function generateReply(userId, timezone, message, history, idempotencyKey)
   // Reuse the briefing intelligence layer so chat can reason across the user's
   // current tasks, calendar, and read-only inbox instead of relying on tasks alone.
   const context = await generateBriefingData({ id: userId, timezone }, new Date());
+  const [pendingActions, recentDrafts] = await Promise.all([
+    prisma.actionRecord.findMany({
+      where: { userId, status: { in: ["PENDING", "APPROVED", "RUNNING", "FAILED"] } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, actionType: true, status: true, input: true, createdAt: true },
+    }),
+    prisma.emailDraft.findMany({
+      where: { userId, status: { in: ["DRAFT", "APPROVED", "FAILED", "SEND_UNCERTAIN"] } },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+      select: { id: true, toEmail: true, subject: true, status: true, updatedAt: true },
+    }),
+  ]);
+  const pendingActionContext = pendingActions
+    .map((action) => {
+      const input = action.input && typeof action.input === "object" ? action.input : {};
+      return `- ${action.actionType} (${action.status}): ${String(input.title || input.subject || "Action awaiting attention").slice(0, 180)}; reference ${action.id}`;
+    })
+    .join("\n") || "No pending or failed assistant actions.";
+  const draftContext = recentDrafts
+    .map((draft) => `- ${draft.subject || "(no subject)"} to ${draft.toEmail}; status ${draft.status}; draft reference ${draft.id}`)
+    .join("\n") || "No outbound drafts awaiting attention.";
   const taskContext =
     context.tasks
       .slice(0, 20)
@@ -70,6 +93,8 @@ async function generateReply(userId, timezone, message, history, idempotencyKey)
     `Open task context:\n${taskContext}`,
     `Calendar context for today:\n${calendarContext}`,
     `Inbox follow-up candidates (heuristic, read-only):\n${emailContext}`,
+    `Pending assistant actions:\n${pendingActionContext}`,
+    `Outbound email drafts (metadata only):\n${draftContext}`,
   ]
     .filter(Boolean)
     .join("\n\n");
