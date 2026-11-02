@@ -48,7 +48,10 @@ export async function POST(request, context) {
     where: { id, userId: user.id },
   });
   if (!inbound) return NextResponse.json({ error: "Inbound email was not found." }, { status: 404 });
-  if (inbound.category !== "MEETING") {
+  const classification = inbound.classification && typeof inbound.classification === "object" &&
+    !Array.isArray(inbound.classification) ? inbound.classification : {};
+  const meetingIntent = ["MEETING_REQUEST", "RESCHEDULE"].includes(classification.intent);
+  if (inbound.category !== "MEETING" && !meetingIntent) {
     return NextResponse.json({ error: "This email was not classified as a meeting request." }, { status: 409 });
   }
   if (!inbound.draftId) return NextResponse.json({ error: "Create a reply draft before scheduling the meeting." }, { status: 409 });
@@ -65,8 +68,6 @@ export async function POST(request, context) {
     return NextResponse.json({ error: "This reply is already sending or sent and cannot be rewritten by meeting scheduling." }, { status: 409 });
   }
 
-  const classification = inbound.classification && typeof inbound.classification === "object" &&
-    !Array.isArray(inbound.classification) ? inbound.classification : {};
   const slots = Array.isArray(classification.availableSlots) ? classification.availableSlots : [];
   const slot = slots.find((candidate) => candidate?.startAt === parsed.data.startAt);
   if (!slot) return NextResponse.json({ error: "That time is not one of the currently offered slots. Refresh the email activity and try again." }, { status: 400 });
