@@ -241,32 +241,24 @@ const QUEUED_EMAIL_PLACEHOLDER = "pending@assistant.invalid";
 const MAX_EMAIL_ITEMS_PER_USER_PER_RUN = 2;
 const PROCESSING_STALE_MS = 10 * 60 * 1000;
 
-async function ensureEmailAgentState(userId, enabledAt) {
-  let state = await prisma.emailAgentState.upsert({
+async function ensureEmailAgentState(userId, settings, now) {
+  const configured = Date.parse(settings.enabledAt || "");
+  const state = await prisma.emailAgentState.upsert({
     where: { userId },
-    create: { userId, scanEnabledAt: enabledAt },
-    update: {},
+    create: { userId, scanEnabledAt: new Date(Number.isFinite(configured) ? configured : now.getTime()), lastWorkerRunAt: now },
+    update: { lastWorkerRunAt: now },
   });
+  const enabledAt = Number.isFinite(configured) ? new Date(configured) : state.scanEnabledAt || now;
   if (!state.scanEnabledAt || state.scanEnabledAt.getTime() !== enabledAt.getTime()) {
     await prisma.emailAgentState.updateMany({
       where: { userId, scanEnabledAt: state.scanEnabledAt },
-      data: {
-        gmailPageToken: null,
-        scanEnabledAt: enabledAt,
-        pagesScanned: 0,
-        lastScanPageAt: null,
-        lastError: null,
-      },
+      data: { gmailPageToken: null, scanEnabledAt: enabledAt, pagesScanned: 0, lastScanPageAt: null, lastError: null },
     });
-    state = await prisma.emailAgentState.findUnique({ where: { userId } });
   }
-  return state;
+  return { state: await prisma.emailAgentState.findUnique({ where: { userId } }), enabledAt };
 }
-
 async function enqueueNextGmailPage(user, accessToken, settings, now) {
-  const parsedEnabledAt = Date.parse(settings.enabledAt || "");
-  const enabledAt = new Date(Number.isFinite(parsedEnabledAt) ? parsedEnabledAt : now.getTime());
-  const state = await ensureEmailAgentState(user.id, enabledAt);
+  const { state, enabledAt } = await ensureEmailAgentState(user.id, settings, now);
   let pageToken = state.gmailPageToken || null;
   const listPage = async (cursor) => {
     const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
@@ -418,11 +410,6 @@ export async function processInboundEmailForUser(user, integration, settings) {
   const token = await getGoogleAccessToken(user.id);
   if (!token) return { ...counts, skipped: 1, reason: "Google connection needs reconnecting." };
   const now = new Date();
-  const parsedEnabledAt = Date.parse(settings.enabledAt || "");
-  const enabledAt = new Date(Number.isFinite(parsedEnabledAt) ? parsedEnabledAt : now.getTime());
-  await prisma.emailAgentState.upsert({
-    where: { userId: user.id }, create: { userId: user.id, scanEnabledAt: enabledAt, lastWorkerRunAt: now }, update: { lastWorkerRunAt: now },
-  });
   try {
     const page = await enqueueNextGmailPage(user, token.accessToken, settings, now);
     counts.scanned = page.scanned; counts.queued = page.queued; counts.pagesScanned = page.pagesScanned;

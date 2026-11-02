@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getEmailAgentSettings, processInboundEmailForUser } from "@/lib/email-agent/service";
+import { compareWorkerFairness } from "@/lib/email-agent/queue.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,16 +22,11 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized email-agent scheduler request." }, { status: 401 });
   }
   const users = await prisma.user.findMany({
-    where: {
-      integrations: { some: { provider: "GOOGLE", status: "CONNECTED" } },
-    },
+    where: { integrations: { some: { provider: "GOOGLE", status: "CONNECTED" } } },
     select: {
-      id: true,
-      email: true,
-      timezone: true,
-      preferences: {
-        select: { preferencesJson: true, automationPaused: true },
-      },
+      id: true, email: true, timezone: true,
+      preferences: { select: { preferencesJson: true, automationPaused: true } },
+      emailAgentState: { select: { lastWorkerRunAt: true } },
       integrations: {
         where: { provider: "GOOGLE", status: "CONNECTED" },
         orderBy: { updatedAt: "desc" },
@@ -40,51 +36,53 @@ export async function POST(request) {
     },
     orderBy: { id: "asc" },
   });
-  let processed = 0;
-  let drafted = 0;
-  let sent = 0;
-  let skipped = 0;
-  let failed = 0;
-  const failures = [];
-  for (const user of users) {
+  const candidates = users.filter((user) => getEmailAgentSettings(user.preferences?.preferencesJson).enabled)
+    .sort(compareWorkerFairness);
+  const maxUsersPerRun = 4;
+  const selectedUsers = candidates.slice(0, maxUsersPerRun);
+  const deferredUsers = Math.max(0, candidates.length - selectedUsers.length);
+  const skipped = Math.max(0, users.length - candidates.length);
+  const outcomes = await Promise.all(selectedUsers.map(async (user) => {
     const settings = getEmailAgentSettings(user.preferences?.preferencesJson);
-    if (!settings.enabled) {
-      skipped++;
-      continue;
-    }
     const integration = user.integrations[0];
-    if (!integration) {
-      skipped++;
-      continue;
-    }
+    if (!integration) return { userId: user.id, skipped: 1, processed: 0, drafted: 0, failed: 0 };
     try {
-      const result = await processInboundEmailForUser(user, integration, settings);
-      processed += result.processed;
-      drafted += result.drafted;
-      sent += result.sent;
-      skipped += result.skipped;
-      failed += result.failed;
-      if (result.failed) failures.push({ userId: user.id, failed: result.failed });
+      return { userId: user.id, ...(await processInboundEmailForUser(user, integration, settings)) };
     } catch (error) {
-      failed++;
-      failures.push({
-        userId: user.id,
-        error: error instanceof Error ? error.message.slice(0, 240) : "Unknown email-agent error",
-      });
+      const message = error instanceof Error ? error.message.slice(0, 240) : "Unknown email-agent error";
+      await prisma.emailAgentState.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, lastWorkerRunAt: new Date(), lastError: message },
+        update: { lastWorkerRunAt: new Date(), lastError: message },
+      }).catch(() => undefined);
+      return { userId: user.id, processed: 0, drafted: 0, sent: 0, skipped: 0, failed: 1, error: message };
     }
-  }
+  }));
+  const totals = outcomes.reduce((result, outcome) => {
+    for (const key of ["scanned", "queued", "pagesScanned", "processed", "drafted", "sent", "skipped", "failed", "deferred"]) {
+      result[key] += outcome[key] || 0;
+    }
+    if (outcome.failed) result.failures.push({ userId: outcome.userId, failed: outcome.failed, error: outcome.error || null });
+    return result;
+  }, { scanned: 0, queued: 0, pagesScanned: 0, processed: 0, drafted: 0, sent: 0, skipped, failed: 0, deferred: 0, failures: [] });
   return NextResponse.json({
-    ok: failures.length === 0,
+    ok: totals.failures.length === 0,
     runAt: new Date().toISOString(),
-    eligibleUsers: users.length,
-    processed,
-    drafted,
-    sent,
-    skipped,
-    failed,
-    failures,
+    eligibleUsers: candidates.length,
+    processedUsers: selectedUsers.length,
+    deferredUsers,
+    scanned: totals.scanned,
+    queued: totals.queued,
+    pagesScanned: totals.pagesScanned,
+    processed: totals.processed,
+    drafted: totals.drafted,
+    sent: totals.sent,
+    skipped: totals.skipped,
+    failed: totals.failed,
+    deferred: totals.deferred,
+    failures: totals.failures,
   }, {
-    status: failures.length ? 207 : 200,
+    status: totals.failures.length ? 207 : 200,
     headers: { "cache-control": "no-store" },
   });
 }
