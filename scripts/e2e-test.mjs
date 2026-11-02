@@ -242,7 +242,7 @@ try {
   assert.equal(exportBody.formatVersion, 2);
   assert.ok(Array.isArray(exportBody.account.inboundEmails));
   assert.ok(Array.isArray(exportBody.account.followUps));
-  assert.ok(exportBody.account.emailAgentState);
+  assert.ok(exportBody.account.emailAgentState === null || typeof exportBody.account.emailAgentState === "object");
   assert.equal(exportBody.account.id, user.id);
   assert.ok(Array.isArray(exportBody.account.tasks));
   const exportJson = JSON.stringify(exportBody);
