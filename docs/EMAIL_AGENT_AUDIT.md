@@ -18,38 +18,55 @@ This audit covers the existing Next.js/Prisma application on the `dev` branch: G
 
 | Priority | Finding | Change in this pass |
 | --- | --- | --- |
-| Critical | The offline/dummy classifier existed and was documented/configured in `.env.example`, but the production email service always called the Groq API. A default local/CI configuration without `GROQ_API_KEY` therefore failed instead of creating test drafts. | Connected classifier selection to the inbound worker. `dummy` runs locally without network/API credentials; `groq` requires `GROQ_API_KEY`; omitted mode selects Groq only when a key exists and otherwise defaults to dummy. Unknown modes fail closed. Added unit coverage. |
-| Critical | The inbox API returned only draft IDs/statuses, while the UI expected full draft data. As a result, the generated reply body and review controls could not render in the inbound queue. | The inbox API now returns the user-scoped draft fields required by the review UI. Added an end-to-end assertion that the linked draft body is present. |
-| High | The settings UI advertised routine automatic replies, but the service forcibly disabled the option and the API did not consistently reject opt-in. The intended manager approval model was ambiguous and tests contradicted the implementation. | Removed the auto-send control, clarified the draft-only workflow, and made the settings API reject `autoReplyEnabled: true`. Inbound replies stay drafts in every classifier mode. |
-| High | The UI enabled meeting scheduling from normalized meeting intent, but the route required category `MEETING`. A message with a valid `MEETING_REQUEST`/`RESCHEDULE` intent and a different category could show an action that the API rejected. | The meeting route now accepts either the meeting category or a recognized meeting intent. Added regression coverage using an intent/category mismatch. |
-| High | CI only ran on pushes/PRs targeting `main`, so direct work on `dev` had no automated branch validation. | CI now runs on pushes and PRs for both `main` and `dev`; CI explicitly selects the deterministic dummy classifier. |
+| Critical | The offline/dummy classifier existed but the inbound worker always called Groq. | Connected explicit dummy/Groq mode selection, added fail-closed configuration checks, and tests. |
+| Critical | The inbox API returned only draft status, so the UI could not render generated replies. | Returned user-scoped draft details and added an E2E assertion. |
+| High | Settings advertised automatic sending despite a manager approval requirement. | Removed auto-send controls and rejected API opt-in. All inbound replies remain drafts. |
+| High | Meeting intent/category mismatches could display an action that the API rejected. | Aligned the meeting endpoint with normalized intent and added regression coverage. |
+| High | The worker rescanned only five Gmail pages (500 messages), so older messages could remain undiscovered indefinitely. | Added `EmailAgentState` with a persistent per-user Gmail page token and enable-time watermark. Every pass enqueues one page of up to 100 IDs into `InboundEmail`; database uniqueness makes restarts and rescans safe. There is no fixed five-page or seven-day query cap. Invalid page tokens restart scanning from the newest page. |
+| High | The cron worker processed accounts sequentially and a serverless crash could leave work stuck in `PROCESSING`. | The worker now selects up to four enabled accounts in least-recently-served order and runs them concurrently. Each account scans one page and processes at most two queued messages per pass. Atomic claims, ten-minute stale-claim recovery, retry backoff, final-attempt recovery, visible dead letters, and manual retry are implemented. |
+| High | Email task classification immediately inserted `ScheduleItem` records without a manager decision. | The agent now stores a task proposal and sets `TASK_REVIEW`. The inbox provides Approve and Decline actions. Only an authenticated approval creates the idempotent schedule item; rejection creates nothing. Both actions are audited and tenant-scoped. |
+| Medium | Worker observability was limited to response counts. | The inbox shows queued/retrying/stopped counts, page progress, last worker run, and the latest worker issue without exposing Gmail page tokens or message bodies. |
+| High | CI did not run on `dev`. | CI triggers on pushes and PRs for both `main` and `dev`, including queue cursor/retry tests. |
 
-## Remaining risks and next milestones
+## Milestone 5 — Worker fairness, bounded execution, and recovery
 
-### Milestone 5 — Worker fairness, bounded execution, and recovery
+<badge>Implemented on `dev`</badge>
 
-- The Gmail scan is bounded to five pages of 100 messages per invocation and processes at most two newly claimed messages per user. A mailbox with more than 500 matching messages can leave older messages beyond the scanned window unprocessed; continuous arrivals can also keep the newest pages busy.
-- The scheduled worker processes users sequentially. A live classifier call can take up to 20 seconds and a meeting may require a second model call. With multiple users or slow Google/Groq responses, the endpoint can approach its 60-second execution limit.
-- Add durable Gmail history/cursor handling (or a persisted resumable page/window strategy), bounded concurrency, explicit per-run time budgets, retry/backoff, and a visible dead-letter/retry state. Do not increase worker limits without a bounded execution strategy.
+- `EmailAgentState` stores one user's Gmail pagination cursor, `scanEnabledAt`, pages scanned, last page time, last worker time, and last error.
+- Each scheduled pass discovers one page of up to 100 Gmail message IDs and inserts queue rows with `createMany(skipDuplicates: true)`. A unique `(userId, gmailMessageId)` key makes a repeated scan safe. The query starts at the agent enable timestamp and is not restricted to five pages or seven days.
+- If Gmail rejects a persisted page token, the worker clears the token and restarts from the newest page. It relies on message-ID uniqueness to skip entries already discovered.
+- Each account processes at most two oldest queued messages per pass. The cron worker handles up to four enabled accounts concurrently and sorts by `lastWorkerRunAt` so accounts deferred in one invocation move ahead in subsequent invocations.
+- Queue claims are conditional updates; a `PROCESSING` row older than ten minutes can be reclaimed. A process killed on its fifth attempt is promoted to `FAILED` after its lease becomes stale.
+- Automatic retry delays are 5, 10, 20, and 40 minutes. After five failed claims the item becomes a visible terminal error. A manager can manually reset that item to `RECEIVED`; the reset is audited.
+- Queue status is visible in the email inbox. The API exposes counts and progress metadata only; the opaque Gmail page token is never sent to the browser.
 
-### Milestone 6 — Task approval and extraction quality
+### Current throughput boundary
 
-- Task extraction currently creates a schedule item immediately when a classifier supplies a task payload. The mutation is idempotent and internal, but the queue displays it as already added rather than as a manager-approved task proposal.
-- Decide whether email-derived tasks should be auto-created or require a review/confirm action. If auto-created, make the UI and policy explicit and add a rollback/ignore path. If approval is required, persist a proposed task separately and create the ScheduleItem only after explicit manager confirmation.
-- Add confidence/ambiguity handling and test false positives, forwarded threads, quoted instructions, vague requests, multiple action items, conflicting due dates, and sensitive content.
+The scheduled workflow runs every five minutes. A worker pass processes at most two queued messages per selected account and at most four accounts in parallel. This is deliberately bounded for the 60-second serverless limit and Groq/provider rate limits. A large historical mailbox is now fully discoverable across page-cursor checkpoints, but draining a large backlog takes multiple scheduler passes. Monitor `queuedCount`, `retryingCount`, `failedCount`, and pages scanned before increasing the per-account batch size.
 
-### Milestone 7 — Agent safety and integration acceptance
+## Milestone 6 — Manager approval for email-derived tasks
 
-- Add adversarial prompt-injection fixtures in inbound emails, including requests to reveal secrets, forward data, override policies, or create external actions. Treat all email content and attachments as untrusted data.
-- Add mocked provider integration tests for Gmail paging, duplicate deliveries, stale processing claims, token refresh/revocation, malformed model output, Groq timeout/rate-limit, calendar conflicts, and uncertain event-creation outcomes.
-- Test the full lifecycle using a dedicated Google test account: inbox fetch → draft persistence → UI render/edit → approve → send; meeting intent → offered slots → explicit selection → invitation → draft re-review.
-- Add operational metrics for scan counts, oldest unprocessed message age, classifier mode, processing latency, retry count, and terminal failures. Never log message bodies or OAuth tokens.
+<badge>Implemented on `dev`</badge>
 
-### Milestone 8 — Production readiness
+- Task extraction now stores a JSON proposal with `taskApprovalStatus: PENDING`; it does not write a `ScheduleItem`.
+- The email queue displays the extracted title, description, priority, and due date and offers explicit Approve and Decline actions.
+- Approval validates the extracted payload, checks the global automation pause, conditionally claims the inbound row, and upserts one `ScheduleItem` linked to the Gmail message. The transaction updates the inbound status and writes an audit event.
+- Decline updates the proposal state and writes an audit event without creating a schedule item.
+- Repeated approvals return the already-created task; concurrent or cross-account changes cannot create duplicate tasks.
+
+## Next milestone — Agent safety and integration acceptance
+
+- Add adversarial prompt-injection fixtures in inbound emails, including instructions to reveal secrets, forward data, override approval policy, or perform unrelated actions. Treat all email content and attachments as untrusted.
+- Add mocked Gmail/Calendar integration tests for multi-page cursors, page-token expiration, duplicate page ingestion, token revocation, provider timeouts/rate limits, stale claims, and calendar conflicts.
+- Add classifier fixtures for forwarded threads, quoted instructions, multiple task proposals, vague requests, conflicting due dates, and false positives.
+- Run live end-to-end acceptance with a dedicated test Google account. Verify inbox discovery, reply review/send, task proposal approval/rejection, and meeting slot confirmation. This repository CI does not authenticate to a real Google account.
+- Add metrics/alerts for queue age, scan lag, per-user processing latency, retry attempts, classifier mode, and terminal failures. Do not log message bodies or OAuth tokens.
+
+## Production readiness
 
 - Complete Google OAuth scope verification and production account consent requirements before enabling real Gmail send or Calendar event creation for general users.
-- Run restore/retention checks for the PostgreSQL database, review the account export/delete lifecycle, and confirm tenant scoping for every new query.
-- Define a rollout plan with auto-processing disabled by default, an explicit pause switch, staged test users, and rollback procedures.
+- Run database restore/retention checks and confirm the account export/delete lifecycle covers `EmailAgentState` and inbound queue rows.
+- Define staged rollout and rollback procedures. Keep the email agent disabled by default and retain the global automation pause.
 
 ## Validation status
 

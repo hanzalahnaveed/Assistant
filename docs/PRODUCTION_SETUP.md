@@ -77,38 +77,50 @@ Run the workflow manually once using Actions → Scheduled daily briefings → R
 
 ## 6. Scheduled inbound email agent
 
-The worker endpoint is `POST /api/cron/email-agent`. The workflow `.github/workflows/email-agent.yml` runs every five minutes and reuses the repository variable `APP_BASE_URL` and repository secret `CRON_SECRET` configured for daily briefings. It safely skips when those settings are missing.
+The worker endpoint is `POST /api/cron/email-agent`. The workflow `.github/workflows/email-agent.yml` runs every five minutes and uses `APP_BASE_URL` plus `CRON_SECRET`. It safely skips when those settings are missing.
 
-Enable the feature from **Dashboard → Email → Email permissions & settings** after connecting a Google account with Gmail read access. Email-agent settings are stored per user; the agent defaults to off, and polling considers messages received after it was enabled. Set `EMAIL_AGENT_CLASSIFIER_MODE=dummy` for deterministic offline classification, or `EMAIL_AGENT_CLASSIFIER_MODE=groq` with `GROQ_API_KEY` for live classification. When the mode is omitted, the worker uses Groq when a key exists and otherwise uses the dummy classifier. An explicitly selected Groq mode without a key fails with a configuration error.
+Enable the feature from **Dashboard → Email → Email permissions & settings** after connecting a Google account with Gmail read access. The agent defaults to off. Its initial Gmail search starts at `enabledAt` and has no fixed five-page or seven-day scan cap. A per-user `EmailAgentState` row stores the Gmail page token and scan progress. Each discovered message is inserted into the durable `InboundEmail` queue with duplicate protection, then processed separately. An invalid/expired page token causes a safe restart from the newest page; repeated message IDs are ignored through the unique `(userId, gmailMessageId)` constraint.
 
-**Inbound replies are draft-only in every classifier mode.** The agent never sends a reply automatically, and the settings API rejects attempts to enable auto-send. The manager reviews/edits the draft, approves that exact version, and separately confirms Send. Gmail sending requires the `gmail.send` scope. The manager must still review sensitive messages; automatic classification does not bypass review.
+The scheduled worker selects up to four enabled accounts per run in least-recently-served order. It fetches one 100-message Gmail page per selected account and processes at most two queued messages per account in parallel. This bounds one serverless run while allowing the persisted cursor and queue to continue on later runs. Automatic failures retry after 5, 10, 20, and 40 minutes; after five attempts they become visible stopped items. Stale `PROCESSING` claims are recovered, including a worker that terminated during its final attempt. A manager can manually retry a stopped message. The inbox displays queued/retrying/stopped counts, pages scanned, last run, and the most recent worker issue. Page tokens are never returned to the browser.
 
-Email-derived tasks are currently created as idempotent local schedule items when a clear task intent and task payload are extracted; they do not send messages or create external events. This is an internal schedule mutation, so validate the task title, description, priority, and due date before relying on it.
+Set `EMAIL_AGENT_CLASSIFIER_MODE=dummy` for deterministic offline classification, or `EMAIL_AGENT_CLASSIFIER_MODE=groq` with `GROQ_API_KEY` for live classification. When the mode is omitted, the worker selects Groq when the key is present and dummy otherwise. An explicitly selected Groq mode without a key and unknown mode values fail closed. `OPENAI_API_KEY` is for separate chat/outreach features, not the inbound email classifier.
 
-For a meeting request, the agent checks primary-calendar availability and presents advisory time options. The account owner must explicitly choose a proposed slot and confirm creation. The worker rechecks the slot, creates an idempotent Calendar event with a Meet request, and sends the calendar invitation to the sender. The resulting meeting details are appended to the reply draft, which returns to draft status and still requires manager review, approval, and separate send confirmation. Sensitive meeting requests require approval of the reply draft before the calendar invitation can be created. The global automation pause blocks sending and calendar-event creation but does not prevent inbox analysis or draft generation.
+**Inbound replies are draft-only in every classifier mode.** The manager reviews or edits the draft, approves that exact version, and separately confirms Send. The settings API rejects automatic-send opt-in. Gmail sending requires the `gmail.send` scope. The manager remains responsible for sensitive message review.
+
+Email-derived task requests are persisted as **task proposals**, not immediate schedule items. The email queue presents the title, description, priority, and due date. The manager must explicitly approve or decline the proposal. Approval creates one idempotent `ScheduleItem` linked to the source Gmail message; decline creates no task. Task proposal approval is tenant-scoped, audited, and blocked while the global automation pause is active.
+
+For a meeting request, the agent checks primary-calendar availability and presents advisory time options. The account owner must explicitly choose a proposed slot and confirm creation. The server rechecks availability and refuses to create an invitation when the complete availability response cannot be verified. It creates an idempotent Calendar event with a Meet request and sends the calendar invitation to the sender. The resulting meeting details are appended to the reply draft, which still requires manager review, approval, and separate send confirmation. Sensitive meeting requests require approval of the reply draft before the calendar invitation can be created.
 
 ### Local development check
 
 1. Start PostgreSQL, apply migrations with `npx prisma migrate dev`, and run `npm run dev`.
-2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. For live inbound classification, set `EMAIL_AGENT_CLASSIFIER_MODE=groq` and `GROQ_API_KEY` in your local `.env`; for offline testing, keep `EMAIL_AGENT_CLASSIFIER_MODE=dummy`. `OPENAI_API_KEY` is used by separate chat/outreach features, not by this inbound classifier.
-3. In **Dashboard → Email → Email permissions & settings**, enable the agent and save settings. All generated replies remain drafts; there is no auto-send control. Use **Check inbox now** to run one immediate check and see processing counts without starting the poller. The agent intentionally considers messages received after it was enabled; send a fresh test email after saving the setting.
+2. Sign in to the local app and connect a dedicated Google test account with Gmail read/send and Calendar read/event permissions. For live inbound classification, set `EMAIL_AGENT_CLASSIFIER_MODE=groq` and `GROQ_API_KEY` in your local `.env`; for offline testing, use `EMAIL_AGENT_CLASSIFIER_MODE=dummy`.
+3. In **Dashboard → Email → Email permissions & settings**, enable the agent. Use **Check inbox now** to enqueue the next Gmail page and process a bounded number of queued messages. The page cursor and queue state persist across invocations.
 4. For continuous local polling, start the worker in a second terminal:
 
    ```bash
    npm run email-agent:local-worker
    ```
 
-   It loads your local Next.js environment files and polls every 60 seconds by default. It targets `http://localhost:3000` even if `APP_URL` points elsewhere; set `EMAIL_AGENT_BASE_URL` only when you intentionally want to target another environment. Set `EMAIL_AGENT_POLL_INTERVAL_MS` to adjust the interval (minimum 15 seconds, maximum 5 minutes). To run a single worker pass instead, use:
+   It polls every 60 seconds by default. It targets `http://localhost:3000` unless `EMAIL_AGENT_BASE_URL` is set. `EMAIL_AGENT_POLL_INTERVAL_MS` is bounded between 15 seconds and five minutes. To run one pass:
 
    ```bash
    curl --fail-with-body -sS -X POST http://localhost:3000/api/cron/email-agent \
      -H "Authorization: Bearer $CRON_SECRET"
    ```
 
-5. Send a harmless test email to the connected account, then refresh the inbound activity queue. Verify the message summary/category, full generated draft content, reply threading, and the edit/save/approve/send lifecycle. Use only a designated test recipient when confirming a send. For meeting requests, choose a slot only when you are ready for a real calendar invitation to be sent to the test sender.
-6. Run local checks with `npm run test:email-agent`, `npm run test:e2e`, and `npm run verify:javascript`.
+5. Send a harmless test message to the connected test account. Verify queueing, summary/category, reply content, task proposal approval/rejection, and the edit/save/approve/send lifecycle. Use only a designated test recipient when confirming a send. Select a meeting slot only when ready for a real calendar invitation.
+6. Run local checks:
 
-The scheduled GitHub Actions worker targets `APP_BASE_URL`; it does not run against your localhost. Do not expose a local server or use a personal production inbox just to test the worker.
+   ```bash
+   npm run test:email-agent
+   npm run test:email-agent-dummy
+   npm run test:email-agent-queue
+   npm run test:e2e
+   npm run verify:javascript
+   ```
+
+The scheduled GitHub Actions worker targets `APP_BASE_URL`; it does not run against localhost. Do not expose a local server or use a personal production inbox just to test the worker.
 
 ## 7. End-to-end smoke test
 
